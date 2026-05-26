@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ ricetta.nome }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f7f3ee;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 1200px;
+            margin-bottom: 24px;
+        }
+
+        h1, h2, h3 {
+            color: #5a381e;
+        }
+
+        a {
+            color: #8b5a2b;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        button {
+            background: #8b5a2b;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #6f451f;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .btn {
+            background: #8b5a2b;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .btn-dark {
+            background: #444;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .stats-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .stat {
+            background: #f2ece4;
+            padding: 12px;
+            border-radius: 8px;
+            min-width: 120px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #5a381e;
+            margin-top: 4px;
+        }
+
+        .toolbar {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-msg {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .inline-input,
+        .inline-select {
+            width: 100%;
+            max-width: 110px;
+            padding: 6px;
+            margin-bottom: 4px;
+        }
+
+        .inline-note {
+            width: 100%;
+            max-width: 180px;
+            padding: 6px;
+        }
+
+        .small-note {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .style-ok {
+            color: #1f7a1f;
+            font-weight: bold;
+        }
+
+        .style-sotto {
+            color: #b36b00;
+            font-weight: bold;
+        }
+
+        .style-sopra {
+            color: #b00020;
+            font-weight: bold;
+        }
+
+        .style-na {
+            color: #777;
+        }
+
+        select[name="stile_id"] {
+            padding: 8px;
+            min-width: 280px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{{ ricetta.nome }}</h1>
+        <p>
+            <strong>Tipo:</strong> {{ ricetta.tipo }}
+            · <strong>Volume:</strong> {{ ricetta.volume_target_litri }} L
+            · <strong>Efficienza:</strong> {{ ricetta.efficienza }}%
+        </p>
+        <p><strong>Versione:</strong> {{ ricetta.versione }}</p>
+        <p><strong>Note:</strong> {{ ricetta.note or '-' }}</p>
+
+        <div class="toolbar">
+            <a href="/ricette/html">← Torna alle ricette</a>
+            <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
+            <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
+            <button type="button" onclick="aggiornaStats()">Ricalcola statistiche</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Statistiche stimate</h2>
+        <div class="stats-box">
+            <div class="stat"><div class="stat-label">OG</div><div class="stat-value" id="stat-og">{{ stats.og }}</div></div>
+            <div class="stat"><div class="stat-label">FG</div><div class="stat-value" id="stat-fg">{{ stats.fg }}</div></div>
+            <div class="stat"><div class="stat-label">ABV</div><div class="stat-value" id="stat-abv">{{ stats.abv }}%</div></div>
+            <div class="stat"><div class="stat-label">IBU</div><div class="stat-value" id="stat-ibu">{{ stats.ibu }}</div></div>
+            <div class="stat"><div class="stat-label">SRM</div><div class="stat-value" id="stat-srm">{{ stats.srm }}</div></div>
+            <div class="stat"><div class="stat-label">EBC</div><div class="stat-value" id="stat-ebc">{{ stats.ebc }}</div></div>
+            <div class="stat"><div class="stat-label">BU/GU</div><div class="stat-value" id="stat-bugu">{{ stats.bu_gu }}</div></div>
+            <div class="stat"><div class="stat-label">GU</div><div class="stat-value" id="stat-gu">{{ stats.gu }}</div></div>
+        </div>
+        <div class="status-msg" id="stats-status">Statistiche caricate.</div>
+    </div>
+
+    <div class="card">
+        <h2>Stile target</h2>
+
+        <form method="post" action="/ricette/{{ ricetta.id }}/assegna-stile">
+            <select name="stile_id">
+                <option value="0">-- Nessuno stile --</option>
+                {% for s in stili %}
+                <option value="{{ s.id }}" {% if stile_corrente and stile_corrente.id == s.id %}selected{% endif %}>
+                    {{ s.nome }} ({{ s.linea_guida }})
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit">Assegna stile</button>
+        </form>
+
+        {% if confronto_stile %}
+            <p style="margin-top:12px;">
+                <strong>Stile corrente:</strong> {{ confronto_stile.nome }} · {{ confronto_stile.linea_guida }}
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parametro</th>
+                        <th>Valore ricetta</th>
+                        <th>Target stile</th>
+                        <th>Esito</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>OG</td>
+                        <td id="cmp-og-val">{{ confronto_stile.og.valore }}</td>
+                        <td id="cmp-og-range">{{ confronto_stile.og.min }} - {{ confronto_stile.og.max }}</td>
+                        <td id="cmp-og-state" class="style-{{ confronto_stile.og.stato }}">{{ confronto_stile.og.stato }}</td>
+                    </tr>
+                    <tr>
+                        <td>FG</td>
+                        <td id="cmp-fg-val">{{ confronto_stile.fg.valore }}</td>
+                        <td id="cmp-fg-range">{{ confronto_stile.fg.min }} - {{ confronto_stile.fg.max }}</td>
+                        <td id="cmp-fg-state" class="style-{{ confronto_stile.fg.stato }}">{{ confronto_stile.fg.stato }}</td>
+                    </tr>
+                    <tr>
+                        <td>IBU</td>
+                        <td id="cmp-ibu-val">{{ confronto_stile.ibu.valore }}</td>
+                        <td id="cmp-ibu-range">{{ confronto_stile.ibu.min }} - {{ confronto_stile.ibu.max }}</td>
+                        <td id="cmp-ibu-state" class="style-{{ confronto_stile.ibu.stato }}">{{ confronto_stile.ibu.stato }}</td>
+                    </tr>
+                    <tr>
+                        <td>SRM</td>
+                        <td id="cmp-srm-val">{{ confronto_stile.srm.valore }}</td>
+                        <td id="cmp-srm-range">{{ confronto_stile.srm.min }} - {{ confronto_stile.srm.max }}</td>
+                        <td id="cmp-srm-state" class="style-{{ confronto_stile.srm.stato }}">{{ confronto_stile.srm.stato }}</td>
+                    </tr>
+                    <tr>
+                        <td>EBC</td>
+                        <td id="cmp-ebc-val">{{ confronto_stile.ebc.valore }}</td>
+                        <td id="cmp-ebc-range">{{ confronto_stile.ebc.min }} - {{ confronto_stile.ebc.max }}</td>
+                        <td id="cmp-ebc-state" class="style-{{ confronto_stile.ebc.stato }}">{{ confronto_stile.ebc.stato }}</td>
+                    </tr>
+                    <tr>
+                        <td>ABV</td>
+                        <td id="cmp-abv-val">{{ confronto_stile.abv.valore }}</td>
+                        <td id="cmp-abv-range">{{ confronto_stile.abv.min }} - {{ confronto_stile.abv.max }}</td>
+                        <td id="cmp-abv-state" class="style-{{ confronto_stile.abv.stato }}">{{ confronto_stile.abv.stato }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        {% else %}
+            <p style="margin-top:12px;">Nessuno stile assegnato.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Ingredienti attuali</h2>
+
+        {% if ingredienti %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Modifica rapida</th>
+                    <th>Dati</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in ingredienti %}
+                <tr>
+                    <td>
+                        <strong>{{ i.nome }}</strong><br>
+                        <span class="small-note">ID {{ i.id }}</span>
+                    </td>
+                    <td>{{ i.categoria }}</td>
+                    <td>
+                        <input class="inline-input" type="number" step="0.001" id="qty-{{ i.id }}" value="{{ i.quantita }}">
+                        <select class="inline-select" id="unit-{{ i.id }}">
+                            <option value="kg" {% if i.unita == 'kg' %}selected{% endif %}>kg</option>
+                            <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
+                            <option value="l" {% if i.unita == 'l' %}selected{% endif %}>l</option>
+                            <option value="ml" {% if i.unita == 'ml' %}selected{% endif %}>ml</option>
+                            <option value="pz" {% if i.unita == 'pz' %}selected{% endif %}>pz</option>
+                            <option value="oz" {% if i.unita == 'oz' %}selected{% endif %}>oz</option>
+                            <option value="lb" {% if i.unita == 'lb' %}selected{% endif %}>lb</option>
+                        </select>
+
+                        {% if i.categoria == 'hop' or i.categoria == 'misc' %}
+                        <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min or '' }}" placeholder="Minuti">
+                        {% endif %}
+
+                        <input class="inline-note" type="text" id="note-{{ i.id }}" value="{{ i.note or '' }}" placeholder="Note">
+                        <button type="button" onclick="salvaRapido({{ i.id }})">Salva rapido</button>
+                        <div class="small-note" id="save-status-{{ i.id }}"></div>
+                    </td>
+                    <td>
+                        {% if i.categoria == 'grain' %}
+                            tipo={{ i.fermentable_type or '-' }}, yield={{ i.yield_percent or '-' }}%, color={{ i.color_srm or '-' }} SRM
+                        {% elif i.categoria == 'hop' %}
+                            alpha={{ i.alpha_acid or '-' }}%, use={{ i.hop_use or '-' }}, time={{ i.time_min or '-' }} min, form={{ i.hop_form or '-' }}
+                        {% elif i.categoria == 'yeast' %}
+                            atten={{ i.attenuation or '-' }}%, type={{ i.yeast_type or '-' }}, form={{ i.yeast_form or '-' }}
+                        {% elif i.categoria == 'misc' %}
+                            type={{ i.misc_type or '-' }}, use={{ i.misc_use or '-' }}, time={{ i.time_min or '-' }} min
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/ingredienti/{{ i.id }}/modifica">Modifica completa</a>
+                        <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
+                            <button type="submit" onclick="return confirm('Eliminare ingrediente?')">Elimina</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>Nessun ingrediente presente.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        function aggiornaClasseStato(id, stato) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            el.classList.remove("style-ok", "style-sotto", "style-sopra", "style-na");
+
+            if (stato === "ok") {
+                el.classList.add("style-ok");
+            } else if (stato === "sotto") {
+                el.classList.add("style-sotto");
+            } else if (stato === "sopra") {
+                el.classList.add("style-sopra");
+            } else {
+                el.classList.add("style-na");
+            }
+        }
+
+        async function aggiornaStats(silenzioso = false) {
+            const statusEl = document.getElementById("stats-status");
+            const url = "/ricette/{{ ricetta.id }}/stats-json";
+
+            if (!silenzioso) {
+                statusEl.textContent = "Ricalcolo statistiche in corso...";
+            }
+
+            try {
+                const res = await fetch(url, { headers: { "Accept": "application/json" } });
+
+                if (!res.ok) {
+                    statusEl.textContent = "Errore nel ricalcolo statistiche.";
+                    return;
+                }
+
+                const data = await res.json();
+                const s = data.stats;
+
+                document.getElementById("stat-og").textContent = s.og;
+                document.getElementById("stat-fg").textContent = s.fg;
+                document.getElementById("stat-abv").textContent = s.abv + "%";
+                document.getElementById("stat-ibu").textContent = s.ibu;
+                document.getElementById("stat-srm").textContent = s.srm;
+                document.getElementById("stat-ebc").textContent = s.ebc;
+                document.getElementById("stat-bugu").textContent = s.bu_gu;
+                document.getElementById("stat-gu").textContent = s.gu;
+
+                if (data.confronto_stile) {
+                    const c = data.confronto_stile;
+
+                    const setText = (id, value) => {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = value ?? "-";
+                    };
+
+                    setText("cmp-og-val", c.og.valore);
+                    setText("cmp-og-range", `${c.og.min} - ${c.og.max}`);
+                    setText("cmp-og-state", c.og.stato);
+                    aggiornaClasseStato("cmp-og-state", c.og.stato);
+
+                    setText("cmp-fg-val", c.fg.valore);
+                    setText("cmp-fg-range", `${c.fg.min} - ${c.fg.max}`);
+                    setText("cmp-fg-state", c.fg.stato);
+                    aggiornaClasseStato("cmp-fg-state", c.fg.stato);
+
+                    setText("cmp-ibu-val", c.ibu.valore);
+                    setText("cmp-ibu-range", `${c.ibu.min} - ${c.ibu.max}`);
+                    setText("cmp-ibu-state", c.ibu.stato);
+                    aggiornaClasseStato("cmp-ibu-state", c.ibu.stato);
+
+                    setText("cmp-srm-val", c.srm.valore);
+                    setText("cmp-srm-range", `${c.srm.min} - ${c.srm.max}`);
+                    setText("cmp-srm-state", c.srm.stato);
+                    aggiornaClasseStato("cmp-srm-state", c.srm.stato);
+
+                    setText("cmp-ebc-val", c.ebc.valore);
+                    setText("cmp-ebc-range", `${c.ebc.min} - ${c.ebc.max}`);
+                    setText("cmp-ebc-state", c.ebc.stato);
+                    aggiornaClasseStato("cmp-ebc-state", c.ebc.stato);
+
+                    setText("cmp-abv-val", c.abv.valore);
+                    setText("cmp-abv-range", `${c.abv.min} - ${c.abv.max}`);
+                    setText("cmp-abv-state", c.abv.stato);
+                    aggiornaClasseStato("cmp-abv-state", c.abv.stato);
+                }
+
+                statusEl.textContent = "Statistiche aggiornate.";
+            } catch (err) {
+                statusEl.textContent = "Errore di connessione nel ricalcolo.";
+            }
+        }
+
+        async function salvaRapido(ingredienteId) {
+            const statusEl = document.getElementById(`save-status-${ingredienteId}`);
+            const quantita = parseFloat(document.getElementById(`qty-${ingredienteId}`).value);
+            const unita = document.getElementById(`unit-${ingredienteId}`).value;
+            const note = document.getElementById(`note-${ingredienteId}`).value;
+
+            let timeMin = null;
+            const timeEl = document.getElementById(`time-${ingredienteId}`);
+            if (timeEl) {
+                timeMin = timeEl.value === "" ? null : parseInt(timeEl.value);
+            }
+
+            statusEl.textContent = "Salvataggio...";
+
+            try {
+                const res = await fetch(`/ingredienti/${ingredienteId}/quick-update`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        quantita: quantita,
+                        unita: unita,
+                        time_min: timeMin,
+                        note: note
+                    })
+                });
+
+                if (!res.ok) {
+                    statusEl.textContent = "Errore salvataggio.";
+                    return;
+                }
+
+                statusEl.textContent = "Salvato.";
+                await aggiornaStats(true);
+            } catch (err) {
+                statusEl.textContent = "Errore di connessione.";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            aggiornaStats(true);
+        });
+    </script>
+</body>
+</html>

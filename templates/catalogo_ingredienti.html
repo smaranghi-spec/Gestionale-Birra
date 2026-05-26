@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Catalogo ingredienti</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f3ee; }
+        .card { background: white; padding: 20px; border-radius: 10px; max-width: 1200px; margin-bottom: 24px; }
+        h1, h2 { color: #5a381e; }
+        a { color: #8b5a2b; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        button, .btn {
+            background: #8b5a2b; color: white; border: none; padding: 8px 12px;
+            border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block;
+        }
+        button:hover, .btn:hover { background: #6f451f; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        input, select { padding: 6px; margin-right: 6px; margin-bottom: 6px; }
+        .small-input { width: 90px; }
+        .filters a { margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Catalogo ingredienti</h1>
+
+        <p>
+            <a href="/ricette/html">Torna alle ricette</a>
+            {% if ricetta_id is defined %}
+                · <a href="/ricette/{{ ricetta_id }}">Torna alla ricetta {{ ricetta_id }}</a>
+            {% endif %}
+            · <a href="/catalogo/ingredienti/nuovo">Nuovo ingrediente</a>
+        </p>
+
+        <form method="post" action="/catalogo/ingredienti/popola_demo">
+            <button type="submit">Popola catalogo demo</button>
+        </form>
+
+        <div class="filters" style="margin-top: 16px;">
+            <strong>Filtra:</strong>
+            <a href="/catalogo/ingredienti">Tutti</a>
+            <a href="/catalogo/ingredienti?categoria=grain">Grani</a>
+            <a href="/catalogo/ingredienti?categoria=hop">Luppoli</a>
+            <a href="/catalogo/ingredienti?categoria=yeast">Lieviti</a>
+            <a href="/catalogo/ingredienti?categoria=misc">Altri</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Elenco catalogo</h2>
+
+        {% if categoria_attiva %}
+            <p>Filtro attivo: <strong>{{ categoria_attiva }}</strong></p>
+        {% endif %}
+
+        {% if items and items|length > 0 %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Categoria</th>
+                        <th>Dati tecnici</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in items %}
+                    <tr>
+                        <td>{{ i.nome }}</td>
+                        <td>{{ i.categoria }}</td>
+                        <td>
+                            {% if i.categoria == 'grain' %}
+                                tipo={{ i.fermentable_type or '-' }}, yield={{ i.yield_percent or '-' }}%, color={{ i.color_srm or '-' }} SRM
+                            {% elif i.categoria == 'hop' %}
+                                alpha={{ i.alpha_acid or '-' }}%, use={{ i.hop_use or '-' }}, form={{ i.hop_form or '-' }}
+                            {% elif i.categoria == 'yeast' %}
+                                atten={{ i.attenuation or '-' }}%, type={{ i.yeast_type or '-' }}, form={{ i.yeast_form or '-' }}
+                            {% elif i.categoria == 'misc' %}
+                                type={{ i.misc_type or '-' }}, use={{ i.misc_use or '-' }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a class="btn" href="/catalogo/ingredienti/{{ i.id }}/duplica">Duplica/precompila</a>
+
+                            {% if ricetta_id is defined %}
+                            <form method="post" action="/catalogo/ingredienti/{{ i.id }}/aggiungi_a_ricetta/{{ ricetta_id }}" style="margin-top:8px;">
+                                <input class="small-input" type="number" step="0.001" name="quantita" placeholder="Qtà" required>
+                                <select name="unita" required>
+                                    <option value="kg">kg</option>
+                                    <option value="g">g</option>
+                                    <option value="l">l</option>
+                                    <option value="ml">ml</option>
+                                    <option value="pz">pz</option>
+                                </select>
+                                {% if i.categoria == 'hop' or i.categoria == 'misc' %}
+                                    <input class="small-input" type="number" name="time_min" placeholder="Min">
+                                {% endif %}
+                                <input type="text" name="note" placeholder="Note">
+                                <button type="submit">Aggiungi</button>
+                            </form>
+                            {% else %}
+                                <div style="margin-top:8px;">Apri il catalogo da una ricetta per aggiungere ingredienti.</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Il catalogo è vuoto o il filtro non trova risultati.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Duplica ingrediente catalogo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f3ee; }
+        .card { background: white; padding: 20px; border-radius: 10px; max-width: 800px; }
+        input, select { display:block; width:100%; max-width:500px; margin-bottom:10px; padding:8px; }
+        button { background:#8b5a2b; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; }
+        a { color:#8b5a2b; text-decoration:none; font-weight:bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Duplica ingrediente catalogo</h1>
+        <p><a href="/catalogo/ingredienti">Torna al catalogo</a></p>
+
+        <form method="post" action="/catalogo/ingredienti/nuovo">
+            <input type="text" name="nome" value="{{ item.nome }}" required>
+
+            <select name="categoria" required>
+                <option value="grain" {% if item.categoria == 'grain' %}selected{% endif %}>Grain</option>
+                <option value="hop" {% if item.categoria == 'hop' %}selected{% endif %}>Hop</option>
+                <option value="yeast" {% if item.categoria == 'yeast' %}selected{% endif %}>Yeast</option>
+                <option value="misc" {% if item.categoria == 'misc' %}selected{% endif %}>Misc</option>
+            </select>
+
+            <input type="text" name="fermentable_type" value="{{ item.fermentable_type or '' }}" placeholder="Fermentable type">
+            <input type="number" step="0.1" name="yield_percent" value="{{ item.yield_percent or '' }}" placeholder="Yield %">
+            <input type="number" step="0.1" name="color_srm" value="{{ item.color_srm or '' }}" placeholder="Color SRM">
+
+            <input type="number" step="0.1" name="alpha_acid" value="{{ item.alpha_acid or '' }}" placeholder="Alpha acid %">
+            <input type="text" name="hop_use" value="{{ item.hop_use or '' }}" placeholder="Hop use">
+            <input type="text" name="hop_form" value="{{ item.hop_form or '' }}" placeholder="Hop form">
+
+            <input type="number" step="0.1" name="attenuation" value="{{ item.attenuation or '' }}" placeholder="Attenuation %">
+            <input type="text" name="yeast_type" value="{{ item.yeast_type or '' }}" placeholder="Yeast type">
+            <input type="text" name="yeast_form" value="{{ item.yeast_form or '' }}" placeholder="Yeast form">
+
+            <input type="text" name="misc_type" value="{{ item.misc_type or '' }}" placeholder="Misc type">
+            <input type="text" name="misc_use" value="{{ item.misc_use or '' }}" placeholder="Misc use">
+
+            <button type="submit">Salva come nuovo ingrediente</button>
+        </form>
+    </div>
+</body>
+</html>

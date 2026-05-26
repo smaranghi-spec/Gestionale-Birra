@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Ricette birra</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f7f3ee;
+        }
+        h1, h2 {
+            color: #5a381e;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            max-width: 900px;
+        }
+        input, textarea {
+            display: block;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 12px;
+            padding: 8px;
+        }
+        button {
+            background: #8b5a2b;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #6f451f;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #8b5a2b;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .meta {
+            color: #444;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Ricette birra</h1>
+
+        <h2>Nuova ricetta</h2>
+        <form method="post" action="/ricette/html">
+            <input type="text" name="nome" placeholder="Nome ricetta" required>
+            <input type="text" name="tipo" placeholder="Tipo (All Grain, E+G, Extract)" required>
+            <input type="number" step="0.1" name="volume_target_litri" placeholder="Volume target litri" required>
+            <input type="number" step="0.1" name="efficienza" placeholder="Efficienza" required>
+            <input type="number" name="versione" placeholder="Versione" required>
+            <textarea name="note" placeholder="Note"></textarea>
+            <button type="submit">Salva ricetta</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Elenco ricette</h2>
+
+        {% if ricette %}
+            <ul>
+                {% for r in ricette %}
+                    <li>
+                        <a href="/ricette/{{ r.id }}">{{ r.nome }}</a><br>
+                        <span class="meta">
+                            ID {{ r.id }} · {{ r.tipo }} · {{ r.volume_target_litri }} L · efficienza {{ r.efficienza }}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nessuna ricetta presente.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
