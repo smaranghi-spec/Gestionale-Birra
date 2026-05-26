@@ -1,0 +1,28 @@
+import xmltodict
+import psycopg2
+
+FILE_XML = "f_L46YwHNeRNSpW6iFfJi01LsgcN13_Brewfather_BeerXML_FIgadedio_20260328.xml"
+
+try:
+    with open(FILE_XML, 'r', encoding='ISO-8859-1') as f:
+        dati = xmltodict.parse(f.read())
+    
+    conn = psycopg2.connect(dbname="postgres", user="stefanomaranghi", host="localhost")
+    cur = conn.cursor()
+    
+    ricette = dati['RECIPES']['RECIPE']
+    if isinstance(ricette, dict):
+        ricette = [ricette]
+    
+    for r in ricette:
+        nome = r['NAME']
+        stile = r['STYLE']['NAME']
+        print(f"Importo: {nome} ({stile})")
+        cur.execute("INSERT INTO ricette (nome, stile) VALUES (%s, %s)", (nome, stile))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Importazione completata!")
+except Exception as e:
+    print(f"Errore: {e}")
