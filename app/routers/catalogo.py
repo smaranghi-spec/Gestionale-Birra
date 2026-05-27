@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import CatalogoIngrediente, IngredienteRicetta
+
 from ..data_catalogo import TUTTO
 
 router = APIRouter()
@@ -21,34 +22,25 @@ def get_db():
 
 @router.get("/catalogo/ingredienti", response_class=HTMLResponse)
 def lista_catalogo(
-    request: Request,
-    categoria: str = None,
-    msg: str = None,
-    db: Session = Depends(get_db),
+    request: Request, categoria: str = None, db: Session = Depends(get_db)
 ):
     query = db.query(CatalogoIngrediente)
     if categoria:
         query = query.filter(CatalogoIngrediente.categoria == categoria)
-
-    items = query.order_by(CatalogoIngrediente.nome).all()
-
+    items = query.all()
     return templates.TemplateResponse(
+        request,
         "catalogo_ingredienti.html",
         {
-            "request": request,
             "items": items,
             "categoria_attiva": categoria,
-            "msg": msg,
         },
     )
 
 
 @router.get("/catalogo/ingredienti/nuovo", response_class=HTMLResponse)
 def form_nuovo_ingrediente(request: Request):
-    return templates.TemplateResponse(
-        "nuovo_ingrediente_catalogo.html",
-        {"request": request},
-    )
+    return templates.TemplateResponse(request, "nuovo_ingrediente_catalogo.html", {})
 
 
 @router.post("/catalogo/ingredienti/nuovo")
@@ -90,31 +82,109 @@ def crea_ingrediente_catalogo(
 
 @router.post("/catalogo/ingredienti/popola_demo")
 def popola_demo(db: Session = Depends(get_db)):
-    esistenti = {i.nome for i in db.query(CatalogoIngrediente.nome).all()}
-    nuovi = 0
+    if db.query(CatalogoIngrediente).count() > 0:
+        return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
-    for d in TUTTO:
-        if d["nome"] in esistenti:
-            continue
-        db.add(CatalogoIngrediente(**d))
-        nuovi += 1
-
+    demo = [
+        CatalogoIngrediente(
+            nome="Pale Ale Malt",
+            categoria="grain",
+            fermentable_type="Grain",
+            yield_percent=78.0,
+            color_srm=3.5,
+        ),
+        CatalogoIngrediente(
+            nome="Pilsner Malt",
+            categoria="grain",
+            fermentable_type="Grain",
+            yield_percent=80.0,
+            color_srm=1.8,
+        ),
+        CatalogoIngrediente(
+            nome="Munich Malt",
+            categoria="grain",
+            fermentable_type="Grain",
+            yield_percent=77.0,
+            color_srm=9.0,
+        ),
+        CatalogoIngrediente(
+            nome="Caramel 60L",
+            categoria="grain",
+            fermentable_type="Crystal",
+            yield_percent=72.0,
+            color_srm=60.0,
+        ),
+        CatalogoIngrediente(
+            nome="Chocolate Malt",
+            categoria="grain",
+            fermentable_type="Roasted",
+            yield_percent=60.0,
+            color_srm=350.0,
+        ),
+        CatalogoIngrediente(
+            nome="Cascade",
+            categoria="hop",
+            alpha_acid=5.5,
+            hop_use="Boil",
+            hop_form="Pellet",
+        ),
+        CatalogoIngrediente(
+            nome="Centennial",
+            categoria="hop",
+            alpha_acid=10.0,
+            hop_use="Boil",
+            hop_form="Pellet",
+        ),
+        CatalogoIngrediente(
+            nome="Citra",
+            categoria="hop",
+            alpha_acid=12.0,
+            hop_use="Dry Hop",
+            hop_form="Pellet",
+        ),
+        CatalogoIngrediente(
+            nome="Saaz",
+            categoria="hop",
+            alpha_acid=3.5,
+            hop_use="Boil",
+            hop_form="Pellet",
+        ),
+        CatalogoIngrediente(
+            nome="Safale US-05",
+            categoria="yeast",
+            attenuation=77.0,
+            yeast_type="Ale",
+            yeast_form="Dry",
+        ),
+        CatalogoIngrediente(
+            nome="Wyeast 1056 American Ale",
+            categoria="yeast",
+            attenuation=75.0,
+            yeast_type="Ale",
+            yeast_form="Liquid",
+        ),
+        CatalogoIngrediente(
+            nome="Irish Moss", categoria="misc", misc_type="Fining", misc_use="Boil"
+        ),
+        CatalogoIngrediente(
+            nome="Whirlfloc", categoria="misc", misc_type="Fining", misc_use="Boil"
+        ),
+    ]
+    db.add_all(demo)
     db.commit()
-    return RedirectResponse(f"/catalogo/ingredienti?msg=Importati+{nuovi}+ingredienti", status_code=303)
+    return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
 
 @router.get("/catalogo/ingredienti/{item_id}/duplica", response_class=HTMLResponse)
 def duplica_ingrediente(item_id: int, request: Request, db: Session = Depends(get_db)):
-    item = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
+    item = (
+        db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
+    )
     if not item:
         return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
     return templates.TemplateResponse(
-        "duplica_ingrediente_catalogo.html",
-        {
-            "request": request,
-            "item": item,
-        },
+        request, "duplica_ingrediente_catalogo.html", {"item": item}
     )
 
 
@@ -128,7 +198,9 @@ def aggiungi_a_ricetta(
     note: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    item = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
+    item = (
+        db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
+    )
     if not item:
         return RedirectResponse(f"/ricette/{ricetta_id}/catalogo", status_code=303)
 

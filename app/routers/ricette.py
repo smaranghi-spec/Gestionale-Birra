@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import json
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -7,6 +10,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
 
 from ..db import SessionLocal
+<<<<<<< HEAD
 from ..models import (
     Ricetta,
     IngredienteRicetta,
@@ -23,6 +27,10 @@ from ..stats import (
     calcola_costo,
     srm_to_hex,
 )
+=======
+from ..models import Ricetta, IngredienteRicetta, Stile
+from ..stats import calcola_stats, confronta_stile
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -38,6 +46,7 @@ def get_db():
 
 @router.get("/ricette/html", response_class=HTMLResponse)
 def lista_ricette(request: Request, db: Session = Depends(get_db)):
+<<<<<<< HEAD
     from sqlalchemy import func
 
     ricette = db.query(Ricetta).all()
@@ -54,6 +63,10 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
             "stili": stili,
         },
     )
+=======
+    ricette = db.query(Ricetta).all()
+    return templates.TemplateResponse(request, "ricette.html", {"ricette": ricette})
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
 
 
 @router.post("/ricette/html")
@@ -63,7 +76,10 @@ def crea_ricetta(
     volume_target_litri: float = Form(...),
     efficienza: float = Form(...),
     versione: int = Form(...),
+<<<<<<< HEAD
     stile_id: int = Form(0),
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
     note: str = Form(""),
     db: Session = Depends(get_db),
 ):
@@ -73,7 +89,10 @@ def crea_ricetta(
         volume_target_litri=volume_target_litri,
         efficienza=efficienza,
         versione=versione,
+<<<<<<< HEAD
         stile_id=stile_id if stile_id != 0 else None,
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
         note=note or None,
     )
     db.add(r)
@@ -83,8 +102,11 @@ def crea_ricetta(
 
 @router.get("/ricette/{ricetta_id}", response_class=HTMLResponse)
 def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(get_db)):
+<<<<<<< HEAD
     from datetime import date
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return HTMLResponse("Ricetta non trovata", status_code=404)
@@ -94,6 +116,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
     stats = calcola_stats(ricetta, ingredienti)
     stile_corrente = db.query(Stile).filter(Stile.id == ricetta.stile_id).first() if ricetta.stile_id else None
     cf = confronta_stile(stats, stile_corrente)
+<<<<<<< HEAD
     percentuali = calcola_percentuali(ingredienti)
     costo = calcola_costo(ingredienti)
     srm_hex = srm_to_hex(stats["srm"])
@@ -258,6 +281,17 @@ def avvia_cotta_da_ricetta(
     db.commit()
 
     return RedirectResponse(f"/cotte/{cotta.id}", status_code=303)
+=======
+
+    return templates.TemplateResponse(request, "dettaglio_ricetta.html", {
+        "ricetta": ricetta,
+        "ingredienti": ingredienti,
+        "stili": stili,
+        "stats": stats,
+        "stile_corrente": stile_corrente,
+        "confronto_stile": cf,
+    })
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
 
 
 @router.get("/ricette/{ricetta_id}/stats-json")
@@ -265,11 +299,15 @@ def stats_json(ricetta_id: int, db: Session = Depends(get_db)):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return {"error": "not found"}
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
     ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
     stats = calcola_stats(ricetta, ingredienti)
     stile_corrente = db.query(Stile).filter(Stile.id == ricetta.stile_id).first() if ricetta.stile_id else None
     cf = confronta_stile(stats, stile_corrente)
+<<<<<<< HEAD
     costo = calcola_costo(ingredienti)
 
     return {
@@ -278,6 +316,9 @@ def stats_json(ricetta_id: int, db: Session = Depends(get_db)):
         "costo": costo,
         "srm_hex": srm_to_hex(stats["srm"]),
     }
+=======
+    return {"stats": stats, "confronto_stile": cf}
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
 
 
 @router.post("/ricette/{ricetta_id}/assegna-stile")
@@ -285,14 +326,20 @@ def assegna_stile(ricetta_id: int, stile_id: int = Form(...), db: Session = Depe
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
+<<<<<<< HEAD
 
     ricetta.stile_id = stile_id if stile_id != 0 else None
     db.commit()
 
+=======
+    ricetta.stile_id = stile_id if stile_id != 0 else None
+    db.commit()
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
     return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
 
 
 @router.get("/ricette/{ricetta_id}/catalogo", response_class=HTMLResponse)
+<<<<<<< HEAD
 def catalogo_per_ricetta(
     ricetta_id: int,
     request: Request,
@@ -379,6 +426,19 @@ def elimina_ricetta(ricetta_id: int, db: Session = Depends(get_db)):
         db.delete(ricetta)
         db.commit()
     return RedirectResponse("/ricette/html", status_code=303)
+=======
+def catalogo_per_ricetta(ricetta_id: int, request: Request, categoria: str = None, db: Session = Depends(get_db)):
+    from ..models import CatalogoIngrediente
+    query = db.query(CatalogoIngrediente)
+    if categoria:
+        query = query.filter(CatalogoIngrediente.categoria == categoria)
+    items = query.all()
+    return templates.TemplateResponse(request, "catalogo_ingredienti.html", {
+        "items": items,
+        "ricetta_id": ricetta_id,
+        "categoria_attiva": categoria,
+    })
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
 
 
 @router.get("/ricette/{ricetta_id}/beerxml")
@@ -386,7 +446,10 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return Response("Ricetta non trovata", status_code=404)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
     ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
 
     root = Element("RECIPES")
@@ -396,7 +459,10 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
     SubElement(r_el, "TYPE").text = ricetta.tipo
     SubElement(r_el, "BATCH_SIZE").text = str(ricetta.volume_target_litri)
     SubElement(r_el, "EFFICIENCY").text = str(ricetta.efficienza)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
     if ricetta.note:
         SubElement(r_el, "NOTES").text = ricetta.note
 
@@ -415,7 +481,10 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
                 SubElement(fe, "YIELD").text = str(i.yield_percent)
             if i.color_srm:
                 SubElement(fe, "COLOR").text = str(i.color_srm)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
         elif i.categoria == "hop":
             he = SubElement(hops, "HOP")
             SubElement(he, "NAME").text = i.nome
@@ -425,7 +494,10 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
                 SubElement(he, "ALPHA").text = str(i.alpha_acid)
             if i.time_min:
                 SubElement(he, "TIME").text = str(i.time_min)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
         elif i.categoria == "yeast":
             ye = SubElement(yeasts, "YEAST")
             SubElement(ye, "NAME").text = i.nome
@@ -433,7 +505,10 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
             SubElement(ye, "AMOUNT").text = str(i.quantita)
             if i.attenuation:
                 SubElement(ye, "ATTENUATION").text = str(i.attenuation)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9608a42 (Update application structure and implement recipe management features)
         elif i.categoria == "misc":
             me = SubElement(miscs, "MISC")
             SubElement(me, "NAME").text = i.nome

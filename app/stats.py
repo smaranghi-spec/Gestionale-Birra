@@ -116,7 +116,6 @@ def calcola_percentuali(ingredienti):
 
     return result
 
-
 def confronta_stile(stats, stile):
     if stile is None:
         return None
@@ -130,7 +129,6 @@ def confronta_stile(stats, stile):
         "ebc": {"valore": stats["ebc"], "min": stile.ebc_min, "max": stile.ebc_max, "stato": _check(stats["ebc"], stile.ebc_min, stile.ebc_max)},
         "abv": {"valore": stats["abv"], "min": stile.abv_min, "max": stile.abv_max, "stato": _check(stats["abv"], stile.abv_min, stile.abv_max)},
     }
-
 
 SRM_COLORS = [
     (2,  "#F3F993"), (3,  "#F5F75C"), (4,  "#F6F513"), (5,  "#EAE615"),
@@ -170,3 +168,4 @@ def calcola_costo(ingredienti):
                 "costo": round(costo, 2),
             })
     return {"totale": round(totale, 2), "dettaglio": dettaglio}
+

@@ -38,10 +38,23 @@ class Ricetta(Base):
     stile_id = Column(Integer, ForeignKey("stili.id"), nullable=True)
 
     stile = relationship("Stile", back_populates="ricette")
-    ingredienti = relationship("IngredienteRicetta", back_populates="ricetta", cascade="all, delete-orphan")
+    ingredienti = relationship(
+        "IngredienteRicetta", back_populates="ricetta", cascade="all, delete-orphan"
+    )
+
     cotte = relationship("Cotta", back_populates="ricetta")
-    profilo_acqua = relationship("ProfiloAcqua", back_populates="ricetta", uselist=False, cascade="all, delete-orphan")
-    profilo_mash = relationship("ProfiloAmmostamento", back_populates="ricetta", uselist=False, cascade="all, delete-orphan")
+    profilo_acqua = relationship(
+        "ProfiloAcqua",
+        back_populates="ricetta",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    profilo_mash = relationship(
+        "ProfiloAmmostamento",
+        back_populates="ricetta",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class IngredienteRicetta(Base):
@@ -55,6 +68,7 @@ class IngredienteRicetta(Base):
     unita = Column(String, default="kg")
     note = Column(Text, nullable=True)
     time_min = Column(Integer, nullable=True)
+
     prezzo_unitario = Column(Float, nullable=True)
 
     fermentable_type = Column(String, nullable=True)
@@ -100,16 +114,17 @@ class CatalogoIngrediente(Base):
 
 class ProfiloAcqua(Base):
     """Profilo chimico dell'acqua di processo per una ricetta."""
+
     __tablename__ = "profilo_acqua"
 
     id = Column(Integer, primary_key=True, index=True)
     ricetta_id = Column(Integer, ForeignKey("ricette.id"), unique=True, nullable=False)
     nome = Column(String, default="Custom")
-    ca = Column(Float, default=0.0)    # Calcio mg/L
-    mg = Column(Float, default=0.0)    # Magnesio mg/L
-    na = Column(Float, default=0.0)    # Sodio mg/L
-    cl = Column(Float, default=0.0)    # Cloruri mg/L
-    so4 = Column(Float, default=0.0)   # Solfati mg/L
+    ca = Column(Float, default=0.0)  # Calcio mg/L
+    mg = Column(Float, default=0.0)  # Magnesio mg/L
+    na = Column(Float, default=0.0)  # Sodio mg/L
+    cl = Column(Float, default=0.0)  # Cloruri mg/L
+    so4 = Column(Float, default=0.0)  # Solfati mg/L
     hco3 = Column(Float, default=0.0)  # Bicarbonati mg/L
 
     ricetta = relationship("Ricetta", back_populates="profilo_acqua")
@@ -117,6 +132,7 @@ class ProfiloAcqua(Base):
 
 class ProfiloAmmostamento(Base):
     """Profilo di ammostamento con step multipli per una ricetta."""
+
     __tablename__ = "profilo_ammostamento"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -144,6 +160,7 @@ STATI_COTTA = [
 
 class Cotta(Base):
     """Singolo lotto di produzione."""
+
     __tablename__ = "cotte"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -193,6 +210,7 @@ class Cotta(Base):
 
 class LogCotta(Base):
     """Evento/misurazione nel diario di cotta."""
+
     __tablename__ = "log_cotta"
 
     id = Column(Integer, primary_key=True, index=True)
