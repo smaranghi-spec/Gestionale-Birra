@@ -55,9 +55,8 @@ def lista_cotte(request: Request, db: Session = Depends(get_db)):
             contatori[c.stato] += 1
 
     return templates.TemplateResponse(
-        request=request,
-        name="cotte.html",
-        context={
+        "cotte.html",
+        {
             "request": request,
             "cotte": cotte,
             "ricette": ricette,
@@ -151,9 +150,8 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             misure_sg = misure_sg + [fg_entry]
 
     return templates.TemplateResponse(
-        request=request,
-        name="dettaglio_cotta.html",
-        context={
+        "dettaglio_cotta.html",
+        {
             "request": request,
             "cotta": cotta,
             "log": list(reversed(cotta.log)),
@@ -301,10 +299,14 @@ def aggiungi_log(
 
 @router.post("/cotte/{cotta_id}/log/{log_id}/elimina")
 def elimina_log(cotta_id: int, log_id: int, db: Session = Depends(get_db)):
-    entry = db.query(LogCotta).filter(
-        LogCotta.id == log_id,
-        LogCotta.cotta_id == cotta_id
-    ).first()
+    entry = (
+        db.query(LogCotta)
+        .filter(
+            LogCotta.id == log_id,
+            LogCotta.cotta_id == cotta_id,
+        )
+        .first()
+    )
     if entry:
         db.delete(entry)
         db.commit()

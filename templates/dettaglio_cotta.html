@@ -41,6 +41,8 @@
         .kpi .lbl { font-size: 11px; color: #888; margin-top: 2px; }
         .kpi .sub { font-size: 11px; color: #aaa; }
 
+        .section { margin-bottom: 20px; }
+
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
         .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 12px; }
         label { display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }
@@ -52,6 +54,8 @@
         .btn:hover { background: #6f451f; }
         .btn-success { background: #198754; }
         .btn-success:hover { background: #146c43; }
+        .btn-outline { background: white; color: #8b5a2b; border: 2px solid #8b5a2b; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .btn-outline:hover { background: #f5eee6; }
         .btn-danger { background: #c0392b; color: white; border: none; padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; }
         .btn-danger:hover { background: #a93226; }
         .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
@@ -83,6 +87,10 @@
         .tipo-avanzamento .log-dot { background: #d4edda; }
 
         .fase-badge { display: inline-block; background: #f0e6d3; color: #5a381e; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 6px; }
+
+        details summary { cursor: pointer; color: #8b5a2b; font-weight: bold; font-size: 13px; }
+        details[open] { margin-bottom: 12px; }
+        details .inner { margin-top: 12px; }
 
         .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         .badge-pianificata { background: #e9ecef; color: #495057; }
@@ -283,7 +291,7 @@
         <form method="post" action="/cotte/{{ cotta.id }}/log">
             <div style="margin-bottom:10px;">
                 <label>Tipo</label>
-                <select name="tipo">
+                <select name="tipo" id="tipoLog">
                     <option value="misura">📊 Misurazione</option>
                     <option value="nota">📝 Nota</option>
                     <option value="evento">⚡ Evento</option>
@@ -293,7 +301,7 @@
                 <label>Descrizione *</label>
                 <input type="text" name="descrizione" placeholder="es. Densità dopo 3 giorni" required>
             </div>
-            <div class="grid2" style="margin-bottom:10px;">
+            <div class="grid2" style="margin-bottom:10px;" id="valoreRow">
                 <div><label>Valore</label><input type="number" step="0.001" name="valore" placeholder="es. 1.018"></div>
                 <div>
                     <label>Unità</label>
@@ -527,6 +535,36 @@
             }
         }
     });
+
+    const tipoLog = document.getElementById('tipoLog');
+    const valoreRow = document.getElementById('valoreRow');
+
+    function toggleValoreRow() {
+        if (!tipoLog || !valoreRow) return;
+        valoreRow.style.display = tipoLog.value === 'misura' ? 'grid' : 'none';
+    }
+
+    if (tipoLog) {
+        tipoLog.addEventListener('change', toggleValoreRow);
+        toggleValoreRow();
+    }
+})();
+</script>
+{% else %}
+<script>
+(function() {
+    const tipoLog = document.getElementById('tipoLog');
+    const valoreRow = document.getElementById('valoreRow');
+
+    function toggleValoreRow() {
+        if (!tipoLog || !valoreRow) return;
+        valoreRow.style.display = tipoLog.value === 'misura' ? 'grid' : 'none';
+    }
+
+    if (tipoLog) {
+        tipoLog.addEventListener('change', toggleValoreRow);
+        toggleValoreRow();
+    }
 })();
 </script>
 {% endif %}

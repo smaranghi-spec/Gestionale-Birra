@@ -119,9 +119,8 @@ def _parse_beerxml(content: bytes) -> list[dict]:
 @router.get("/importa/beerxml", response_class=HTMLResponse)
 def form_importa(request: Request):
     return templates.TemplateResponse(
-        request,
         "importa_beerxml.html",
-        context={},
+        {"request": request},
     )
 
 
@@ -137,16 +136,20 @@ async def importa_beerxml(
         ricette_data = _parse_beerxml(content)
     except ET.ParseError as e:
         return templates.TemplateResponse(
-            request,
             "importa_beerxml.html",
-            context={"errore": f"File XML non valido: {e}"},
+            {
+                "request": request,
+                "errore": f"File XML non valido: {e}",
+            },
         )
 
     if not ricette_data:
         return templates.TemplateResponse(
-            request,
             "importa_beerxml.html",
-            context={"errore": "Nessuna ricetta trovata nel file."},
+            {
+                "request": request,
+                "errore": "Nessuna ricetta trovata nel file.",
+            },
         )
 
     importate = []
@@ -164,7 +167,9 @@ async def importa_beerxml(
     db.commit()
 
     return templates.TemplateResponse(
-        request,
         "importa_beerxml.html",
-        context={"importate": importate},
+        {
+            "request": request,
+            "importate": importate,
+        },
     )

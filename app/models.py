@@ -41,7 +41,6 @@ class Ricetta(Base):
     ingredienti = relationship(
         "IngredienteRicetta", back_populates="ricetta", cascade="all, delete-orphan"
     )
-
     cotte = relationship("Cotta", back_populates="ricetta")
     profilo_acqua = relationship(
         "ProfiloAcqua",
@@ -113,26 +112,22 @@ class CatalogoIngrediente(Base):
 
 
 class ProfiloAcqua(Base):
-    """Profilo chimico dell'acqua di processo per una ricetta."""
-
     __tablename__ = "profilo_acqua"
 
     id = Column(Integer, primary_key=True, index=True)
     ricetta_id = Column(Integer, ForeignKey("ricette.id"), unique=True, nullable=False)
     nome = Column(String, default="Custom")
-    ca = Column(Float, default=0.0)  # Calcio mg/L
-    mg = Column(Float, default=0.0)  # Magnesio mg/L
-    na = Column(Float, default=0.0)  # Sodio mg/L
-    cl = Column(Float, default=0.0)  # Cloruri mg/L
-    so4 = Column(Float, default=0.0)  # Solfati mg/L
-    hco3 = Column(Float, default=0.0)  # Bicarbonati mg/L
+    ca = Column(Float, default=0.0)
+    mg = Column(Float, default=0.0)
+    na = Column(Float, default=0.0)
+    cl = Column(Float, default=0.0)
+    so4 = Column(Float, default=0.0)
+    hco3 = Column(Float, default=0.0)
 
     ricetta = relationship("Ricetta", back_populates="profilo_acqua")
 
 
 class ProfiloAmmostamento(Base):
-    """Profilo di ammostamento con step multipli per una ricetta."""
-
     __tablename__ = "profilo_ammostamento"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -142,8 +137,6 @@ class ProfiloAmmostamento(Base):
 
     ricetta = relationship("Ricetta", back_populates="profilo_mash")
 
-
-# ── TRACKER DI PROCESSO ──────────────────────────────────────────────────────
 
 STATI_COTTA = [
     "pianificata",
@@ -159,8 +152,6 @@ STATI_COTTA = [
 
 
 class Cotta(Base):
-    """Singolo lotto di produzione."""
-
     __tablename__ = "cotte"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -209,8 +200,6 @@ class Cotta(Base):
 
 
 class LogCotta(Base):
-    """Evento/misurazione nel diario di cotta."""
-
     __tablename__ = "log_cotta"
 
     id = Column(Integer, primary_key=True, index=True)
