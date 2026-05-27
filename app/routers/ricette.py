@@ -9,6 +9,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
 
 from ..db import SessionLocal
+<<<<<<< HEAD
 from ..models import (
     Ricetta,
     IngredienteRicetta,
@@ -25,6 +26,10 @@ from ..stats import (
     calcola_costo,
     srm_to_hex,
 )
+=======
+from ..models import Ricetta, IngredienteRicetta, Stile, Cotta, LogCotta
+from ..stats import calcola_stats, confronta_stile, calcola_percentuali
+>>>>>>> 83cb802 (Add recipe composition breakdown with visual ingredient percentages)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -107,6 +112,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
         else None
     )
     cf = confronta_stile(stats, stile_corrente)
+    percentuali = calcola_percentuali(ingredienti)
 
     percentuali = calcola_percentuali(ingredienti)
     costo = calcola_costo(ingredienti)
@@ -120,6 +126,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
     )
     n_cotte = len(cotte)
 
+<<<<<<< HEAD
     profilo_acqua = (
         db.query(ProfiloAcqua).filter(ProfiloAcqua.ricetta_id == ricetta_id).first()
     )
@@ -247,6 +254,20 @@ async def salva_profilo_mash_full(
     db.commit()
 
     return RedirectResponse(f"/ricette/{ricetta_id}#profilo-mash", status_code=303)
+=======
+    return templates.TemplateResponse(request, "dettaglio_ricetta.html", {
+        "ricetta": ricetta,
+        "ingredienti": ingredienti,
+        "stili": stili,
+        "stats": stats,
+        "stile_corrente": stile_corrente,
+        "confronto_stile": cf,
+        "percentuali": percentuali,
+        "cotte": cotte,
+        "n_cotte": n_cotte,
+        "oggi": date.today().isoformat(),
+    })
+>>>>>>> 83cb802 (Add recipe composition breakdown with visual ingredient percentages)
 
 
 @router.post("/ricette/{ricetta_id}/avvia-cotta")

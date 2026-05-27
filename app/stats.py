@@ -50,7 +50,7 @@ def calcola_stats(ricetta, ingredienti):
     fg = 1.0 + (gu / 1000.0) * (1.0 - att)
     abv = (og - fg) * 131.25
 
-    srm = 1.4922 * (mcu ** 0.6859) if mcu > 0 else 0.0
+    srm = 1.4922 * (mcu**0.6859) if mcu > 0 else 0.0
     ebc = srm * 1.97
     bu_gu = round(ibu / gu, 2) if gu > 0 else 0.0
 
@@ -77,6 +77,15 @@ def _check(valore, minv, maxv):
 
 
 def calcola_percentuali(ingredienti):
+    """
+    Per ogni ingrediente restituisce la % sul totale della sua categoria,
+    normalizzando le quantità in un'unità comune per categoria:
+      - grain  → kg
+      - hop    → g
+      - yeast  → unità (quantita as-is)
+      - misc   → g (se unità pesante), altrimenti quantita as-is
+    Ritorna: {id: {"perc": float, "norm": float, "cat_totale": float, "unita_base": str}}
+    """
     from collections import defaultdict
 
     PESO_UNITA = {"g", "kg", "lb", "oz"}
@@ -94,7 +103,7 @@ def calcola_percentuali(ingredienti):
             norm = _to_g(q, u)
         elif i.categoria == "yeast":
             norm = q
-        else:
+        else:  # misc
             norm = _to_g(q, u) if u in PESO_UNITA else q
 
         ing_norms[i.id] = norm
@@ -116,26 +125,73 @@ def calcola_percentuali(ingredienti):
 
     return result
 
+
 def confronta_stile(stats, stile):
     if stile is None:
         return None
     return {
         "nome": stile.nome,
         "linea_guida": stile.linea_guida,
-        "og": {"valore": stats["og"], "min": stile.og_min, "max": stile.og_max, "stato": _check(stats["og"], stile.og_min, stile.og_max)},
-        "fg": {"valore": stats["fg"], "min": stile.fg_min, "max": stile.fg_max, "stato": _check(stats["fg"], stile.fg_min, stile.fg_max)},
-        "ibu": {"valore": stats["ibu"], "min": stile.ibu_min, "max": stile.ibu_max, "stato": _check(stats["ibu"], stile.ibu_min, stile.ibu_max)},
-        "srm": {"valore": stats["srm"], "min": stile.srm_min, "max": stile.srm_max, "stato": _check(stats["srm"], stile.srm_min, stile.srm_max)},
-        "ebc": {"valore": stats["ebc"], "min": stile.ebc_min, "max": stile.ebc_max, "stato": _check(stats["ebc"], stile.ebc_min, stile.ebc_max)},
-        "abv": {"valore": stats["abv"], "min": stile.abv_min, "max": stile.abv_max, "stato": _check(stats["abv"], stile.abv_min, stile.abv_max)},
+        "og": {
+            "valore": stats["og"],
+            "min": stile.og_min,
+            "max": stile.og_max,
+            "stato": _check(stats["og"], stile.og_min, stile.og_max),
+        },
+        "fg": {
+            "valore": stats["fg"],
+            "min": stile.fg_min,
+            "max": stile.fg_max,
+            "stato": _check(stats["fg"], stile.fg_min, stile.fg_max),
+        },
+        "ibu": {
+            "valore": stats["ibu"],
+            "min": stile.ibu_min,
+            "max": stile.ibu_max,
+            "stato": _check(stats["ibu"], stile.ibu_min, stile.ibu_max),
+        },
+        "srm": {
+            "valore": stats["srm"],
+            "min": stile.srm_min,
+            "max": stile.srm_max,
+            "stato": _check(stats["srm"], stile.srm_min, stile.srm_max),
+        },
+        "ebc": {
+            "valore": stats["ebc"],
+            "min": stile.ebc_min,
+            "max": stile.ebc_max,
+            "stato": _check(stats["ebc"], stile.ebc_min, stile.ebc_max),
+        },
+        "abv": {
+            "valore": stats["abv"],
+            "min": stile.abv_min,
+            "max": stile.abv_max,
+            "stato": _check(stats["abv"], stile.abv_min, stile.abv_max),
+        },
     }
 
+
 SRM_COLORS = [
-    (2,  "#F3F993"), (3,  "#F5F75C"), (4,  "#F6F513"), (5,  "#EAE615"),
-    (6,  "#E0D01B"), (7,  "#D5BC26"), (8,  "#CDAA37"), (9,  "#C1963C"),
-    (10, "#BE8C3A"), (12, "#BE823A"), (14, "#BC7A3A"), (16, "#B87033"),
-    (18, "#B56727"), (20, "#B26033"), (24, "#A85839"), (30, "#985336"),
-    (40, "#8D4C32"), (50, "#7C3D2B"), (60, "#6B3122"), (80, "#520F06"),
+    (2, "#F3F993"),
+    (3, "#F5F75C"),
+    (4, "#F6F513"),
+    (5, "#EAE615"),
+    (6, "#E0D01B"),
+    (7, "#D5BC26"),
+    (8, "#CDAA37"),
+    (9, "#C1963C"),
+    (10, "#BE8C3A"),
+    (12, "#BE823A"),
+    (14, "#BC7A3A"),
+    (16, "#B87033"),
+    (18, "#B56727"),
+    (20, "#B26033"),
+    (24, "#A85839"),
+    (30, "#985336"),
+    (40, "#8D4C32"),
+    (50, "#7C3D2B"),
+    (60, "#6B3122"),
+    (80, "#520F06"),
 ]
 
 
@@ -159,13 +215,14 @@ def calcola_costo(ingredienti):
         costo = round(pu * (i.quantita or 0.0), 4)
         totale += costo
         if pu > 0:
-            dettaglio.append({
-                "id": i.id,
-                "nome": i.nome,
-                "quantita": i.quantita,
-                "unita": i.unita,
-                "prezzo_unitario": round(pu, 4),
-                "costo": round(costo, 2),
-            })
+            dettaglio.append(
+                {
+                    "id": i.id,
+                    "nome": i.nome,
+                    "quantita": i.quantita,
+                    "unita": i.unita,
+                    "prezzo_unitario": round(pu, 4),
+                    "costo": round(costo, 2),
+                }
+            )
     return {"totale": round(totale, 2), "dettaglio": dettaglio}
-
