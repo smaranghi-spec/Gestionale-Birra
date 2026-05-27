@@ -12,10 +12,9 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(
-        "ricette.html",
+        "home.html",
         {
-            "request": request,
-            "ricette": []
+            "request": request
         }
     )
 
