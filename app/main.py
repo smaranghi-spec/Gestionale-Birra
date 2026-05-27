@@ -37,6 +37,8 @@ def catalogo_ingredienti(request: Request):
         "catalogo_ingredienti.html",
         {
             "request": request,
-            "ingredienti": []
+            "items": [],
+            "categoria_attiva": None,
+            "ricetta_id": None
         }
     )
