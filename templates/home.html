@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestionale Birrificio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f7f3ee;
+            color: #2f241c;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .hero {
+            background: white;
+            padding: 24px;
+            border-radius: 14px;
+            margin: 24px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #5a381e;
+        }
+
+        p.lead {
+            font-size: 18px;
+            color: #5a4b3f;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #5a381e;
+        }
+
+        .card p {
+            min-height: 60px;
+            color: #4b3f37;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #8b5a2b;
+            color: white;
+            text-decoration: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #6f451f;
+        }
+
+        .muted {
+            color: #7a685c;
+            font-size: 14px;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>Gestionale Birrificio</h1>
+            <p class="lead">Pannello principale per gestire ricette, ingredienti e le future funzioni operative del birrificio.</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Ricette</h2>
+                <p>Crea nuove ricette, consulta l’elenco e apri il dettaglio di ogni ricetta.</p>
+                <a class="btn" href="/ricette/html">Apri</a>
+            </div>
+
+            <div class="card">
+                <h2>Catalogo ingredienti</h2>
+                <p>Consulta il catalogo, filtra per categoria e prepara ingredienti da associare alle ricette.</p>
+                <a class="btn" href="/catalogo-ingredienti/html">Apri</a>
+            </div>
+
+            <div class="card">
+                <h2>Produzione</h2>
+                <p>Area prevista per batch, cotte e avanzamento produzione.</p>
+                <a class="btn" href="#">In preparazione</a>
+            </div>
+
+            <div class="card">
+                <h2>Magazzino</h2>
+                <p>Area prevista per carichi, scarichi, lotti e movimenti di magazzino.</p>
+                <a class="btn" href="#">In preparazione</a>
+            </div>
+
+            <div class="card">
+                <h2>Imbottigliamento</h2>
+                <p>Area prevista per gestione lotti finali e confezionamento.</p>
+                <a class="btn" href="#">In preparazione</a>
+            </div>
+
+            <div class="card">
+                <h2>Vendite</h2>
+                <p>Area prevista per ordini, clienti e uscita del prodotto finito.</p>
+                <a class="btn" href="#">In preparazione</a>
+            </div>
+        </div>
+
+        <p class="muted">Versione iniziale del gestionale web per uso mobile e desktop.</p>
+    </div>
+</body>
+</html>
