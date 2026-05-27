@@ -30,3 +30,33 @@ def catalogo_ingredienti(request: Request):
 @app.get("/catalogo/ingredienti/nuovo", response_class=HTMLResponse)
 def nuovo_ingrediente(request: Request):
     return templates.TemplateResponse("nuovo_ingrediente_catalogo.html", {"request": request})
+
+
+@app.get("/acquisti", response_class=HTMLResponse)
+def acquisti(request: Request):
+    return templates.TemplateResponse("acquisti.html", {"request": request})
+
+
+@app.get("/produzione", response_class=HTMLResponse)
+def produzione(request: Request):
+    return templates.TemplateResponse("produzione.html", {"request": request})
+
+
+@app.get("/magazzino", response_class=HTMLResponse)
+def magazzino(request: Request):
+    return templates.TemplateResponse("magazzino.html", {"request": request})
+
+
+@app.get("/imbottigliamento", response_class=HTMLResponse)
+def imbottigliamento(request: Request):
+    return templates.TemplateResponse("imbottigliamento.html", {"request": request})
+
+
+@app.get("/vendite", response_class=HTMLResponse)
+def vendite(request: Request):
+    return templates.TemplateResponse("vendite.html", {"request": request})
+
+
+@app.get("/amministrazione", response_class=HTMLResponse)
+def amministrazione(request: Request):
+    return templates.TemplateResponse("amministrazione.html", {"request": request})
