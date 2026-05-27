@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 
 from .db import engine
 from .models import Base
-from .routers import ricette, catalogo, ingredienti
+from .routers import ricette, catalogo, ingredienti, stili
 
 Base.metadata.create_all(bind=engine)
 
@@ -12,6 +12,7 @@ app = FastAPI(title="Gestionale Birrificio")
 app.include_router(ricette.router)
 app.include_router(catalogo.router)
 app.include_router(ingredienti.router)
+app.include_router(stili.router)
 
 
 @app.get("/")

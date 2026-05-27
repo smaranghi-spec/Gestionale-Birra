@@ -205,8 +205,9 @@
         <p><strong>Note:</strong> {{ ricetta.note or '-' }}</p>
 
         <div class="toolbar">
-            <a href="/">🏠 Home</a>
-            <a href="/ricette/html">← Ricette</a>
+
+            <a href="/ricette/html">← Torna alle ricette</a>
+
             <a href="/ricette/{{ ricetta.id }}/modifica" class="btn">✏ Modifica ricetta</a>
             <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
             <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
