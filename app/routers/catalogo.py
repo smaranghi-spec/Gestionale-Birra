@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import CatalogoIngrediente, IngredienteRicetta
-
 from ..data_catalogo import TUTTO
 
 router = APIRouter()
@@ -22,25 +21,33 @@ def get_db():
 
 @router.get("/catalogo/ingredienti", response_class=HTMLResponse)
 def lista_catalogo(
-    request: Request, categoria: str = None, db: Session = Depends(get_db)
+    request: Request,
+    categoria: str = None,
+    msg: str = None,
+    db: Session = Depends(get_db),
 ):
     query = db.query(CatalogoIngrediente)
     if categoria:
         query = query.filter(CatalogoIngrediente.categoria == categoria)
-    items = query.all()
+    items = query.order_by(CatalogoIngrediente.nome).all()
+
     return templates.TemplateResponse(
-        request,
         "catalogo_ingredienti.html",
         {
+            "request": request,
             "items": items,
             "categoria_attiva": categoria,
+            "msg": msg,
         },
     )
 
 
 @router.get("/catalogo/ingredienti/nuovo", response_class=HTMLResponse)
 def form_nuovo_ingrediente(request: Request):
-    return templates.TemplateResponse(request, "nuovo_ingrediente_catalogo.html", {})
+    return templates.TemplateResponse(
+        "nuovo_ingrediente_catalogo.html",
+        {"request": request},
+    )
 
 
 @router.post("/catalogo/ingredienti/nuovo")
@@ -77,6 +84,7 @@ def crea_ingrediente_catalogo(
     )
     db.add(item)
     db.commit()
+
     return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
 
@@ -164,15 +172,27 @@ def popola_demo(db: Session = Depends(get_db)):
             yeast_form="Liquid",
         ),
         CatalogoIngrediente(
-            nome="Irish Moss", categoria="misc", misc_type="Fining", misc_use="Boil"
+            nome="Irish Moss",
+            categoria="misc",
+            misc_type="Fining",
+            misc_use="Boil",
         ),
         CatalogoIngrediente(
-            nome="Whirlfloc", categoria="misc", misc_type="Fining", misc_use="Boil"
+            nome="Whirlfloc",
+            categoria="misc",
+            misc_type="Fining",
+            misc_use="Boil",
         ),
     ]
+
     db.add_all(demo)
     db.commit()
-    return RedirectResponse("/catalogo/ingredienti", status_code=303)
+    nuovi = len(demo)
+
+    return RedirectResponse(
+        f"/catalogo/ingredienti?msg=Importati+{nuovi}+ingredienti",
+        status_code=303,
+    )
 
 
 @router.get("/catalogo/ingredienti/{item_id}/duplica", response_class=HTMLResponse)
@@ -184,7 +204,11 @@ def duplica_ingrediente(item_id: int, request: Request, db: Session = Depends(ge
         return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
     return templates.TemplateResponse(
-        request, "duplica_ingrediente_catalogo.html", {"item": item}
+        "duplica_ingrediente_catalogo.html",
+        {
+            "request": request,
+            "item": item,
+        },
     )
 
 
