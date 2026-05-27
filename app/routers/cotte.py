@@ -128,6 +128,8 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     elif cotta.og_reale and fg_stimata:
         abv_calcolato = round((cotta.og_reale - fg_stimata) * 131.25, 1)
 
+    # Dati grafico — misurazioni SG e temperatura in ordine cronologico
+
     misure_sg = [
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
@@ -138,6 +140,35 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
         for e in cotta.log
         if e.tipo == "misura" and e.unita == "°C" and e.valore is not None
     ]
+
+    # Aggiungi OG al grafico come primo punto se disponibile e non già registrato
+    if cotta.og_reale and cotta.data_inoculo:
+        og_entry = {"t": cotta.data_inoculo + " 00:00", "v": cotta.og_reale}
+        if not misure_sg or misure_sg[0]["v"] != cotta.og_reale:
+            misure_sg = [og_entry] + misure_sg
+    if cotta.fg_reale and cotta.data_imbottigliamento:
+        fg_entry = {"t": cotta.data_imbottigliamento + " 00:00", "v": cotta.fg_reale}
+        if not misure_sg or misure_sg[-1]["v"] != cotta.fg_reale:
+            misure_sg = misure_sg + [fg_entry]
+
+    return templates.TemplateResponse(
+        request,
+        "dettaglio_cotta.html",
+        {
+            "cotta": cotta,
+            "log": list(reversed(cotta.log)),
+            "prossimo_stato": prossimo,
+            "prossimo_label": FASI_LABEL.get(prossimo, "") if prossimo else "",
+            "idx_stato": idx_stato,
+            "stati": STATI_COTTA,
+            "fasi_label": FASI_LABEL,
+            "fg_stimata": fg_stimata,
+            "abv_calcolato": abv_calcolato,
+            "oggi": date.today().strftime("%Y-%m-%d"),
+            "misure_sg": misure_sg,
+            "misure_temp": misure_temp,
+        },
+    )
 
     if cotta.og_reale and cotta.data_inoculo:
         og_entry = {"t": cotta.data_inoculo + " 00:00", "v": cotta.og_reale}
