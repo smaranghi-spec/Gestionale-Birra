@@ -67,7 +67,6 @@ class IngredienteRicetta(Base):
     unita = Column(String, default="kg")
     note = Column(Text, nullable=True)
     time_min = Column(Integer, nullable=True)
-
     prezzo_unitario = Column(Float, nullable=True)
 
     fermentable_type = Column(String, nullable=True)
@@ -112,6 +111,8 @@ class CatalogoIngrediente(Base):
 
 
 class ProfiloAcqua(Base):
+    """Profilo chimico dell'acqua di processo per una ricetta."""
+
     __tablename__ = "profilo_acqua"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -128,6 +129,8 @@ class ProfiloAcqua(Base):
 
 
 class ProfiloAmmostamento(Base):
+    """Profilo di ammostamento con step multipli per una ricetta."""
+
     __tablename__ = "profilo_ammostamento"
 
     id = Column(Integer, primary_key=True, index=True)

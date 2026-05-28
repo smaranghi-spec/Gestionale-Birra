@@ -161,7 +161,6 @@
             margin-right: 10px;
         }
 
-        /* Avvia cotta / storico */
         .avvia-panel { border-left: 5px solid #198754; }
         .avvia-panel h2 { color: #198754; }
         .form-row-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
@@ -205,9 +204,8 @@
         <p><strong>Note:</strong> {{ ricetta.note or '-' }}</p>
 
         <div class="toolbar">
-
-            <a href="/ricette/html">← Torna alle ricette</a>
-
+            <a href="/">{{ "🏠 Home" }}</a>
+            <a href="/ricette/html">← Ricette</a>
             <a href="/ricette/{{ ricetta.id }}/modifica" class="btn">✏ Modifica ricetta</a>
             <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
             <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
@@ -322,13 +320,9 @@
         {% endif %}
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- COMPOSIZIONE RICETTA                                            -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     {% if ingredienti %}
     <div class="card" style="max-width:1200px;">
         <h2>📊 Composizione ricetta</h2>
-
         <style>
             .comp-cat { margin-bottom: 22px; }
             .comp-cat-header {
@@ -419,9 +413,6 @@
     </div>
     {% endif %}
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- PROFILO ACQUA                                                    -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="card" id="profilo-acqua">
         <h2>💧 Profilo dell'acqua</h2>
         <style>
@@ -515,8 +506,6 @@
         </details>
     </div>
 
-    <!-- PROFILO AMMOSTAMENTO                                             -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="card" id="profilo-mash">
         <h2>🌡️ Profilo di ammostamento</h2>
         <style>
@@ -614,7 +603,6 @@
         </details>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="card">
         <h2>Ingredienti attuali</h2>
 
@@ -668,7 +656,6 @@
                             <option value="oz" {% if i.unita == 'oz' %}selected{% endif %}>oz</option>
                             <option value="lb" {% if i.unita == 'lb' %}selected{% endif %}>lb</option>
                         </select>
-
                         {% if i.categoria == 'hop' or i.categoria == 'misc' %}
                         <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min or '' }}" placeholder="Minuti">
                         {% endif %}
@@ -705,16 +692,12 @@
         {% endif %}
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- AVVIA COTTA                                                      -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="card avvia-panel" id="avvia-cotta">
         <h2>🚀 Avvia Cotta da questa ricetta</h2>
         <p style="color:#555;font-size:14px;margin-bottom:16px;">
             Crea subito un nuovo lotto di produzione basato su <strong>{{ ricetta.nome }}</strong>.
             Il tracker di processo verrà aperto automaticamente.
         </p>
-
         <div id="avvia-form">
             <form method="post" action="/ricette/{{ ricetta.id }}/avvia-cotta">
                 <div class="form-row-inline">
@@ -756,9 +739,6 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- STORICO COTTE                                                    -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="card" id="storico-cotte">
         <h2>📦 Storico di produzione
             <span class="n-cotte-badge">{{ n_cotte }} cott{{ 'a' if n_cotte == 1 else 'e' }}</span>
@@ -880,7 +860,6 @@
 
                 if (data.confronto_stile) {
                     const c = data.confronto_stile;
-
                     const setText = (id, value) => {
                         const el = document.getElementById(id);
                         if (el) el.textContent = value ?? "-";

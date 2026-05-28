@@ -77,15 +77,6 @@ def _check(valore, minv, maxv):
 
 
 def calcola_percentuali(ingredienti):
-    """
-    Per ogni ingrediente restituisce la % sul totale della sua categoria,
-    normalizzando le quantità in un'unità comune per categoria:
-      - grain  → kg
-      - hop    → g
-      - yeast  → unità (quantita as-is)
-      - misc   → g (se unità pesante), altrimenti quantita as-is
-    Ritorna: {id: {"perc": float, "norm": float, "cat_totale": float, "unita_base": str}}
-    """
     from collections import defaultdict
 
     PESO_UNITA = {"g", "kg", "lb", "oz"}
@@ -103,7 +94,7 @@ def calcola_percentuali(ingredienti):
             norm = _to_g(q, u)
         elif i.categoria == "yeast":
             norm = q
-        else:  # misc
+        else:
             norm = _to_g(q, u) if u in PESO_UNITA else q
 
         ing_norms[i.id] = norm
