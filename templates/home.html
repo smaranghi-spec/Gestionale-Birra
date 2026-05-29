@@ -105,6 +105,12 @@
             font-size: 12px;
             padding: 24px 0;
         }
+
+        @media (max-width: 768px) {
+            .topbar { padding: 14px 18px; }
+            .container { padding: 0 16px; margin: 24px auto; }
+            .hero { padding: 24px 20px; flex-direction: column; align-items: flex-start; }
+        }
     </style>
 </head>
 <body>
@@ -171,7 +177,7 @@
         <h3>⚡ Azioni rapide</h3>
         <div class="ql-grid">
             <a href="/ricette/html" class="ql-btn primary">+ Nuova ricetta</a>
-            <a href="/cotte/nuova" class="ql-btn green">🚀 Nuova cotta</a>
+            <a href="/cotte" class="ql-btn green">🚀 Nuova cotta</a>
             <a href="/importa/beerxml" class="ql-btn">📥 Importa BeerXML</a>
             <a href="/catalogo/ingredienti" class="ql-btn">🗂️ Sfoglia catalogo</a>
             <a href="/stili" class="ql-btn">🏆 Elenco stili</a>
