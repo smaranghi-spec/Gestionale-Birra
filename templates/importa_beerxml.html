@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Importa BeerXML</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f7f3ee; }
+        .topbar { background: #5a381e; color: white; padding: 12px 32px; display: flex; align-items: center; gap: 16px; }
+        .topbar a { color: #f5deb3; text-decoration: none; font-size: 14px; }
+        .topbar h1 { margin: 0; font-size: 20px; }
+        .container { max-width: 700px; margin: 40px auto; padding: 0 24px; }
+        .card { background: white; border-radius: 10px; padding: 32px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 24px; }
+        h2 { color: #5a381e; margin-top: 0; }
+        .drop-zone {
+            border: 3px dashed #c8a97e;
+            border-radius: 10px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            background: #fdfaf7;
+            transition: background 0.2s, border-color 0.2s;
+            margin: 20px 0;
+        }
+        .drop-zone:hover, .drop-zone.drag-over { background: #f5e8d5; border-color: #8b5a2b; }
+        .drop-zone input[type="file"] { display: none; }
+        .drop-icon { font-size: 48px; margin-bottom: 12px; }
+        .drop-text { font-size: 16px; color: #555; }
+        .drop-sub { font-size: 13px; color: #999; margin-top: 6px; }
+        .file-name { font-size: 14px; color: #8b5a2b; font-weight: bold; margin-top: 8px; }
+        .btn { background: #8b5a2b; color: white; border: none; padding: 12px 28px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 8px; }
+        .btn:hover { background: #6f451f; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .errore { background: #f8d7da; color: #721c24; border-radius: 6px; padding: 14px 18px; margin-bottom: 16px; }
+        .successo { background: #d4edda; color: #155724; border-radius: 6px; padding: 14px 18px; margin-bottom: 16px; }
+        .successo ul { margin: 8px 0 0 0; padding-left: 20px; }
+        .successo a { color: #155724; font-weight: bold; }
+        .info { background: #f0e6d3; border-radius: 8px; padding: 16px; font-size: 13px; color: #5a381e; }
+        .info ul { margin: 8px 0; padding-left: 18px; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <a href="/ricette/html">← Ricette</a>
+    <h1>Importa da BeerXML</h1>
+</div>
+<div class="container">
+
+    {% if errore %}
+    <div class="errore">⚠ {{ errore }}</div>
+    {% endif %}
+
+    {% if importate %}
+    <div class="successo">
+        <strong>✓ {{ importate|length }} ricett{{ 'a importata' if importate|length == 1 else 'e importate' }} con successo!</strong>
+        <ul>
+            {% for id, nome in importate %}
+            <li><a href="/ricette/{{ id }}">{{ nome }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2>Carica file BeerXML</h2>
+        <form id="uploadForm" method="post" enctype="multipart/form-data" action="/importa/beerxml">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="drop-icon">🍺</div>
+                <div class="drop-text">Trascina qui il file BeerXML</div>
+                <div class="drop-sub">oppure clicca per selezionare</div>
+                <div class="file-name" id="fileName"></div>
+                <input type="file" id="fileInput" name="file" accept=".xml,.beerxml">
+            </div>
+            <button type="submit" class="btn" id="submitBtn" disabled>Importa ricette</button>
+        </form>
+    </div>
+
+    <div class="info">
+        <strong>Formato supportato</strong>
+        <ul>
+            <li>BeerXML 1.0 (compatibile con BeerSmith, Brewfather, BrewUnited, Promash)</li>
+            <li>Vengono importati: fermentabili, luppoli, lieviti, misc</li>
+            <li>I luppoli vengono convertiti da kg a grammi automaticamente</li>
+            <li>È possibile importare file con più ricette contemporaneamente</li>
+        </ul>
+    </div>
+
+</div>
+<script>
+    const input = document.getElementById('fileInput');
+    const btn = document.getElementById('submitBtn');
+    const nameEl = document.getElementById('fileName');
+    const zone = document.getElementById('dropZone');
+
+    input.addEventListener('change', () => {
+        if (input.files.length > 0) {
+            nameEl.textContent = input.files[0].name;
+            btn.disabled = false;
+        }
+    });
+
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            input.files = files;
+            nameEl.textContent = files[0].name;
+            btn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
