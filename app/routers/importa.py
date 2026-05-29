@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,6 @@ def _int_v(el, tag, default=None):
 
 
 def _parse_beerxml(content: bytes) -> list[dict]:
-    """Parsa il contenuto di un BeerXML e restituisce lista di ricette dict."""
     root = ET.fromstring(content)
     results = []
 
@@ -57,56 +56,60 @@ def _parse_beerxml(content: bytes) -> list[dict]:
             "ingredienti": [],
         }
 
-        # Fermentables
         for f in recipe_el.iter("FERMENTABLE"):
             amount = _flt(f, "AMOUNT") or 0.0
-            r["ingredienti"].append({
-                "nome": _txt(f, "NAME", "Malt"),
-                "categoria": "grain",
-                "quantita": amount,
-                "unita": "kg",
-                "fermentable_type": _txt(f, "TYPE"),
-                "yield_percent": _flt(f, "YIELD"),
-                "color_srm": _flt(f, "COLOR"),
-            })
+            r["ingredienti"].append(
+                {
+                    "nome": _txt(f, "NAME", "Malt"),
+                    "categoria": "grain",
+                    "quantita": amount,
+                    "unita": "kg",
+                    "fermentable_type": _txt(f, "TYPE"),
+                    "yield_percent": _flt(f, "YIELD"),
+                    "color_srm": _flt(f, "COLOR"),
+                }
+            )
 
-        # Hops
         for h in recipe_el.iter("HOP"):
             amount_kg = _flt(h, "AMOUNT") or 0.0
-            r["ingredienti"].append({
-                "nome": _txt(h, "NAME", "Hop"),
-                "categoria": "hop",
-                "quantita": round(amount_kg * 1000, 1),
-                "unita": "g",
-                "alpha_acid": _flt(h, "ALPHA"),
-                "hop_use": _txt(h, "USE"),
-                "hop_form": _txt(h, "FORM"),
-                "time_min": _int_v(h, "TIME"),
-            })
+            r["ingredienti"].append(
+                {
+                    "nome": _txt(h, "NAME", "Hop"),
+                    "categoria": "hop",
+                    "quantita": round(amount_kg * 1000, 1),
+                    "unita": "g",
+                    "alpha_acid": _flt(h, "ALPHA"),
+                    "hop_use": _txt(h, "USE"),
+                    "hop_form": _txt(h, "FORM"),
+                    "time_min": _int_v(h, "TIME"),
+                }
+            )
 
-        # Yeasts
         for y in recipe_el.iter("YEAST"):
-            r["ingredienti"].append({
-                "nome": _txt(y, "NAME", "Yeast"),
-                "categoria": "yeast",
-                "quantita": _flt(y, "AMOUNT") or 1.0,
-                "unita": "pz",
-                "attenuation": _flt(y, "ATTENUATION"),
-                "yeast_type": _txt(y, "TYPE"),
-                "yeast_form": _txt(y, "FORM"),
-            })
+            r["ingredienti"].append(
+                {
+                    "nome": _txt(y, "NAME", "Yeast"),
+                    "categoria": "yeast",
+                    "quantita": _flt(y, "AMOUNT") or 1.0,
+                    "unita": "pz",
+                    "attenuation": _flt(y, "ATTENUATION"),
+                    "yeast_type": _txt(y, "TYPE"),
+                    "yeast_form": _txt(y, "FORM"),
+                }
+            )
 
-        # Miscs
         for m in recipe_el.iter("MISC"):
-            r["ingredienti"].append({
-                "nome": _txt(m, "NAME", "Misc"),
-                "categoria": "misc",
-                "quantita": _flt(m, "AMOUNT") or 0.0,
-                "unita": "g",
-                "misc_type": _txt(m, "TYPE"),
-                "misc_use": _txt(m, "USE"),
-                "time_min": _int_v(m, "TIME"),
-            })
+            r["ingredienti"].append(
+                {
+                    "nome": _txt(m, "NAME", "Misc"),
+                    "categoria": "misc",
+                    "quantita": _flt(m, "AMOUNT") or 0.0,
+                    "unita": "g",
+                    "misc_type": _txt(m, "TYPE"),
+                    "misc_use": _txt(m, "USE"),
+                    "time_min": _int_v(m, "TIME"),
+                }
+            )
 
         results.append(r)
 
@@ -115,7 +118,11 @@ def _parse_beerxml(content: bytes) -> list[dict]:
 
 @router.get("/importa/beerxml", response_class=HTMLResponse)
 def form_importa(request: Request):
-    return templates.TemplateResponse(request, "importa_beerxml.html", {})
+    return templates.TemplateResponse(
+        request,
+        "importa_beerxml.html",
+        context={},
+    )
 
 
 @router.post("/importa/beerxml")
@@ -125,17 +132,22 @@ async def importa_beerxml(
     db: Session = Depends(get_db),
 ):
     content = await file.read()
+
     try:
         ricette_data = _parse_beerxml(content)
     except ET.ParseError as e:
-        return templates.TemplateResponse(request, "importa_beerxml.html", {
-            "errore": f"File XML non valido: {e}"
-        })
+        return templates.TemplateResponse(
+            request,
+            "importa_beerxml.html",
+            context={"errore": f"File XML non valido: {e}"},
+        )
 
     if not ricette_data:
-        return templates.TemplateResponse(request, "importa_beerxml.html", {
-            "errore": "Nessuna ricetta trovata nel file."
-        })
+        return templates.TemplateResponse(
+            request,
+            "importa_beerxml.html",
+            context={"errore": "Nessuna ricetta trovata nel file."},
+        )
 
     importate = []
     for rd in ricette_data:
@@ -151,6 +163,8 @@ async def importa_beerxml(
 
     db.commit()
 
-    return templates.TemplateResponse(request, "importa_beerxml.html", {
-        "importate": importate,
-    })
+    return templates.TemplateResponse(
+        request,
+        "importa_beerxml.html",
+        context={"importate": importate},
+    )
