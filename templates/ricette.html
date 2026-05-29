@@ -2,90 +2,154 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Ricette birra</title>
+    <title>Ricette — Gestionale Birrificio</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background: #f7f3ee;
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f7f3ee; color: #222; }
+
+        .topbar {
+            background: #5a381e;
+            color: white;
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
-        h1, h2 {
-            color: #5a381e;
-        }
+        .topbar a { color: #f5deb3; text-decoration: none; font-size: 14px; }
+        .topbar a:hover { text-decoration: underline; }
+        .topbar h1 { margin: 0; font-size: 20px; flex: 1; }
+
+        .container { max-width: 960px; margin: 32px auto; padding: 0 24px; }
+
         .card {
             background: white;
-            padding: 20px;
             border-radius: 10px;
-            margin-bottom: 25px;
-            max-width: 900px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
         }
-        input, textarea {
-            display: block;
-            width: 100%;
-            max-width: 500px;
-            margin-bottom: 12px;
-            padding: 8px;
+        h2 { color: #5a381e; margin-top: 0; border-bottom: 2px solid #f0e6d3; padding-bottom: 8px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 20px;
         }
-        button {
-            background: #8b5a2b;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
+        .form-grid .full { grid-column: 1 / -1; }
+
+        label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 4px; }
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%; padding: 9px 12px; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 14px; background: #fdfaf7;
         }
-        button:hover {
-            background: #6f451f;
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: #8b5a2b; background: white;
         }
-        ul {
-            padding-left: 20px;
+        textarea { min-height: 60px; resize: vertical; }
+
+        .btn {
+            background: #8b5a2b; color: white; border: none;
+            padding: 10px 20px; border-radius: 6px; cursor: pointer;
+            font-size: 14px; font-weight: bold;
         }
-        li {
-            margin-bottom: 10px;
+        .btn:hover { background: #6f451f; }
+        .hint { font-size: 12px; color: #888; margin-top: 3px; }
+
+        /* Elenco ricette */
+        .recipe-list { list-style: none; padding: 0; margin: 0; }
+        .recipe-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid #f0e8de;
+            gap: 16px;
         }
-        a {
-            color: #8b5a2b;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .meta {
-            color: #444;
-            font-size: 14px;
-        }
-        .nav-btn {
-            display: inline-block;
-            background: #8b5a2b;
-            color: white;
-            text-decoration: none;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-bottom: 18px;
-        }
-        .nav-btn:hover {
-            background: #6f451f;
-            text-decoration: none;
-        }
+        .recipe-item:last-child { border-bottom: none; }
+        .recipe-main { flex: 1; }
+        .recipe-name { font-size: 17px; font-weight: bold; color: #5a381e; text-decoration: none; }
+        .recipe-name:hover { text-decoration: underline; }
+        .recipe-meta { font-size: 13px; color: #666; margin-top: 3px; }
+        .recipe-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+        .recipe-actions a { font-size: 12px; padding: 4px 12px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        .link-detail { color: #8b5a2b; border: 1px solid #d4a97a; background: #fdf5ec; }
+        .link-detail:hover { background: #f5e6d3; }
+        .link-brew { background: #198754; color: white !important; }
+        .link-brew:hover { background: #146c43 !important; }
+        .link-track { color: #444; border: 1px solid #ccc; background: #f8f8f8; }
+        .link-track:hover { background: #eee; }
+        .badge-cotte { background: #f5e8d3; color: #7a4f1e; font-size: 11px; font-weight: bold; border-radius: 10px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+        .stile-tag { background: #e8d5f5; color: #4a148c; font-size: 11px; font-weight: bold; border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
     </style>
 </head>
 <body>
+
+<div class="topbar">
+    <a href="/">← Home</a>
+    <h1>📋 Ricette birra</h1>
+    <a href="/importa/beerxml">📥 Importa BeerXML</a>
+</div>
+
+<div class="container">
+
     <div class="card">
-        <h1>Ricette birra</h1>
-
-        <a class="nav-btn" href="/">Torna alla home</a>
-
         <h2>Nuova ricetta</h2>
         <form method="post" action="/ricette/html">
-            <input type="text" name="nome" placeholder="Nome ricetta" required>
-            <input type="text" name="tipo" placeholder="Tipo (All Grain, E+G, Extract)" required>
-            <input type="number" step="0.1" name="volume_target_litri" placeholder="Volume target litri" required>
-            <input type="number" step="0.1" name="efficienza" placeholder="Efficienza" required>
-            <input type="number" name="versione" placeholder="Versione" required>
-            <textarea name="note" placeholder="Note"></textarea>
-            <button type="submit">Salva ricetta</button>
+            <div class="form-grid">
+
+                <div class="full">
+                    <label>Nome ricetta *</label>
+                    <input type="text" name="nome" placeholder="es. Pale Ale Americana" required>
+                </div>
+
+                <div>
+                    <label>Tipo</label>
+                    <select name="tipo">
+                        <option value="All Grain">All Grain</option>
+                        <option value="Extract">Extract</option>
+                        <option value="Partial Mash">Partial Mash</option>
+                        <option value="E+G">E+G (Estratto + Grani)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Versione</label>
+                    <input type="number" name="versione" value="1" min="1">
+                </div>
+
+                <div>
+                    <label>Volume target (litri) *</label>
+                    <input type="number" step="0.5" name="volume_target_litri" value="20" min="1" required>
+                    <div class="hint">Volume finale in fermentatore</div>
+                </div>
+
+                <div>
+                    <label>Efficienza (%)</label>
+                    <input type="number" step="0.5" name="efficienza" value="75" min="1" max="100">
+                    <div class="hint">Efficienza tipica del tuo impianto</div>
+                </div>
+
+                <div class="full">
+                    <label>Stile BJCP</label>
+                    <select name="stile_id">
+                        <option value="0">-- Nessuno stile (da assegnare dopo) --</option>
+                        {% for s in stili %}
+                        <option value="{{ s.id }}">{{ s.nome }} ({{ s.linea_guida }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint">Facoltativo — puoi assegnarlo anche dopo dalla pagina dettaglio.</div>
+                </div>
+
+                <div class="full">
+                    <label>Note</label>
+                    <textarea name="note" placeholder="Note libere, descrizione della ricetta..."></textarea>
+                </div>
+
+            </div>
+
+            <div style="margin-top: 16px;">
+                <button type="submit" class="btn">✓ Crea ricetta</button>
+            </div>
         </form>
     </div>
 
@@ -93,19 +157,31 @@
         <h2>Elenco ricette</h2>
 
         {% if ricette %}
-            <ul>
+            <ul class="recipe-list">
                 {% for r in ricette %}
-                    <li>
-                        <a href="/ricette/{{ r.id }}">{{ r.nome }}</a><br>
-                        <span class="meta">
-                            ID {{ r.id }} · {{ r.tipo }} · {{ r.volume_target_litri }} L · efficienza {{ r.efficienza }}
-                        </span>
-                    </li>
+                <li class="recipe-item">
+                    <div class="recipe-main">
+                        <a href="/ricette/{{ r.id }}" class="recipe-name">{{ r.nome }}</a>
+                        {% set cnt = cotte_count.get(r.id, 0) %}
+                        {% if cnt > 0 %}<span class="badge-cotte">🍺 {{ cnt }} cott{{ 'a' if cnt == 1 else 'e' }}</span>{% endif %}
+                        {% if r.stile %}<span class="stile-tag">{{ r.stile.nome }}</span>{% endif %}
+                        <div class="recipe-meta">
+                            ID {{ r.id }} · {{ r.tipo }} · {{ r.volume_target_litri }} L · efficienza {{ r.efficienza }}%
+                        </div>
+                        <div class="recipe-actions">
+                            <a href="/ricette/{{ r.id }}" class="link-detail">Dettaglio →</a>
+                            <a href="/ricette/{{ r.id }}#avvia-cotta" class="link-brew">🚀 Avvia Cotta</a>
+                            <a href="/cotte?ricetta={{ r.id }}" class="link-track">Tracker cotte</a>
+                        </div>
+                    </div>
+                </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Nessuna ricetta presente.</p>
+            <p style="color:#888;">Nessuna ricetta presente. Crea la prima!</p>
         {% endif %}
     </div>
+
+</div>
 </body>
 </html>
