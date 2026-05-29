@@ -7,8 +7,22 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
 
 from ..db import SessionLocal
-from ..models import Ricetta, IngredienteRicetta, Stile, Cotta, LogCotta, ProfiloAcqua, ProfiloAmmostamento
-from ..stats import calcola_stats, confronta_stile, calcola_percentuali, calcola_costo, srm_to_hex
+from ..models import (
+    Ricetta,
+    IngredienteRicetta,
+    Stile,
+    Cotta,
+    LogCotta,
+    ProfiloAcqua,
+    ProfiloAmmostamento,
+)
+from ..stats import (
+    calcola_stats,
+    confronta_stile,
+    calcola_percentuali,
+    calcola_costo,
+    srm_to_hex,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -24,17 +38,22 @@ def get_db():
 
 @router.get("/ricette/html", response_class=HTMLResponse)
 def lista_ricette(request: Request, db: Session = Depends(get_db)):
-    ricette = db.query(Ricetta).all()
     from sqlalchemy import func
+
+    ricette = db.query(Ricetta).all()
     counts_q = db.query(Cotta.ricetta_id, func.count(Cotta.id)).group_by(Cotta.ricetta_id).all()
     cotte_count = {rid: cnt for rid, cnt in counts_q}
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
-    return templates.TemplateResponse("ricette.html", {
-    "request": request,
-    "ricette": ricette,
-    "cotte_count": cotte_count,
-    "stili": stili,
-})
+
+    return templates.TemplateResponse(
+        "ricette.html",
+        {
+            "request": request,
+            "ricette": ricette,
+            "cotte_count": cotte_count,
+            "stili": stili,
+        },
+    )
 
 
 @router.post("/ricette/html")
@@ -65,6 +84,7 @@ def crea_ricetta(
 @router.get("/ricette/{ricetta_id}", response_class=HTMLResponse)
 def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(get_db)):
     from datetime import date
+
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return HTMLResponse("Ricetta non trovata", status_code=404)
@@ -91,23 +111,27 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
         except Exception:
             mash_steps = []
 
-    return templates.TemplateResponse(request, "dettaglio_ricetta.html", {
-        "ricetta": ricetta,
-        "ingredienti": ingredienti,
-        "stili": stili,
-        "stats": stats,
-        "stile_corrente": stile_corrente,
-        "confronto_stile": cf,
-        "percentuali": percentuali,
-        "costo": costo,
-        "srm_hex": srm_hex,
-        "cotte": cotte,
-        "n_cotte": n_cotte,
-        "oggi": date.today().isoformat(),
-        "profilo_acqua": profilo_acqua,
-        "profilo_mash": profilo_mash,
-        "mash_steps": mash_steps,
-    })
+    return templates.TemplateResponse(
+        "dettaglio_ricetta.html",
+        {
+            "request": request,
+            "ricetta": ricetta,
+            "ingredienti": ingredienti,
+            "stili": stili,
+            "stats": stats,
+            "stile_corrente": stile_corrente,
+            "confronto_stile": cf,
+            "percentuali": percentuali,
+            "costo": costo,
+            "srm_hex": srm_hex,
+            "cotte": cotte,
+            "n_cotte": n_cotte,
+            "oggi": date.today().isoformat(),
+            "profilo_acqua": profilo_acqua,
+            "profilo_mash": profilo_mash,
+            "mash_steps": mash_steps,
+        },
+    )
 
 
 @router.post("/ricette/{ricetta_id}/profilo-acqua")
@@ -125,10 +149,12 @@ def salva_profilo_acqua(
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
+
     pa = db.query(ProfiloAcqua).filter(ProfiloAcqua.ricetta_id == ricetta_id).first()
     if pa is None:
         pa = ProfiloAcqua(ricetta_id=ricetta_id)
         db.add(pa)
+
     pa.nome = nome
     pa.ca = ca
     pa.mg = mg
@@ -137,24 +163,18 @@ def salva_profilo_acqua(
     pa.so4 = so4
     pa.hco3 = hco3
     db.commit()
+
     return RedirectResponse(f"/ricette/{ricetta_id}#profilo-acqua", status_code=303)
 
 
 @router.post("/ricette/{ricetta_id}/profilo-mash")
-def salva_profilo_mash(
+def salva_profilo_mash_placeholder(
     ricetta_id: int,
-    request: Request,
-    nome_profilo: str = Form("Singolo infuso"),
     db: Session = Depends(get_db),
 ):
-    import asyncio
-    form_data = asyncio.get_event_loop().run_until_complete(request.form()) if False else None
-
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
-
-    from starlette.datastructures import FormData
     return RedirectResponse(f"/ricette/{ricetta_id}#profilo-mash", status_code=303)
 
 
@@ -178,11 +198,13 @@ async def salva_profilo_mash_full(
     for n, t, d in zip(nomi, tempi, durate):
         if n.strip():
             try:
-                steps.append({
-                    "nome": n.strip(),
-                    "temp_gradi": float(t) if t else 0.0,
-                    "durata_min": int(d) if d else 0,
-                })
+                steps.append(
+                    {
+                        "nome": n.strip(),
+                        "temp_gradi": float(t) if t else 0.0,
+                        "durata_min": int(d) if d else 0,
+                    }
+                )
             except Exception:
                 pass
 
@@ -190,9 +212,11 @@ async def salva_profilo_mash_full(
     if pm is None:
         pm = ProfiloAmmostamento(ricetta_id=ricetta_id)
         db.add(pm)
+
     pm.nome = nome_profilo
     pm.steps_json = json.dumps(steps, ensure_ascii=False)
     db.commit()
+
     return RedirectResponse(f"/ricette/{ricetta_id}#profilo-mash", status_code=303)
 
 
@@ -206,6 +230,7 @@ def avvia_cotta_da_ricetta(
     db: Session = Depends(get_db),
 ):
     from datetime import datetime
+
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
@@ -220,14 +245,18 @@ def avvia_cotta_da_ricetta(
     )
     db.add(cotta)
     db.flush()
-    db.add(LogCotta(
-        cotta_id=cotta.id,
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M"),
-        fase="pianificata",
-        tipo="evento",
-        descrizione=f"Cotta avviata dalla ricetta: {ricetta.nome}",
-    ))
+
+    db.add(
+        LogCotta(
+            cotta_id=cotta.id,
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            fase="pianificata",
+            tipo="evento",
+            descrizione=f"Cotta avviata dalla ricetta: {ricetta.nome}",
+        )
+    )
     db.commit()
+
     return RedirectResponse(f"/cotte/{cotta.id}", status_code=303)
 
 
@@ -236,12 +265,19 @@ def stats_json(ricetta_id: int, db: Session = Depends(get_db)):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return {"error": "not found"}
+
     ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
     stats = calcola_stats(ricetta, ingredienti)
     stile_corrente = db.query(Stile).filter(Stile.id == ricetta.stile_id).first() if ricetta.stile_id else None
     cf = confronta_stile(stats, stile_corrente)
     costo = calcola_costo(ingredienti)
-    return {"stats": stats, "confronto_stile": cf, "costo": costo, "srm_hex": srm_to_hex(stats["srm"])}
+
+    return {
+        "stats": stats,
+        "confronto_stile": cf,
+        "costo": costo,
+        "srm_hex": srm_to_hex(stats["srm"]),
+    }
 
 
 @router.post("/ricette/{ricetta_id}/assegna-stile")
@@ -249,38 +285,63 @@ def assegna_stile(ricetta_id: int, stile_id: int = Form(...), db: Session = Depe
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
+
     ricetta.stile_id = stile_id if stile_id != 0 else None
     db.commit()
+
     return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
 
 
 @router.get("/ricette/{ricetta_id}/catalogo", response_class=HTMLResponse)
-def catalogo_per_ricetta(ricetta_id: int, request: Request, categoria: str = None, db: Session = Depends(get_db)):
+def catalogo_per_ricetta(
+    ricetta_id: int,
+    request: Request,
+    categoria: str = None,
+    db: Session = Depends(get_db),
+):
     from ..models import CatalogoIngrediente
+
     query = db.query(CatalogoIngrediente)
     if categoria:
         query = query.filter(CatalogoIngrediente.categoria == categoria)
+
     items = query.all()
-    return templates.TemplateResponse(request, "catalogo_ingredienti.html", {
-        "items": items,
-        "ricetta_id": ricetta_id,
-        "categoria_attiva": categoria,
-    })
+
+    return templates.TemplateResponse(
+        "catalogo_ingredienti.html",
+        {
+            "request": request,
+            "items": items,
+            "ricetta_id": ricetta_id,
+            "categoria_attiva": categoria,
+        },
+    )
 
 
 @router.get("/ricette/{ricetta_id}/modifica", response_class=HTMLResponse)
-def form_modifica_ricetta(ricetta_id: int, request: Request, saved: bool = False, db: Session = Depends(get_db)):
+def form_modifica_ricetta(
+    ricetta_id: int,
+    request: Request,
+    saved: bool = False,
+    db: Session = Depends(get_db),
+):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
+
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
     stile_corrente = db.query(Stile).filter(Stile.id == ricetta.stile_id).first() if ricetta.stile_id else None
-    return templates.TemplateResponse(request, "modifica_ricetta.html", {
-        "ricetta": ricetta,
-        "stili": stili,
-        "stile_corrente": stile_corrente,
-        "saved": saved,
-    })
+
+    return templates.TemplateResponse(
+        "modifica_ricetta.html",
+        {
+            "request": request,
+            "ricetta": ricetta,
+            "stili": stili,
+            "stile_corrente": stile_corrente,
+            "saved": saved,
+        },
+    )
 
 
 @router.post("/ricette/{ricetta_id}/modifica")
@@ -298,6 +359,7 @@ def salva_modifica_ricetta(
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
+
     ricetta.nome = nome
     ricetta.tipo = tipo
     ricetta.volume_target_litri = volume_target_litri
@@ -306,6 +368,7 @@ def salva_modifica_ricetta(
     ricetta.stile_id = stile_id if stile_id != 0 else None
     ricetta.note = note or None
     db.commit()
+
     return RedirectResponse(f"/ricette/{ricetta_id}/modifica?saved=true", status_code=303)
 
 
@@ -323,6 +386,7 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return Response("Ricetta non trovata", status_code=404)
+
     ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
 
     root = Element("RECIPES")
@@ -332,6 +396,7 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
     SubElement(r_el, "TYPE").text = ricetta.tipo
     SubElement(r_el, "BATCH_SIZE").text = str(ricetta.volume_target_litri)
     SubElement(r_el, "EFFICIENCY").text = str(ricetta.efficienza)
+
     if ricetta.note:
         SubElement(r_el, "NOTES").text = ricetta.note
 
@@ -350,6 +415,7 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
                 SubElement(fe, "YIELD").text = str(i.yield_percent)
             if i.color_srm:
                 SubElement(fe, "COLOR").text = str(i.color_srm)
+
         elif i.categoria == "hop":
             he = SubElement(hops, "HOP")
             SubElement(he, "NAME").text = i.nome
@@ -359,6 +425,7 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
                 SubElement(he, "ALPHA").text = str(i.alpha_acid)
             if i.time_min:
                 SubElement(he, "TIME").text = str(i.time_min)
+
         elif i.categoria == "yeast":
             ye = SubElement(yeasts, "YEAST")
             SubElement(ye, "NAME").text = i.nome
@@ -366,6 +433,7 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
             SubElement(ye, "AMOUNT").text = str(i.quantita)
             if i.attenuation:
                 SubElement(ye, "ATTENUATION").text = str(i.attenuation)
+
         elif i.categoria == "misc":
             me = SubElement(miscs, "MISC")
             SubElement(me, "NAME").text = i.nome
