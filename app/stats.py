@@ -76,6 +76,47 @@ def _check(valore, minv, maxv):
     return "ok"
 
 
+def calcola_percentuali(ingredienti):
+    from collections import defaultdict
+
+    PESO_UNITA = {"g", "kg", "lb", "oz"}
+
+    cat_totals = defaultdict(float)
+    ing_norms = {}
+
+    for i in ingredienti:
+        q = i.quantita or 0.0
+        u = (i.unita or "").lower()
+
+        if i.categoria == "grain":
+            norm = _to_kg(q, u)
+        elif i.categoria == "hop":
+            norm = _to_g(q, u)
+        elif i.categoria == "yeast":
+            norm = q
+        else:
+            norm = _to_g(q, u) if u in PESO_UNITA else q
+
+        ing_norms[i.id] = norm
+        cat_totals[i.categoria] += norm
+
+    UNITA_BASE = {"grain": "kg", "hop": "g", "yeast": "pz", "misc": "g"}
+
+    result = {}
+    for i in ingredienti:
+        totale = cat_totals[i.categoria]
+        norm = ing_norms.get(i.id, 0.0)
+        perc = round(norm / totale * 100, 1) if totale > 0 else 0.0
+        result[i.id] = {
+            "perc": perc,
+            "norm": round(norm, 4),
+            "cat_totale": round(totale, 4),
+            "unita_base": UNITA_BASE.get(i.categoria, ""),
+        }
+
+    return result
+
+
 def confronta_stile(stats, stile):
     if stile is None:
         return None
@@ -89,3 +130,43 @@ def confronta_stile(stats, stile):
         "ebc": {"valore": stats["ebc"], "min": stile.ebc_min, "max": stile.ebc_max, "stato": _check(stats["ebc"], stile.ebc_min, stile.ebc_max)},
         "abv": {"valore": stats["abv"], "min": stile.abv_min, "max": stile.abv_max, "stato": _check(stats["abv"], stile.abv_min, stile.abv_max)},
     }
+
+
+SRM_COLORS = [
+    (2,  "#F3F993"), (3,  "#F5F75C"), (4,  "#F6F513"), (5,  "#EAE615"),
+    (6,  "#E0D01B"), (7,  "#D5BC26"), (8,  "#CDAA37"), (9,  "#C1963C"),
+    (10, "#BE8C3A"), (12, "#BE823A"), (14, "#BC7A3A"), (16, "#B87033"),
+    (18, "#B56727"), (20, "#B26033"), (24, "#A85839"), (30, "#985336"),
+    (40, "#8D4C32"), (50, "#7C3D2B"), (60, "#6B3122"), (80, "#520F06"),
+]
+
+
+def srm_to_hex(srm):
+    """Converte un valore SRM nel colore esadecimale corrispondente."""
+    srm = max(0.0, float(srm or 0))
+    if srm <= 0:
+        return "#F3F993"
+    for threshold, color in SRM_COLORS:
+        if srm <= threshold:
+            return color
+    return "#0F0101"
+
+
+def calcola_costo(ingredienti):
+    """Calcola costo totale materie prime (prezzo_unitario × quantita per ingrediente)."""
+    totale = 0.0
+    dettaglio = []
+    for i in ingredienti:
+        pu = getattr(i, "prezzo_unitario", None) or 0.0
+        costo = round(pu * (i.quantita or 0.0), 4)
+        totale += costo
+        if pu > 0:
+            dettaglio.append({
+                "id": i.id,
+                "nome": i.nome,
+                "quantita": i.quantita,
+                "unita": i.unita,
+                "prezzo_unitario": round(pu, 4),
+                "costo": round(costo, 2),
+            })
+    return {"totale": round(totale, 2), "dettaglio": dettaglio}
