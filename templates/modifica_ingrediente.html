@@ -4,279 +4,85 @@
     <meta charset="UTF-8">
     <title>Modifica ingrediente</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background: #f7f3ee;
-        }
-
-        .card {
-            background: white;
-            padding: 24px;
-            border-radius: 10px;
-            max-width: 900px;
-            margin-bottom: 24px;
-        }
-
-        h1, h2 {
-            color: #5a381e;
-        }
-
-        label {
-            display: block;
-            margin-top: 14px;
-            font-weight: bold;
-            color: #444;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 10px;
-            margin-top: 6px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-
-        textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        .btn {
-            display: inline-block;
-            margin-top: 18px;
-            background: #8b5a2b;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .btn:hover {
-            background: #6f451f;
-        }
-
-        .muted {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .status {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .section {
-            margin-top: 18px;
-            padding-top: 14px;
-            border-top: 1px solid #eee;
-        }
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f3ee; }
+        .card { background: white; padding: 20px; border-radius: 10px; max-width: 800px; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 13px; color: #444; }
+        input, select { display:block; width:100%; max-width:500px; margin-top:4px; margin-bottom:4px; padding:8px; box-sizing:border-box; }
+        button { background:#8b5a2b; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; margin-top:16px; }
+        button:hover { background:#6f451f; }
+        a { color:#8b5a2b; text-decoration:none; font-weight:bold; }
+        h2 { color:#5a381e; margin-top: 24px; border-top: 1px solid #ddd; padding-top: 16px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>Modifica ingrediente</h1>
-        <p class="muted">
-            ID {{ ingrediente.id }} · Ricetta ID {{ ingrediente.ricetta_id }} · Categoria: {{ ingrediente.categoria }}
-        </p>
+        <p><a href="/ricette/{{ ing.ricetta_id }}">← Torna alla ricetta</a></p>
 
-        <form method="post" action="/ingredienti/{{ ingrediente.id }}/modifica" id="form-ingrediente">
+        <form method="post" action="/ingredienti/{{ ing.id }}/modifica">
             <label>Nome</label>
-            <input type="text" name="nome" id="nome" value="{{ ingrediente.nome }}" onchange="salvaAuto()">
+            <input type="text" name="nome" value="{{ ing.nome }}" required>
 
-            <div class="row">
-                <div>
-                    <label>Categoria</label>
-                    <select name="categoria" id="categoria" onchange="cambiaCategoria(); salvaAuto();">
-                        <option value="grain" {% if ingrediente.categoria == 'grain' %}selected{% endif %}>grain</option>
-                        <option value="hop" {% if ingrediente.categoria == 'hop' %}selected{% endif %}>hop</option>
-                        <option value="yeast" {% if ingrediente.categoria == 'yeast' %}selected{% endif %}>yeast</option>
-                        <option value="misc" {% if ingrediente.categoria == 'misc' %}selected{% endif %}>misc</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Quantità</label>
-                    <input type="number" step="0.001" name="quantita" id="quantita" value="{{ ingrediente.quantita }}" onchange="salvaAuto()">
-                </div>
-            </div>
+            <label>Categoria</label>
+            <select name="categoria" required>
+                <option value="grain" {% if ing.categoria == 'grain' %}selected{% endif %}>Grain</option>
+                <option value="hop" {% if ing.categoria == 'hop' %}selected{% endif %}>Hop</option>
+                <option value="yeast" {% if ing.categoria == 'yeast' %}selected{% endif %}>Yeast</option>
+                <option value="misc" {% if ing.categoria == 'misc' %}selected{% endif %}>Misc</option>
+            </select>
 
-            <div class="row">
-                <div>
-                    <label>Unità</label>
-                    <select name="unita" id="unita" onchange="salvaAuto()">
-                        <option value="kg" {% if ingrediente.unita == 'kg' %}selected{% endif %}>kg</option>
-                        <option value="g" {% if ingrediente.unita == 'g' %}selected{% endif %}>g</option>
-                        <option value="l" {% if ingrediente.unita == 'l' %}selected{% endif %}>l</option>
-                        <option value="ml" {% if ingrediente.unita == 'ml' %}selected{% endif %}>ml</option>
-                        <option value="pz" {% if ingrediente.unita == 'pz' %}selected{% endif %}>pz</option>
-                        <option value="oz" {% if ingrediente.unita == 'oz' %}selected{% endif %}>oz</option>
-                        <option value="lb" {% if ingrediente.unita == 'lb' %}selected{% endif %}>lb</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Note</label>
-                    <input type="text" name="note" id="note" value="{{ ingrediente.note or '' }}" onchange="salvaAuto()">
-                </div>
-            </div>
+            <label>Quantità</label>
+            <input type="number" step="0.001" name="quantita" value="{{ ing.quantita }}" required>
 
-            <div class="section" id="grain-section">
-                <h2>Dati Grain</h2>
-                <div class="row">
-                    <div>
-                        <label>Fermentable type</label>
-                        <input type="text" name="fermentable_type" id="fermentable_type" value="{{ ingrediente.fermentable_type or '' }}" onchange="salvaAuto()">
-                    </div>
-                    <div>
-                        <label>Yield %</label>
-                        <input type="number" step="0.1" name="yield_percent" id="yield_percent" value="{{ ingrediente.yield_percent or '' }}" onchange="salvaAuto()">
-                    </div>
-                </div>
-                <label>Color SRM</label>
-                <input type="number" step="0.1" name="color_srm" id="color_srm" value="{{ ingrediente.color_srm or '' }}" onchange="salvaAuto()">
-            </div>
+            <label>Unità</label>
+            <select name="unita">
+                <option value="kg" {% if ing.unita == 'kg' %}selected{% endif %}>kg</option>
+                <option value="g" {% if ing.unita == 'g' %}selected{% endif %}>g</option>
+                <option value="l" {% if ing.unita == 'l' %}selected{% endif %}>l</option>
+                <option value="ml" {% if ing.unita == 'ml' %}selected{% endif %}>ml</option>
+                <option value="pz" {% if ing.unita == 'pz' %}selected{% endif %}>pz</option>
+                <option value="oz" {% if ing.unita == 'oz' %}selected{% endif %}>oz</option>
+                <option value="lb" {% if ing.unita == 'lb' %}selected{% endif %}>lb</option>
+            </select>
 
-            <div class="section" id="hop-section">
-                <h2>Dati Hop</h2>
-                <div class="row">
-                    <div>
-                        <label>Alpha acid %</label>
-                        <input type="number" step="0.1" name="alpha_acid" id="alpha_acid" value="{{ ingrediente.alpha_acid or '' }}" onchange="salvaAuto()">
-                    </div>
-                    <div>
-                        <label>Hop use</label>
-                        <input type="text" name="hop_use" id="hop_use" value="{{ ingrediente.hop_use or '' }}" onchange="salvaAuto()">
-                    </div>
-                </div>
-                <div class="row">
-                    <div>
-                        <label>Time min</label>
-                        <input type="number" name="hop_time_min" id="hop_time_min" value="{{ ingrediente.time_min or '' }}" onchange="salvaAuto()">
-                    </div>
-                    <div>
-                        <label>Hop form</label>
-                        <input type="text" name="hop_form" id="hop_form" value="{{ ingrediente.hop_form or '' }}" onchange="salvaAuto()">
-                    </div>
-                </div>
-            </div>
+            <label>Tempo (minuti)</label>
+            <input type="number" name="time_min" value="{{ ing.time_min or '' }}" placeholder="es. 60">
 
-            <div class="section" id="yeast-section">
-                <h2>Dati Yeast</h2>
-                <div class="row">
-                    <div>
-                        <label>Attenuation %</label>
-                        <input type="number" step="0.1" name="attenuation" id="attenuation" value="{{ ingrediente.attenuation or '' }}" onchange="salvaAuto()">
-                    </div>
-                    <div>
-                        <label>Yeast type</label>
-                        <input type="text" name="yeast_type" id="yeast_type" value="{{ ingrediente.yeast_type or '' }}" onchange="salvaAuto()">
-                    </div>
-                </div>
-                <label>Yeast form</label>
-                <input type="text" name="yeast_form" id="yeast_form" value="{{ ingrediente.yeast_form or '' }}" onchange="salvaAuto()">
-            </div>
+            <label>Note</label>
+            <input type="text" name="note" value="{{ ing.note or '' }}">
 
-            <div class="section" id="misc-section">
-                <h2>Dati Misc</h2>
-                <div class="row">
-                    <div>
-                        <label>Misc type</label>
-                        <input type="text" name="misc_type" id="misc_type" value="{{ ingrediente.misc_type or '' }}" onchange="salvaAuto()">
-                    </div>
-                    <div>
-                        <label>Misc use</label>
-                        <input type="text" name="misc_use" id="misc_use" value="{{ ingrediente.misc_use or '' }}" onchange="salvaAuto()">
-                    </div>
-                </div>
-                <label>Misc time min</label>
-                <input type="number" name="misc_time_min" id="misc_time_min" value="{{ ingrediente.time_min or '' }}" onchange="salvaAuto()">
-            </div>
+            <h2>Dati tecnici Grain</h2>
+            <label>Fermentable type</label>
+            <input type="text" name="fermentable_type" value="{{ ing.fermentable_type or '' }}">
+            <label>Yield %</label>
+            <input type="number" step="0.1" name="yield_percent" value="{{ ing.yield_percent or '' }}">
+            <label>Color SRM</label>
+            <input type="number" step="0.1" name="color_srm" value="{{ ing.color_srm or '' }}">
 
-            <div class="status" id="status">Pronto.</div>
+            <h2>Dati tecnici Hop</h2>
+            <label>Alpha acid %</label>
+            <input type="number" step="0.1" name="alpha_acid" value="{{ ing.alpha_acid or '' }}">
+            <label>Hop use</label>
+            <input type="text" name="hop_use" value="{{ ing.hop_use or '' }}">
+            <label>Hop form</label>
+            <input type="text" name="hop_form" value="{{ ing.hop_form or '' }}">
 
-            <button type="submit" class="btn">Salva manualmente</button>
-            <a href="/ricette/{{ ingrediente.ricetta_id }}" class="btn">Torna alla ricetta</a>
+            <h2>Dati tecnici Yeast</h2>
+            <label>Attenuation %</label>
+            <input type="number" step="0.1" name="attenuation" value="{{ ing.attenuation or '' }}">
+            <label>Yeast type</label>
+            <input type="text" name="yeast_type" value="{{ ing.yeast_type or '' }}">
+            <label>Yeast form</label>
+            <input type="text" name="yeast_form" value="{{ ing.yeast_form or '' }}">
+
+            <h2>Dati tecnici Misc</h2>
+            <label>Misc type</label>
+            <input type="text" name="misc_type" value="{{ ing.misc_type or '' }}">
+            <label>Misc use</label>
+            <input type="text" name="misc_use" value="{{ ing.misc_use or '' }}">
+
+            <button type="submit">Salva modifiche</button>
         </form>
     </div>
-
-    <script>
-        function showOnlyCategory(cat) {
-            document.getElementById("grain-section").classList.toggle("hidden", cat !== "grain");
-            document.getElementById("hop-section").classList.toggle("hidden", cat !== "hop");
-            document.getElementById("yeast-section").classList.toggle("hidden", cat !== "yeast");
-            document.getElementById("misc-section").classList.toggle("hidden", cat !== "misc");
-        }
-
-        function cambiaCategoria() {
-            const cat = document.getElementById("categoria").value;
-            showOnlyCategory(cat);
-        }
-
-        async function salvaAuto() {
-            const status = document.getElementById("status");
-            status.textContent = "Salvataggio...";
-
-            const cat = document.getElementById("categoria").value;
-
-            const payload = {
-                nome: document.getElementById("nome").value,
-                categoria: cat,
-                quantita: parseFloat(document.getElementById("quantita").value || "0"),
-                unita: document.getElementById("unita").value,
-                note: document.getElementById("note").value,
-                fermentable_type: document.getElementById("fermentable_type").value,
-                yield_percent: document.getElementById("yield_percent").value === "" ? null : parseFloat(document.getElementById("yield_percent").value),
-                color_srm: document.getElementById("color_srm").value === "" ? null : parseFloat(document.getElementById("color_srm").value),
-                alpha_acid: document.getElementById("alpha_acid").value === "" ? null : parseFloat(document.getElementById("alpha_acid").value),
-                hop_use: document.getElementById("hop_use").value,
-                hop_time_min: document.getElementById("hop_time_min").value === "" ? null : parseInt(document.getElementById("hop_time_min").value),
-                hop_form: document.getElementById("hop_form").value,
-                attenuation: document.getElementById("attenuation").value === "" ? null : parseFloat(document.getElementById("attenuation").value),
-                yeast_type: document.getElementById("yeast_type").value,
-                yeast_form: document.getElementById("yeast_form").value,
-                misc_type: document.getElementById("misc_type").value,
-                misc_use: document.getElementById("misc_use").value,
-                misc_time_min: document.getElementById("misc_time_min").value === "" ? null : parseInt(document.getElementById("misc_time_min").value)
-            };
-
-            try {
-                const res = await fetch("/ingredienti/{{ ingrediente.id }}/modifica", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    status.textContent = "Errore salvataggio.";
-                    return;
-                }
-
-                status.textContent = "Salvato.";
-            } catch (err) {
-                status.textContent = "Errore di connessione.";
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", function () {
-            cambiaCategoria();
-        });
-    </script>
 </body>
 </html>
