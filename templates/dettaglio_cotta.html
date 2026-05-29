@@ -19,7 +19,6 @@
         h2 { color: #5a381e; margin: 0 0 16px 0; font-size: 16px; border-bottom: 2px solid #f0e6d3; padding-bottom: 8px; }
         h3 { color: #5a381e; margin: 16px 0 10px 0; font-size: 14px; }
 
-        /* Pipeline */
         .pipeline { display: flex; align-items: center; gap: 0; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
         .step {
             flex: 1; min-width: 80px; text-align: center;
@@ -31,20 +30,17 @@
             margin-right: 2px;
         }
         .step:first-child { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); }
-        .step:last-child  { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%); margin-right: 0; }
-        .step.done  { background: #c8e6c9; color: #2e7d32; }
+        .step:last-child { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%); margin-right: 0; }
+        .step.done { background: #c8e6c9; color: #2e7d32; }
         .step.active { background: #8b5a2b; color: white; }
         .step .step-icon { font-size: 16px; display: block; }
 
-        /* KPI cards */
         .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
         .kpi { background: #fdf8f3; border: 1px solid #e8ddd0; border-radius: 8px; padding: 12px 10px; text-align: center; }
         .kpi .val { font-size: 22px; font-weight: bold; color: #5a381e; }
         .kpi .lbl { font-size: 11px; color: #888; margin-top: 2px; }
         .kpi .sub { font-size: 11px; color: #aaa; }
 
-        /* Form sections */
-        .section { margin-bottom: 20px; }
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
         .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 12px; }
         label { display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }
@@ -56,25 +52,22 @@
         .btn:hover { background: #6f451f; }
         .btn-success { background: #198754; }
         .btn-success:hover { background: #146c43; }
-        .btn-outline { background: white; color: #8b5a2b; border: 2px solid #8b5a2b; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
-        .btn-outline:hover { background: #f5eee6; }
         .btn-danger { background: #c0392b; color: white; border: none; padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; }
         .btn-danger:hover { background: #a93226; }
         .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
 
-        /* Avanza stato */
         .avanza-banner {
             background: linear-gradient(135deg, #5a381e, #8b5a2b);
             color: white; border-radius: 10px;
             padding: 16px 20px; margin-bottom: 18px;
             display: flex; justify-content: space-between; align-items: center;
+            gap: 12px;
         }
         .avanza-banner .txt { font-size: 14px; }
         .avanza-banner strong { font-size: 16px; }
         .btn-avanza { background: white; color: #5a381e; border: none; padding: 10px 22px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
         .btn-avanza:hover { background: #f5deb3; }
 
-        /* Log timeline */
         .log-entry { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0e8de; }
         .log-entry:last-child { border-bottom: none; }
         .log-dot { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: 2px; }
@@ -84,42 +77,39 @@
         .log-val { font-size: 13px; color: #5a381e; font-weight: bold; }
         .log-note { font-size: 12px; color: #666; font-style: italic; margin-top: 3px; }
 
-        .tipo-misura  .log-dot { background: #d1ecf1; }
-        .tipo-nota    .log-dot { background: #fff3cd; }
-        .tipo-evento  .log-dot { background: #f0e6d3; }
+        .tipo-misura .log-dot { background: #d1ecf1; }
+        .tipo-nota .log-dot { background: #fff3cd; }
+        .tipo-evento .log-dot { background: #f0e6d3; }
         .tipo-avanzamento .log-dot { background: #d4edda; }
 
         .fase-badge { display: inline-block; background: #f0e6d3; color: #5a381e; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 6px; }
 
-        details summary { cursor: pointer; color: #8b5a2b; font-weight: bold; font-size: 13px; }
-        details[open] { margin-bottom: 12px; }
-        details .inner { margin-top: 12px; }
-
         .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .badge-pianificata  { background: #e9ecef; color: #495057; }
-        .badge-brewday      { background: #fff3cd; color: #856404; }
-        .badge-fermentazione{ background: #d1f2eb; color: #0e6251; }
-        .badge-secondaria   { background: #d0f5f5; color: #0e6655; }
-        .badge-condizionamento{ background: #e8d5f5; color: #4a148c; }
-        .badge-imbottigliamento{ background: #cfe2ff; color: #084298; }
-        .badge-maturazione  { background: #e8daff; color: #3d1a78; }
-        .badge-pronta       { background: #d1e7dd; color: #0a3622; }
-        .badge-archiviata   { background: #f8f9fa; color: #6c757d; }
+        .badge-pianificata { background: #e9ecef; color: #495057; }
+        .badge-brewday { background: #fff3cd; color: #856404; }
+        .badge-fermentazione { background: #d1f2eb; color: #0e6251; }
+        .badge-secondaria { background: #d0f5f5; color: #0e6655; }
+        .badge-condizionamento { background: #e8d5f5; color: #4a148c; }
+        .badge-imbottigliamento { background: #cfe2ff; color: #084298; }
+        .badge-maturazione { background: #e8daff; color: #3d1a78; }
+        .badge-pronta { background: #d1e7dd; color: #0a3622; }
+        .badge-archiviata { background: #f8f9fa; color: #6c757d; }
 
-        /* Grafico fermentazione */
         .chart-card { position: relative; }
         .chart-wrapper { position: relative; height: 280px; }
         .chart-empty { text-align: center; padding: 40px 20px; color: #bbb; font-size: 13px; }
-        .chart-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: #666; justify-content: flex-end; }
+        .chart-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: #666; justify-content: flex-end; flex-wrap: wrap; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        .annotation-label { font-size: 11px; }
 
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
             .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .topbar { padding: 12px 18px; }
+            .avanza-banner { flex-direction: column; align-items: flex-start; }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 </head>
 <body>
 
@@ -132,7 +122,6 @@
 <div class="container">
 <div class="main">
 
-    <!-- Pipeline -->
     <div class="card" style="padding: 16px 20px;">
         <div class="pipeline">
             {% set icons = {'pianificata':'📋','brewday':'🔥','fermentazione':'🧫','secondaria':'🔬','condizionamento':'❄️','imbottigliamento':'🍾','maturazione':'⏳','pronta':'✅','archiviata':'📦'} %}
@@ -146,7 +135,6 @@
         </div>
     </div>
 
-    <!-- Avanza stato -->
     {% if prossimo_stato and cotta.stato != 'archiviata' %}
     <div class="avanza-banner">
         <div class="txt">Prossima fase: <strong>{{ prossimo_label }}</strong></div>
@@ -156,21 +144,17 @@
     </div>
     {% endif %}
 
-    <!-- KPI principali -->
     <div class="kpi-row">
         <div class="kpi">
             <div class="val">{{ cotta.og_reale or '—' }}</div>
             <div class="lbl">OG Reale</div>
-            {% if cotta.ricetta and cotta.ricetta.ingredienti %}
-            <div class="sub">target ~{{ "%.3f"|format(cotta.ricetta.volume_target_litri) if false else '—' }}</div>
-            {% endif %}
         </div>
         <div class="kpi">
-            <div class="val">{{ cotta.fg_reale or (fg_stimata|string + '*') if fg_stimata else '—' }}</div>
-            <div class="lbl">FG {% if not cotta.fg_reale and fg_stimata %}(stimata){% else %}Reale{% endif %}</div>
+            <div class="val">{% if cotta.fg_reale %}{{ cotta.fg_reale }}{% elif fg_stimata %}{{ fg_stimata }}*{% else %}—{% endif %}</div>
+            <div class="lbl">{% if not cotta.fg_reale and fg_stimata %}FG stimata{% else %}FG Reale{% endif %}</div>
         </div>
         <div class="kpi">
-            <div class="val">{{ cotta.abv_reale or (abv_calcolato|string + '%*') if abv_calcolato else '—' }}</div>
+            <div class="val">{% if cotta.abv_reale %}{{ cotta.abv_reale }}%{% elif abv_calcolato %}{{ abv_calcolato }}%*{% else %}—{% endif %}</div>
             <div class="lbl">ABV</div>
         </div>
         <div class="kpi">
@@ -180,7 +164,6 @@
         </div>
     </div>
 
-    <!-- Grafico curva fermentazione -->
     <div class="card chart-card">
         <h2>📈 Curva di fermentazione</h2>
         {% if misure_sg or misure_temp %}
@@ -200,7 +183,6 @@
         {% endif %}
     </div>
 
-    <!-- Scheda dati tecnici -->
     <div class="card">
         <h2>Dati di processo</h2>
         <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
@@ -282,11 +264,10 @@
         </form>
     </div>
 
-</div><!-- /main -->
+</div>
 
 <div class="sidebar">
 
-    <!-- Info ricetta -->
     {% if cotta.ricetta %}
     <div class="card">
         <h2>📋 Ricetta base</h2>
@@ -297,13 +278,12 @@
     </div>
     {% endif %}
 
-    <!-- Aggiungi misurazione / nota -->
     <div class="card">
         <h2>📝 Aggiungi al diario</h2>
         <form method="post" action="/cotte/{{ cotta.id }}/log">
             <div style="margin-bottom:10px;">
                 <label>Tipo</label>
-                <select name="tipo" id="tipoLog">
+                <select name="tipo">
                     <option value="misura">📊 Misurazione</option>
                     <option value="nota">📝 Nota</option>
                     <option value="evento">⚡ Evento</option>
@@ -313,7 +293,7 @@
                 <label>Descrizione *</label>
                 <input type="text" name="descrizione" placeholder="es. Densità dopo 3 giorni" required>
             </div>
-            <div class="grid2" style="margin-bottom:10px;" id="valoreRow">
+            <div class="grid2" style="margin-bottom:10px;">
                 <div><label>Valore</label><input type="number" step="0.001" name="valore" placeholder="es. 1.018"></div>
                 <div>
                     <label>Unità</label>
@@ -348,7 +328,6 @@
         </form>
     </div>
 
-    <!-- Timeline diario -->
     <div class="card">
         <h2>📖 Diario di cotta</h2>
         {% if log %}
@@ -383,7 +362,6 @@
         {% endif %}
     </div>
 
-    <!-- Azioni pericolose -->
     <div class="card" style="border: 1px solid #f5c6cb;">
         <h2 style="color:#c0392b;">Azioni</h2>
         <form method="post" action="/cotte/{{ cotta.id }}/elimina">
@@ -391,16 +369,20 @@
         </form>
     </div>
 
-</div><!-- /sidebar -->
-</div><!-- /container -->
+</div>
+</div>
 
 {% if misure_sg or misure_temp %}
 <script>
 (function() {
-    const sgData   = {{ misure_sg | tojson }};
+    if (window['chartjs-plugin-annotation']) {
+        Chart.register(window['chartjs-plugin-annotation']);
+    }
+
+    const sgData = {{ misure_sg | tojson }};
     const tempData = {{ misure_temp | tojson }};
     const fgStimata = {{ fg_stimata if fg_stimata else 'null' }};
-    const ogReale   = {{ cotta.og_reale if cotta.og_reale else 'null' }};
+    const ogReale = {{ cotta.og_reale if cotta.og_reale else 'null' }};
 
     const allLabels = [...new Set(
         [...sgData.map(d => d.t), ...tempData.map(d => d.t)]
@@ -426,7 +408,7 @@
             tension: 0.35,
             fill: true,
             yAxisID: 'ySG',
-            spanGaps: false,
+            spanGaps: false
         });
     }
 
@@ -443,11 +425,10 @@
             fill: false,
             yAxisID: 'yTemp',
             spanGaps: false,
-            borderDash: [5, 3],
+            borderDash: [5, 3]
         });
     }
 
-    // Linee di riferimento OG e FG
     const annotations = {};
     if (fgStimata) {
         annotations.fgLine = {
@@ -464,10 +445,11 @@
                 position: 'end',
                 backgroundColor: 'rgba(32,201,151,0.15)',
                 color: '#0e6251',
-                font: { size: 11 },
+                font: { size: 11 }
             }
         };
     }
+
     if (ogReale) {
         annotations.ogLine = {
             type: 'line',
@@ -483,38 +465,39 @@
                 position: 'start',
                 backgroundColor: 'rgba(253,126,20,0.1)',
                 color: '#7a3b00',
-                font: { size: 11 },
+                font: { size: 11 }
             }
         };
     }
 
-    const hasAnnotations = Object.keys(annotations).length > 0;
-
     const ctx = document.getElementById('fermentChart').getContext('2d');
     new Chart(ctx, {
         type: 'line',
-        data: { labels: allLabels, datasets },
+        data: { labels: allLabels, datasets: datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
+                annotation: {
+                    annotations: annotations
+                },
                 tooltip: {
                     callbacks: {
-                        label: ctx => {
+                        label: function(ctx) {
                             const u = ctx.dataset.yAxisID === 'ySG' ? '' : ' °C';
-                            return ` ${ctx.dataset.label}: ${ctx.parsed.y}${u}`;
+                            return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + u;
                         }
                     }
-                },
+                }
             },
             scales: {
                 x: {
                     ticks: {
                         maxTicksLimit: 8,
                         font: { size: 11 },
-                        callback: function(val, idx) {
+                        callback: function(val) {
                             const lbl = this.getLabelForValue(val);
                             return lbl ? lbl.slice(5) : '';
                         }
@@ -525,10 +508,13 @@
                     type: 'linear',
                     position: 'left',
                     title: { display: true, text: 'Densità (SG)', font: { size: 11 }, color: '#8b5a2b' },
-                    ticks: { font: { size: 11 }, color: '#8b5a2b',
-                        callback: v => v.toFixed(3) },
+                    ticks: {
+                        font: { size: 11 },
+                        color: '#8b5a2b',
+                        callback: function(v) { return Number(v).toFixed(3); }
+                    },
                     grid: { color: 'rgba(139,90,43,0.08)' },
-                    display: sgData.length > 0,
+                    display: sgData.length > 0
                 },
                 yTemp: {
                     type: 'linear',
@@ -536,9 +522,9 @@
                     title: { display: true, text: 'Temperatura (°C)', font: { size: 11 }, color: '#0d6efd' },
                     ticks: { font: { size: 11 }, color: '#0d6efd' },
                     grid: { drawOnChartArea: false },
-                    display: tempData.length > 0,
-                },
-            },
+                    display: tempData.length > 0
+                }
+            }
         }
     });
 })();
