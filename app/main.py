@@ -41,4 +41,8 @@ app.include_router(acquisti.router)
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="home.html",
+        context={"request": request},
+    )
