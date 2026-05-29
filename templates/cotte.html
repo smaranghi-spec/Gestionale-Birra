@@ -13,7 +13,6 @@
 
         .container { max-width: 1100px; margin: 28px auto; padding: 0 24px; }
 
-        /* Stats bar */
         .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
         .stat-pill {
             background: white; border-radius: 20px; padding: 8px 18px;
@@ -22,7 +21,6 @@
         }
         .stat-pill .dot { width: 10px; height: 10px; border-radius: 50%; }
 
-        /* New batch form */
         .card { background: white; border-radius: 10px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
         h2 { color: #5a381e; margin-top: 0; }
 
@@ -36,7 +34,6 @@
         .btn { background: #8b5a2b; color: white; border: none; padding: 9px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; white-space: nowrap; }
         .btn:hover { background: #6f451f; }
 
-        /* Cotte grid */
         .cotte-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 
         .cotta-card {
@@ -49,15 +46,15 @@
         }
         .cotta-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
 
-        .cotta-card.stato-pianificata  { border-left-color: #adb5bd; }
-        .cotta-card.stato-brewday      { border-left-color: #fd7e14; }
-        .cotta-card.stato-fermentazione{ border-left-color: #20c997; }
-        .cotta-card.stato-secondaria   { border-left-color: #0dcaf0; }
-        .cotta-card.stato-condizionamento{ border-left-color: #6610f2; }
-        .cotta-card.stato-imbottigliamento{ border-left-color: #0d6efd; }
-        .cotta-card.stato-maturazione  { border-left-color: #6f42c1; }
-        .cotta-card.stato-pronta       { border-left-color: #198754; }
-        .cotta-card.stato-archiviata   { border-left-color: #6c757d; }
+        .cotta-card.stato-pianificata { border-left-color: #adb5bd; }
+        .cotta-card.stato-brewday { border-left-color: #fd7e14; }
+        .cotta-card.stato-fermentazione { border-left-color: #20c997; }
+        .cotta-card.stato-secondaria { border-left-color: #0dcaf0; }
+        .cotta-card.stato-condizionamento { border-left-color: #6610f2; }
+        .cotta-card.stato-imbottigliamento { border-left-color: #0d6efd; }
+        .cotta-card.stato-maturazione { border-left-color: #6f42c1; }
+        .cotta-card.stato-pronta { border-left-color: #198754; }
+        .cotta-card.stato-archiviata { border-left-color: #6c757d; }
 
         .cotta-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         .cotta-nome { font-size: 16px; font-weight: bold; color: #5a381e; }
@@ -67,15 +64,15 @@
             display: inline-block; padding: 3px 10px; border-radius: 12px;
             font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .badge-pianificata  { background: #e9ecef; color: #495057; }
-        .badge-brewday      { background: #fff3cd; color: #856404; }
-        .badge-fermentazione{ background: #d1f2eb; color: #0e6251; }
-        .badge-secondaria   { background: #d0f5f5; color: #0e6655; }
-        .badge-condizionamento{ background: #e8d5f5; color: #4a148c; }
-        .badge-imbottigliamento{ background: #cfe2ff; color: #084298; }
-        .badge-maturazione  { background: #e8daff; color: #3d1a78; }
-        .badge-pronta       { background: #d1e7dd; color: #0a3622; }
-        .badge-archiviata   { background: #f8f9fa; color: #6c757d; }
+        .badge-pianificata { background: #e9ecef; color: #495057; }
+        .badge-brewday { background: #fff3cd; color: #856404; }
+        .badge-fermentazione { background: #d1f2eb; color: #0e6251; }
+        .badge-secondaria { background: #d0f5f5; color: #0e6655; }
+        .badge-condizionamento { background: #e8d5f5; color: #4a148c; }
+        .badge-imbottigliamento { background: #cfe2ff; color: #084298; }
+        .badge-maturazione { background: #e8daff; color: #3d1a78; }
+        .badge-pronta { background: #d1e7dd; color: #0a3622; }
+        .badge-archiviata { background: #f8f9fa; color: #6c757d; }
 
         .cotta-meta { font-size: 12px; color: #666; margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
         .cotta-meta span { display: flex; align-items: center; gap: 4px; }
@@ -92,26 +89,29 @@
         details summary::-webkit-details-marker { display: none; }
         details summary::before { content: '▶ '; font-size: 11px; }
         details[open] summary::before { content: '▼ '; }
+
+        @media (max-width: 768px) {
+            .topbar { padding: 12px 18px; }
+            .container { padding: 0 16px; }
+            .cotte-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
 <div class="topbar">
-    <a href="/ricette/html">Ricette</a>
+    <a href="/">Home</a>
     <h1>🏭 Tracker di Processo</h1>
     <a href="/importa/beerxml" style="background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:5px;font-size:13px;">Importa BeerXML</a>
 </div>
 
 <div class="container">
 
-    <!-- Statistiche rapide -->
     <div class="stats-bar">
         {% for stato in stati %}
         {% if contatori[stato] > 0 %}
         <div class="stat-pill">
-            <div class="dot" style="background: var(--c-{{ stato }}, #ccc);
-                {% if stato == 'brewday' %}background:#fd7e14{% elif stato == 'fermentazione' %}background:#20c997{% elif stato == 'secondaria' %}background:#0dcaf0{% elif stato == 'pronta' %}background:#198754{% elif stato == 'archiviata' %}background:#6c757d{% elif stato == 'imbottigliamento' %}background:#0d6efd{% elif stato == 'maturazione' %}background:#6f42c1{% elif stato == 'condizionamento' %}background:#6610f2{% else %}background:#adb5bd{% endif %}
-            "></div>
+            <div class="dot" style="{% if stato == 'brewday' %}background:#fd7e14{% elif stato == 'fermentazione' %}background:#20c997{% elif stato == 'secondaria' %}background:#0dcaf0{% elif stato == 'pronta' %}background:#198754{% elif stato == 'archiviata' %}background:#6c757d{% elif stato == 'imbottigliamento' %}background:#0d6efd{% elif stato == 'maturazione' %}background:#6f42c1{% elif stato == 'condizionamento' %}background:#6610f2{% else %}background:#adb5bd{% endif %};"></div>
             <strong>{{ contatori[stato] }}</strong> {{ fasi_label[stato] }}
         </div>
         {% endif %}
@@ -119,7 +119,6 @@
         <div class="stat-pill"><strong>{{ cotte|length }}</strong> totale</div>
     </div>
 
-    <!-- Nuova cotta -->
     <div class="card">
         <details>
             <summary>+ Nuova cotta</summary>
@@ -158,7 +157,6 @@
         </details>
     </div>
 
-    <!-- Lista cotte -->
     {% if cotte %}
     <div class="cotte-grid">
         {% for c in cotte %}
@@ -177,7 +175,7 @@
                 {% if c.fermentatore %}<span>🧪 {{ c.fermentatore }}</span>{% endif %}
             </div>
 
-            {% if c.og_reale or c.fg_reale or c.abv_reale %}
+            {% if c.og_reale or c.fg_reale or c.abv_reale or c.volume_imbottigliato %}
             <div class="cotta-stats">
                 {% if c.og_reale %}
                 <div class="mini-stat">
