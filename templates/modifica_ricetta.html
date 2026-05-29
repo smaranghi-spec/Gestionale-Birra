@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifica ricetta — {{ ricetta.nome }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f7f3ee; color: #222; }
+
+        .topbar {
+            background: #5a381e;
+            color: white;
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .topbar a { color: #f5deb3; text-decoration: none; font-size: 14px; }
+        .topbar a:hover { text-decoration: underline; }
+        .topbar h1 { margin: 0; font-size: 20px; flex: 1; }
+
+        .container { max-width: 900px; margin: 32px auto; padding: 0 24px; }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+
+        h2 { color: #5a381e; margin-top: 0; border-bottom: 2px solid #f0e6d3; padding-bottom: 8px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 24px;
+        }
+        .form-grid .full { grid-column: 1 / -1; }
+
+        label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 4px; }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fdfaf7;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #8b5a2b;
+            background: white;
+        }
+        textarea { min-height: 80px; resize: vertical; }
+
+        .btn-row { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+
+        .btn {
+            background: #8b5a2b;
+            color: white;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { background: #6f451f; }
+        .btn-secondary {
+            background: white;
+            color: #8b5a2b;
+            border: 2px solid #8b5a2b;
+            padding: 9px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-secondary:hover { background: #f5eee6; }
+        .btn-danger {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: auto;
+        }
+        .btn-danger:hover { background: #a93226; }
+
+        .hint { font-size: 12px; color: #888; margin-top: 3px; }
+
+        .stile-badge {
+            display: inline-block;
+            background: #f0e6d3;
+            color: #5a381e;
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .msg-success {
+            background: #d4edda;
+            color: #155724;
+            border-radius: 6px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div>
+        <a href="/">🏠 Home</a>
+        &nbsp;/&nbsp;
+        <a href="/ricette/html">Ricette</a>
+        &nbsp;/&nbsp;
+        <a href="/ricette/{{ ricetta.id }}">{{ ricetta.nome }}</a>
+    </div>
+    <h1>Modifica ricetta</h1>
+</div>
+
+<div class="container">
+
+    {% if saved %}
+    <div class="msg-success">✓ Ricetta aggiornata con successo.</div>
+    {% endif %}
+
+    <div class="card">
+        <h2>Informazioni generali</h2>
+        <form method="post" action="/ricette/{{ ricetta.id }}/modifica">
+            <div class="form-grid">
+
+                <div class="full">
+                    <label>Nome ricetta</label>
+                    <input type="text" name="nome" value="{{ ricetta.nome }}" required>
+                </div>
+
+                <div>
+                    <label>Tipo</label>
+                    <select name="tipo">
+                        <option value="All Grain" {% if ricetta.tipo == 'All Grain' %}selected{% endif %}>All Grain</option>
+                        <option value="Extract" {% if ricetta.tipo == 'Extract' %}selected{% endif %}>Extract</option>
+                        <option value="Partial Mash" {% if ricetta.tipo == 'Partial Mash' %}selected{% endif %}>Partial Mash</option>
+                        <option value="E+G" {% if ricetta.tipo == 'E+G' %}selected{% endif %}>E+G</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Versione</label>
+                    <input type="number" name="versione" value="{{ ricetta.versione }}" min="1">
+                </div>
+
+                <div>
+                    <label>Volume target (litri)</label>
+                    <input type="number" step="0.5" name="volume_target_litri" value="{{ ricetta.volume_target_litri }}" min="1">
+                    <div class="hint">Volume finale in fermentatore</div>
+                </div>
+
+                <div>
+                    <label>Efficienza (%)</label>
+                    <input type="number" step="0.5" name="efficienza" value="{{ ricetta.efficienza }}" min="1" max="100">
+                    <div class="hint">Efficienza tipica del tuo impianto</div>
+                </div>
+
+                <div class="full">
+                    <label>Stile birra
+                        {% if stile_corrente %}
+                        <span class="stile-badge">{{ stile_corrente.nome }}</span>
+                        {% endif %}
+                    </label>
+                    <select name="stile_id">
+                        <option value="0">-- Nessuno stile --</option>
+                        {% for s in stili %}
+                        <option value="{{ s.id }}" {% if ricetta.stile_id == s.id %}selected{% endif %}>
+                            {{ s.nome }} ({{ s.linea_guida }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint">
+                        Assegna uno stile per confrontare le statistiche.
+                        <a href="/stili" target="_blank">Gestisci stili →</a>
+                    </div>
+                </div>
+
+                <div class="full">
+                    <label>Note</label>
+                    <textarea name="note">{{ ricetta.note or '' }}</textarea>
+                </div>
+
+            </div>
+
+            <div class="btn-row" style="margin-top: 24px;">
+                <button type="submit" class="btn">Salva modifiche</button>
+                <a href="/ricette/{{ ricetta.id }}" class="btn-secondary">Annulla</a>
+                <button type="button" class="btn-danger"
+                    onclick="if(confirm('Eliminare definitivamente questa ricetta?')) window.location='/ricette/{{ ricetta.id }}/elimina'">
+                    Elimina ricetta
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+</body>
+</html>
