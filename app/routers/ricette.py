@@ -29,11 +29,12 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
     counts_q = db.query(Cotta.ricetta_id, func.count(Cotta.id)).group_by(Cotta.ricetta_id).all()
     cotte_count = {rid: cnt for rid, cnt in counts_q}
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
-    return templates.TemplateResponse(request, "ricette.html", {
-        "ricette": ricette,
-        "cotte_count": cotte_count,
-        "stili": stili,
-    })
+    return templates.TemplateResponse("ricette.html", {
+    "request": request,
+    "ricette": ricette,
+    "cotte_count": cotte_count,
+    "stili": stili,
+})
 
 
 @router.post("/ricette/html")
