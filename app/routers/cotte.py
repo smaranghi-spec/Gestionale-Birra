@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -36,9 +37,9 @@ def _now_str():
     return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
-def _prossimo_stato(stato: str) -> str | None:
+def _prossimo_stato(stato: str) -> Optional[str]:
     idx = STATI_COTTA.index(stato) if stato in STATI_COTTA else -1
-    if idx >= 0 and idx < len(STATI_COTTA) - 2:
+    if idx >= 0 and idx < len(STATI_COTTA) - 1:
         return STATI_COTTA[idx + 1]
     return None
 
@@ -54,9 +55,10 @@ def lista_cotte(request: Request, db: Session = Depends(get_db)):
             contatori[c.stato] += 1
 
     return templates.TemplateResponse(
-        request,
-        "cotte.html",
+        request=request,
+        name="cotte.html",
         context={
+            "request": request,
             "cotte": cotte,
             "ricette": ricette,
             "contatori": contatori,
@@ -149,9 +151,10 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             misure_sg = misure_sg + [fg_entry]
 
     return templates.TemplateResponse(
-        request,
-        "dettaglio_cotta.html",
+        request=request,
+        name="dettaglio_cotta.html",
         context={
+            "request": request,
             "cotta": cotta,
             "log": list(reversed(cotta.log)),
             "prossimo_stato": prossimo,
@@ -201,28 +204,28 @@ def avanza_stato(cotta_id: int, db: Session = Depends(get_db)):
 @router.post("/cotte/{cotta_id}/aggiorna")
 def aggiorna_cotta(
     cotta_id: int,
-    volume_pre_bollitura: float = Form(None),
-    volume_post_bollitura: float = Form(None),
-    ph_mash: float = Form(None),
-    ph_pre_bollitura: float = Form(None),
-    temp_mash_gradi: float = Form(None),
-    durata_bollitura_min: int = Form(None),
-    efficienza_reale: float = Form(None),
-    og_reale: float = Form(None),
-    fg_reale: float = Form(None),
-    fermentatore: str = Form(None),
-    temp_fermentazione: float = Form(None),
-    data_inoculo: str = Form(None),
-    data_travasamento: str = Form(None),
-    temp_secondaria: float = Form(None),
-    data_imbottigliamento: str = Form(None),
-    tipo_packaging: str = Form(None),
-    volume_imbottigliato: float = Form(None),
-    carbonatazione_vols: float = Form(None),
-    priming_sugar_g: float = Form(None),
-    colore_visivo: str = Form(None),
-    limpidezza: str = Form(None),
-    note: str = Form(None),
+    volume_pre_bollitura: Optional[float] = Form(None),
+    volume_post_bollitura: Optional[float] = Form(None),
+    ph_mash: Optional[float] = Form(None),
+    ph_pre_bollitura: Optional[float] = Form(None),
+    temp_mash_gradi: Optional[float] = Form(None),
+    durata_bollitura_min: Optional[int] = Form(None),
+    efficienza_reale: Optional[float] = Form(None),
+    og_reale: Optional[float] = Form(None),
+    fg_reale: Optional[float] = Form(None),
+    fermentatore: Optional[str] = Form(None),
+    temp_fermentazione: Optional[float] = Form(None),
+    data_inoculo: Optional[str] = Form(None),
+    data_travasamento: Optional[str] = Form(None),
+    temp_secondaria: Optional[float] = Form(None),
+    data_imbottigliamento: Optional[str] = Form(None),
+    tipo_packaging: Optional[str] = Form(None),
+    volume_imbottigliato: Optional[float] = Form(None),
+    carbonatazione_vols: Optional[float] = Form(None),
+    priming_sugar_g: Optional[float] = Form(None),
+    colore_visivo: Optional[str] = Form(None),
+    limpidezza: Optional[str] = Form(None),
+    note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
@@ -270,10 +273,10 @@ def aggiungi_log(
     cotta_id: int,
     tipo: str = Form("nota"),
     descrizione: str = Form(...),
-    valore: float = Form(None),
-    unita: str = Form(None),
-    fase: str = Form(None),
-    note: str = Form(None),
+    valore: Optional[float] = Form(None),
+    unita: Optional[str] = Form(None),
+    fase: Optional[str] = Form(None),
+    note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
@@ -298,7 +301,10 @@ def aggiungi_log(
 
 @router.post("/cotte/{cotta_id}/log/{log_id}/elimina")
 def elimina_log(cotta_id: int, log_id: int, db: Session = Depends(get_db)):
-    entry = db.query(LogCotta).filter(LogCotta.id == log_id, LogCotta.cotta_id == cotta_id).first()
+    entry = db.query(LogCotta).filter(
+        LogCotta.id == log_id,
+        LogCotta.cotta_id == cotta_id
+    ).first()
     if entry:
         db.delete(entry)
         db.commit()
