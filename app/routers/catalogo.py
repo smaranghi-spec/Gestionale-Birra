@@ -20,21 +20,35 @@ def get_db():
 
 
 @router.get("/catalogo/ingredienti", response_class=HTMLResponse)
-def lista_catalogo(request: Request, categoria: str = None, msg: str = None, db: Session = Depends(get_db)):
+def lista_catalogo(
+    request: Request,
+    categoria: str = None,
+    msg: str = None,
+    db: Session = Depends(get_db),
+):
     query = db.query(CatalogoIngrediente)
     if categoria:
         query = query.filter(CatalogoIngrediente.categoria == categoria)
+
     items = query.order_by(CatalogoIngrediente.nome).all()
-    return templates.TemplateResponse(request, "catalogo_ingredienti.html", {
-        "items": items,
-        "categoria_attiva": categoria,
-        "msg": msg,
-    })
+
+    return templates.TemplateResponse(
+        "catalogo_ingredienti.html",
+        {
+            "request": request,
+            "items": items,
+            "categoria_attiva": categoria,
+            "msg": msg,
+        },
+    )
 
 
 @router.get("/catalogo/ingredienti/nuovo", response_class=HTMLResponse)
 def form_nuovo_ingrediente(request: Request):
-    return templates.TemplateResponse(request, "nuovo_ingrediente_catalogo.html", {})
+    return templates.TemplateResponse(
+        "nuovo_ingrediente_catalogo.html",
+        {"request": request},
+    )
 
 
 @router.post("/catalogo/ingredienti/nuovo")
@@ -78,11 +92,13 @@ def crea_ingrediente_catalogo(
 def popola_demo(db: Session = Depends(get_db)):
     esistenti = {i.nome for i in db.query(CatalogoIngrediente.nome).all()}
     nuovi = 0
+
     for d in TUTTO:
         if d["nome"] in esistenti:
             continue
         db.add(CatalogoIngrediente(**d))
         nuovi += 1
+
     db.commit()
     return RedirectResponse(f"/catalogo/ingredienti?msg=Importati+{nuovi}+ingredienti", status_code=303)
 
@@ -92,7 +108,14 @@ def duplica_ingrediente(item_id: int, request: Request, db: Session = Depends(ge
     item = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
     if not item:
         return RedirectResponse("/catalogo/ingredienti", status_code=303)
-    return templates.TemplateResponse(request, "duplica_ingrediente_catalogo.html", {"item": item})
+
+    return templates.TemplateResponse(
+        "duplica_ingrediente_catalogo.html",
+        {
+            "request": request,
+            "item": item,
+        },
+    )
 
 
 @router.post("/catalogo/ingredienti/{item_id}/aggiungi_a_ricetta/{ricetta_id}")
@@ -131,4 +154,5 @@ def aggiungi_a_ricetta(
     )
     db.add(ing)
     db.commit()
+
     return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
