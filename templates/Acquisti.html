@@ -2,19 +2,343 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Acquisti</title>
+    <title>Dove acquistare — Gestionale Birrificio</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f3ee; }
-        .card { background: white; padding: 24px; border-radius: 12px; max-width: 900px; }
-        h1 { color: #5a381e; }
-        a { color: #8b5a2b; font-weight: bold; text-decoration: none; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f7f3ee; color: #222; }
+
+        .topbar {
+            background: #5a381e;
+            color: white;
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .topbar a { color: #f5deb3; text-decoration: none; font-size: 14px; }
+        .topbar a:hover { text-decoration: underline; }
+        .topbar h1 { margin: 0; font-size: 20px; flex: 1; }
+
+        .container { max-width: 1050px; margin: 32px auto; padding: 0 24px; }
+
+        .intro-card {
+            background: linear-gradient(135deg, #8b5a2b 0%, #c68642 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+        }
+        .intro-card h2 { margin: 0 0 6px 0; font-size: 20px; }
+        .intro-card p { margin: 0; color: #f5deb3; font-size: 14px; }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #5a381e;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 32px 0 14px 0;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e8ddd0;
+        }
+
+        .shops-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
+        .shop-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 22px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+            border-left: 5px solid #8b5a2b;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .shop-card.hop   { border-left-color: #198754; }
+        .shop-card.kit   { border-left-color: #0d6efd; }
+        .shop-card.multi { border-left-color: #fd7e14; }
+        .shop-card.attrezzatura { border-left-color: #6f42c1; }
+
+        .shop-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #222;
+        }
+        .shop-url {
+            font-size: 12px;
+            color: #888;
+            word-break: break-all;
+        }
+        .shop-desc {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+        .shop-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 4px;
+        }
+        .tag {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #f0e6d3;
+            color: #7a4f1e;
+        }
+        .tag.hop   { background: #d1f2eb; color: #0b6650; }
+        .tag.lievito { background: #fff3cd; color: #856404; }
+        .tag.attrezzatura { background: #e8d5f5; color: #4a148c; }
+        .tag.kit   { background: #cfe2ff; color: #084298; }
+        .tag.estratto { background: #fde8d0; color: #8a4300; }
+        .tag.acqua { background: #d0f0fd; color: #0c3e5e; }
+
+        .shop-link {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 7px 14px;
+            border-radius: 6px;
+            background: #8b5a2b;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: bold;
+            align-self: flex-start;
+            transition: background 0.15s;
+        }
+        .shop-link:hover { background: #6f451f; }
+
+        .disclaimer {
+            background: #fff8f0;
+            border: 1px solid #e8d5c0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #775533;
+            margin-top: 28px;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Acquisti</h1>
-        <p>Sezione per fornitori, ordini di acquisto e approvvigionamenti.</p>
-        <p><a href="/">Torna alla home</a></p>
+
+<div class="topbar">
+    <div>
+        <a href="/">← Home</a>
+        &nbsp;/&nbsp;
+        <span>Dove acquistare</span>
     </div>
+    <h1>🛒 Dove acquistare materie prime</h1>
+</div>
+
+<div class="container">
+
+    <div class="intro-card">
+        <h2>E-commerce italiani per homebrewing</h2>
+        <p>Una selezione dei principali negozi online italiani dove acquistare malti, luppoli, lieviti e attrezzatura per la produzione di birra artigianale.</p>
+    </div>
+
+    <!-- ── MATERIE PRIME COMPLETE ─────────────────────────────── -->
+    <div class="section-title">🌾 Materie prime complete (malti · luppoli · lieviti · misc)</div>
+    <div class="shops-grid">
+
+        <div class="shop-card multi">
+            <div class="shop-name">Birramia</div>
+            <div class="shop-url">birramia.it</div>
+            <div class="shop-desc">Uno dei più grandi e-commerce italiani di homebrewing. Vasta scelta di malti base e speciali, luppoli in pellet e fiore, lieviti liquidi e secchi, additivi e attrezzatura.</div>
+            <div class="shop-tags">
+                <span class="tag">Malti</span>
+                <span class="tag hop">Luppoli</span>
+                <span class="tag lievito">Lieviti</span>
+                <span class="tag attrezzatura">Attrezzatura</span>
+                <span class="tag kit">Kit ricette</span>
+            </div>
+            <a href="https://www.birramia.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card multi">
+            <div class="shop-name">Homebrewing.it</div>
+            <div class="shop-url">homebrewing.it</div>
+            <div class="shop-desc">Specializzato in ingredienti e attrezzatura per homebrewing. Buona selezione di malti, luppoli freschi, lieviti Wyeast e White Labs, sali per trattamento acqua.</div>
+            <div class="shop-tags">
+                <span class="tag">Malti</span>
+                <span class="tag hop">Luppoli</span>
+                <span class="tag lievito">Lieviti liquidi</span>
+                <span class="tag acqua">Sali acqua</span>
+            </div>
+            <a href="https://www.homebrewing.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card multi">
+            <div class="shop-name">BrewerShop</div>
+            <div class="shop-url">brewershop.it</div>
+            <div class="shop-desc">Negozio online con ampia gamma di malti (Weyermann, Bestmalz, Castle Malting), luppoli, lieviti secchi e liquidi, chiarificanti e additivi.</div>
+            <div class="shop-tags">
+                <span class="tag">Malti</span>
+                <span class="tag hop">Luppoli</span>
+                <span class="tag lievito">Lieviti</span>
+                <span class="tag attrezzatura">Attrezzatura</span>
+            </div>
+            <a href="https://www.brewershop.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card multi">
+            <div class="shop-name">Cantina del Birraio</div>
+            <div class="shop-url">cantinadel birraio.it</div>
+            <div class="shop-desc">Ingredienti per birra e vino. Buona selezione di malti speciali, luppoli in pellet, lieviti secchi Fermentis/Lallemand e misc (irish moss, whirlfloc, nutrienti).</div>
+            <div class="shop-tags">
+                <span class="tag">Malti</span>
+                <span class="tag hop">Luppoli</span>
+                <span class="tag lievito">Lieviti</span>
+                <span class="tag">Misc</span>
+            </div>
+            <a href="https://www.cantinadel birraio.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card multi">
+            <div class="shop-name">Ferrowine</div>
+            <div class="shop-url">ferrowine.it</div>
+            <div class="shop-desc">Materiali per birra e vino. Malti Crisp e Simpsons, luppoli UK e americani, lieviti, tappi e materiali per imbottigliamento. Prezzi competitivi su grandi quantità.</div>
+            <div class="shop-tags">
+                <span class="tag">Malti</span>
+                <span class="tag hop">Luppoli</span>
+                <span class="tag lievito">Lieviti</span>
+                <span class="tag">Imbottigliamento</span>
+            </div>
+            <a href="https://www.ferrowine.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card multi">
+            <div class="shop-name">Malto e Luppolo</div>
+            <div class="shop-url">maltoeluppolo.it</div>
+            <div class="shop-desc">Portale dedicato esclusivamente agli ingredienti per birra. Vasta selezione di malti base e speciali, luppoli in pellet, lieviti secchi e liquidi, kit per ricette.</div>
+            <div class="shop-tags">
+                <span class="tag">Malti</span>
+                <span class="tag hop">Luppoli</span>
+                <span class="tag lievito">Lieviti</span>
+                <span class="tag kit">Kit ricette</span>
+            </div>
+            <a href="https://www.maltoeluppolo.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+    </div>
+
+    <!-- ── LUPPOLI FRESCHI / SPECIALIZZATI ───────────────────── -->
+    <div class="section-title">🌿 Luppoli — specializzati e freschi</div>
+    <div class="shops-grid">
+
+        <div class="shop-card hop">
+            <div class="shop-name">Luppolo.net</div>
+            <div class="shop-url">luppolo.net</div>
+            <div class="shop-desc">Specializzato in luppoli. Ampia selezione di luppoli in pellet T90 e T45, luppoli cryo, luppoli freschi di stagione da coltivatori italiani ed europei.</div>
+            <div class="shop-tags">
+                <span class="tag hop">Pellet T90</span>
+                <span class="tag hop">Pellet T45</span>
+                <span class="tag hop">Cryo hops</span>
+                <span class="tag hop">Luppoli freschi</span>
+            </div>
+            <a href="https://www.luppolo.net" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card hop">
+            <div class="shop-name">Luppoli Italiani (Agrisette)</div>
+            <div class="shop-url">agrisette.it</div>
+            <div class="shop-desc">Coltivatori e distributori di luppolo italiano. Luppoli freschi e essiccati da varietà italiane (Cascade IT, Chinook IT, Magnum IT). Produzione a Km 0.</div>
+            <div class="shop-tags">
+                <span class="tag hop">Luppoli italiani</span>
+                <span class="tag hop">Luppoli freschi</span>
+                <span class="tag hop">Km 0</span>
+            </div>
+            <a href="https://www.agrisette.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+    </div>
+
+    <!-- ── ATTREZZATURA ─────────────────────────────────────── -->
+    <div class="section-title">⚙️ Attrezzatura e impianti</div>
+    <div class="shops-grid">
+
+        <div class="shop-card attrezzatura">
+            <div class="shop-name">Birramia — Attrezzatura</div>
+            <div class="shop-url">birramia.it/attrezzatura</div>
+            <div class="shop-desc">Nella sezione attrezzatura: caldaie, fermentatori, sistemi di raffreddamento, densimetri, refractometri, pH-metro, impianti all-in-one (Grainfather, Brewzilla).</div>
+            <div class="shop-tags">
+                <span class="tag attrezzatura">Caldaie</span>
+                <span class="tag attrezzatura">Fermentatori</span>
+                <span class="tag attrezzatura">All-in-one</span>
+                <span class="tag attrezzatura">Misurazioni</span>
+            </div>
+            <a href="https://www.birramia.it/it/25-attrezzatura" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card attrezzatura">
+            <div class="shop-name">KegLand Italia</div>
+            <div class="shop-url">kegland.it</div>
+            <div class="shop-desc">Distributore ufficiale KegLand in Italia. Fermentatori pressurizzati (FermZilla), sistemi keg, spina per birra, accessori CO₂ e servizio alla spina.</div>
+            <div class="shop-tags">
+                <span class="tag attrezzatura">Fermentatori pressurizzati</span>
+                <span class="tag attrezzatura">Kegging</span>
+                <span class="tag attrezzatura">CO₂</span>
+            </div>
+            <a href="https://www.kegland.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card attrezzatura">
+            <div class="shop-name">GEB — Grandi Birre</div>
+            <div class="shop-url">grandibimbi.it (sezione birra)</div>
+            <div class="shop-desc">Riferimento per attrezzatura professionale e semi-professionale: impianti multipli da 10–50 L, sistemi HERMS/RIMS, conicalatori inox, scambiatori di calore a piastre.</div>
+            <div class="shop-tags">
+                <span class="tag attrezzatura">Impianti inox</span>
+                <span class="tag attrezzatura">HERMS/RIMS</span>
+                <span class="tag attrezzatura">Professionale</span>
+            </div>
+            <a href="https://www.grandibimbi.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+    </div>
+
+    <!-- ── TRATTAMENTO ACQUA ─────────────────────────────────── -->
+    <div class="section-title">💧 Sali e trattamento acqua</div>
+    <div class="shops-grid">
+
+        <div class="shop-card">
+            <div class="shop-name">Birramia — Sali per acqua</div>
+            <div class="shop-url">birramia.it</div>
+            <div class="shop-desc">Solfato di calcio (gesso), cloruro di calcio, bicarbonato di sodio, acido lattico, acido fosforico, metabisolfito. Tutto per profilare l'acqua di processo.</div>
+            <div class="shop-tags">
+                <span class="tag acqua">Gesso (CaSO₄)</span>
+                <span class="tag acqua">CaCl₂</span>
+                <span class="tag acqua">Acido lattico</span>
+                <span class="tag acqua">pH-metro</span>
+            </div>
+            <a href="https://www.birramia.it/it/34-chimica-acqua" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+        <div class="shop-card">
+            <div class="shop-name">Homebrewing.it — Chimica acqua</div>
+            <div class="shop-url">homebrewing.it</div>
+            <div class="shop-desc">Sali minerali in confezioni da 100 g a 1 kg, strisce per il pH, pH-metro digitale, resine a scambio ionico, filtri per cloro e clorammine.</div>
+            <div class="shop-tags">
+                <span class="tag acqua">Sali minerali</span>
+                <span class="tag acqua">Resine IX</span>
+                <span class="tag acqua">Filtri cloro</span>
+            </div>
+            <a href="https://www.homebrewing.it" target="_blank" rel="noopener" class="shop-link">Visita il sito →</a>
+        </div>
+
+    </div>
+
+    <div class="disclaimer">
+        ℹ️ <strong>Nota:</strong> I collegamenti riportati sono indicativi. Verifica prezzi, disponibilità e condizioni di spedizione direttamente sui siti dei rivenditori. Questo gestionale non ha alcun rapporto commerciale con i negozi elencati.
+    </div>
+
+</div>
 </body>
 </html>
