@@ -13,6 +13,7 @@ templates = Jinja2Templates(directory="templates")
 
 def run_migrations():
     import sqlite3
+
     conn = sqlite3.connect("./gestionale_birra.db")
     for sql in [
         "ALTER TABLE ingredienti_ricetta ADD COLUMN prezzo_unitario REAL",
