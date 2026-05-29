@@ -160,6 +160,37 @@
             min-width: 280px;
             margin-right: 10px;
         }
+
+        /* Avvia cotta / storico */
+        .avvia-panel { border-left: 5px solid #198754; }
+        .avvia-panel h2 { color: #198754; }
+        .form-row-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .form-row-inline .f { flex: 1; min-width: 160px; }
+        .form-row-inline .f label { display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 4px; }
+        .form-row-inline input, .form-row-inline select {
+            display: block; width: 100%; max-width: none;
+            padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px;
+            font-size: 13px; margin-bottom: 0; background: #fdfaf7;
+        }
+        .btn-green { background: #198754; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-green:hover { background: #146c43; }
+
+        .storico-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+        .storico-table th { background: #f5ede2; color: #5a381e; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border-bottom: 2px solid #e8ddd0; text-align: left; }
+        .storico-table td { padding: 10px 10px; border-bottom: 1px solid #f0e8de; vertical-align: middle; }
+        .storico-table tr:last-child td { border-bottom: none; }
+        .storico-table tr:hover td { background: #fdf8f3; }
+        .badge-sm { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .badge-pianificata  { background: #e9ecef; color: #495057; }
+        .badge-brewday      { background: #fff3cd; color: #856404; }
+        .badge-fermentazione{ background: #d1f2eb; color: #0e6251; }
+        .badge-secondaria   { background: #d0f5f5; color: #0e6655; }
+        .badge-condizionamento{ background: #e8d5f5; color: #4a148c; }
+        .badge-imbottigliamento{ background: #cfe2ff; color: #084298; }
+        .badge-maturazione  { background: #e8daff; color: #3d1a78; }
+        .badge-pronta       { background: #d1e7dd; color: #0a3622; }
+        .badge-archiviata   { background: #f8f9fa; color: #6c757d; }
+        .n-cotte-badge { background: #f5e8d3; color: #7a4f1e; font-size: 12px; font-weight: bold; border-radius: 12px; padding: 3px 10px; margin-left: 8px; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -174,11 +205,20 @@
         <p><strong>Note:</strong> {{ ricetta.note or '-' }}</p>
 
         <div class="toolbar">
-            <a href="/ricette/html">← Torna alle ricette</a>
+            <a href="/">🏠 Home</a>
+            <a href="/ricette/html">← Ricette</a>
+            <a href="/ricette/{{ ricetta.id }}/modifica" class="btn">✏ Modifica ricetta</a>
             <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
             <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
             <button type="button" onclick="aggiornaStats()">Ricalcola statistiche</button>
+            <a href="#avvia-cotta" class="btn" style="background:#198754;" onclick="document.getElementById('avvia-cotta').scrollIntoView({behavior:'smooth'});document.getElementById('avvia-form').style.display='block';this.style.display='none';">🚀 Avvia Cotta</a>
         </div>
+        {% if n_cotte > 0 %}
+        <p style="margin:8px 0 0 0;font-size:13px;color:#666;">
+            🍺 <strong>{{ n_cotte }}</strong> cott{{ 'a prodotta' if n_cotte == 1 else 'e prodotte' }} da questa ricetta ·
+            <a href="#storico-cotte">Vedi storico</a>
+        </p>
+        {% endif %}
     </div>
 
     <div class="card">
@@ -192,6 +232,18 @@
             <div class="stat"><div class="stat-label">EBC</div><div class="stat-value" id="stat-ebc">{{ stats.ebc }}</div></div>
             <div class="stat"><div class="stat-label">BU/GU</div><div class="stat-value" id="stat-bugu">{{ stats.bu_gu }}</div></div>
             <div class="stat"><div class="stat-label">GU</div><div class="stat-value" id="stat-gu">{{ stats.gu }}</div></div>
+            <div class="stat" style="min-width:90px;">
+                <div class="stat-label">Colore birra</div>
+                <div id="stat-color-swatch" style="width:52px;height:52px;border-radius:8px;background:{{ srm_hex }};border:2px solid rgba(0,0,0,0.18);margin-top:6px;" title="SRM {{ stats.srm }} · EBC {{ stats.ebc }}"></div>
+                <div style="font-size:11px;color:#888;margin-top:4px;">SRM {{ stats.srm }}</div>
+            </div>
+            {% if costo.totale > 0 %}
+            <div class="stat">
+                <div class="stat-label">💰 Costo MP</div>
+                <div class="stat-value" id="stat-costo" style="font-size:20px;">€ {{ costo.totale }}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">{{ costo.dettaglio|length }} voci con prezzo</div>
+            </div>
+            {% endif %}
         </div>
         <div class="status-msg" id="stats-status">Statistiche caricate.</div>
     </div>
@@ -269,6 +321,302 @@
         {% endif %}
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- COMPOSIZIONE RICETTA                                            -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    {% if ingredienti %}
+    <div class="card" style="max-width:1200px;">
+        <h2>📊 Composizione ricetta</h2>
+
+        <style>
+            .comp-cat { margin-bottom: 22px; }
+            .comp-cat-header {
+                display: flex; justify-content: space-between; align-items: baseline;
+                margin-bottom: 8px;
+            }
+            .comp-cat-title {
+                font-size: 12px; font-weight: bold; text-transform: uppercase;
+                letter-spacing: 0.8px; color: #888;
+            }
+            .comp-cat-total { font-size: 12px; color: #aaa; }
+            .comp-row { margin-bottom: 6px; }
+            .comp-row-labels {
+                display: flex; justify-content: space-between;
+                font-size: 13px; margin-bottom: 3px;
+            }
+            .comp-row-name { font-weight: bold; color: #333; }
+            .comp-row-meta { color: #999; font-size: 12px; }
+            .comp-bar-bg {
+                height: 18px; background: #f0e8de; border-radius: 4px; overflow: hidden;
+            }
+            .comp-bar-fill {
+                height: 100%; border-radius: 4px;
+                display: flex; align-items: center; padding-left: 6px;
+                font-size: 11px; font-weight: bold; color: white;
+                min-width: 28px; transition: width 0.4s ease;
+                white-space: nowrap; overflow: hidden;
+            }
+            .bar-grain { background: linear-gradient(90deg, #c8873e, #e8a85e); }
+            .bar-hop   { background: linear-gradient(90deg, #4a9a3f, #7bc96f); }
+            .bar-yeast { background: linear-gradient(90deg, #d47b2a, #f4a259); }
+            .bar-misc  { background: linear-gradient(90deg, #7a6b9a, #a89cc8); }
+            .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px 32px; }
+        </style>
+
+        {% set cats = [
+            ('grain', '🌾 Fermentabili', 'bar-grain'),
+            ('hop',   '🌿 Luppoli',      'bar-hop'),
+            ('yeast', '🧫 Lieviti',      'bar-yeast'),
+            ('misc',  '🧪 Misc',         'bar-misc'),
+        ] %}
+
+        <div class="comp-grid">
+        {% for cat_key, cat_label, bar_class in cats %}
+            {% set cat_ings = ingredienti | selectattr('categoria', 'equalto', cat_key) | list %}
+            {% if cat_ings %}
+            {% set first = cat_ings[0] %}
+            {% set info = percentuali[first.id] %}
+            <div class="comp-cat">
+                <div class="comp-cat-header">
+                    <span class="comp-cat-title">{{ cat_label }}</span>
+                    <span class="comp-cat-total">
+                        totale:
+                        {% if info.cat_totale < 1 and cat_key == 'grain' %}
+                            {{ (info.cat_totale * 1000)|round(0)|int }} g
+                        {% elif info.cat_totale >= 1000 and cat_key == 'hop' %}
+                            {{ (info.cat_totale / 1000)|round(2) }} kg
+                        {% else %}
+                            {{ info.cat_totale|round(2) }} {{ info.unita_base }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% set sorted_ings = cat_ings | sort(attribute='quantita', reverse=True) %}
+                {% for i in sorted_ings %}
+                {% set p = percentuali[i.id] %}
+                <div class="comp-row">
+                    <div class="comp-row-labels">
+                        <span class="comp-row-name">{{ i.nome }}</span>
+                        <span class="comp-row-meta">
+                            {{ i.quantita }} {{ i.unita }}
+                            &nbsp;·&nbsp;
+                            <strong>{{ p.perc }}%</strong>
+                        </span>
+                    </div>
+                    <div class="comp-bar-bg">
+                        <div class="comp-bar-fill {{ bar_class }}"
+                             style="width: {{ [p.perc, 2]|max }}%;">
+                            {% if p.perc >= 8 %}{{ p.perc }}%{% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- PROFILO ACQUA                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="card" id="profilo-acqua">
+        <h2>💧 Profilo dell'acqua</h2>
+        <style>
+            .acqua-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px 16px; margin-bottom: 18px; }
+            .acqua-mineral { background: #f0f7fd; border-radius: 8px; padding: 12px 10px; text-align: center; border: 1px solid #d0e8f5; }
+            .acqua-mineral-label { font-size: 11px; font-weight: bold; color: #0c3e5e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+            .acqua-mineral-value { font-size: 22px; font-weight: bold; color: #084298; }
+            .acqua-mineral-unit { font-size: 11px; color: #666; margin-top: 2px; }
+            .acqua-profile-name { display: inline-block; background: #cfe2ff; color: #084298; border-radius: 12px; padding: 3px 12px; font-size: 13px; font-weight: bold; margin-bottom: 14px; }
+            .form-acqua-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px 14px; }
+            .form-acqua-grid label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 3px; }
+            .form-acqua-grid input { width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+            details summary { cursor: pointer; font-size: 14px; color: #084298; font-weight: bold; padding: 6px 0; user-select: none; }
+        </style>
+
+        {% if profilo_acqua %}
+        <div class="acqua-profile-name">{{ profilo_acqua.nome }}</div>
+        <div class="acqua-grid">
+            <div class="acqua-mineral">
+                <div class="acqua-mineral-label">Calcio Ca²⁺</div>
+                <div class="acqua-mineral-value">{{ profilo_acqua.ca|int }}</div>
+                <div class="acqua-mineral-unit">mg/L</div>
+            </div>
+            <div class="acqua-mineral">
+                <div class="acqua-mineral-label">Magnesio Mg²⁺</div>
+                <div class="acqua-mineral-value">{{ profilo_acqua.mg|int }}</div>
+                <div class="acqua-mineral-unit">mg/L</div>
+            </div>
+            <div class="acqua-mineral">
+                <div class="acqua-mineral-label">Sodio Na⁺</div>
+                <div class="acqua-mineral-value">{{ profilo_acqua.na|int }}</div>
+                <div class="acqua-mineral-unit">mg/L</div>
+            </div>
+            <div class="acqua-mineral">
+                <div class="acqua-mineral-label">Cloruri Cl⁻</div>
+                <div class="acqua-mineral-value">{{ profilo_acqua.cl|int }}</div>
+                <div class="acqua-mineral-unit">mg/L</div>
+            </div>
+            <div class="acqua-mineral">
+                <div class="acqua-mineral-label">Solfati SO₄²⁻</div>
+                <div class="acqua-mineral-value">{{ profilo_acqua.so4|int }}</div>
+                <div class="acqua-mineral-unit">mg/L</div>
+            </div>
+            <div class="acqua-mineral">
+                <div class="acqua-mineral-label">Bicarb. HCO₃⁻</div>
+                <div class="acqua-mineral-value">{{ profilo_acqua.hco3|int }}</div>
+                <div class="acqua-mineral-unit">mg/L</div>
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#888;font-size:14px;margin-bottom:14px;">Nessun profilo acqua definito. Compila il modulo per salvarne uno.</p>
+        {% endif %}
+
+        <details {% if not profilo_acqua %}open{% endif %}>
+            <summary>{{ '✏️ Modifica profilo' if profilo_acqua else '+ Inserisci profilo acqua' }}</summary>
+            <form method="post" action="/ricette/{{ ricetta.id }}/profilo-acqua" style="margin-top:14px;">
+                <div class="form-acqua-grid">
+                    <div>
+                        <label>Nome profilo</label>
+                        <input type="text" name="nome" value="{{ profilo_acqua.nome if profilo_acqua else '' }}" placeholder="es. Pilsner, London…">
+                    </div>
+                    <div>
+                        <label>Ca²⁺ (mg/L)</label>
+                        <input type="number" step="0.1" name="ca" value="{{ profilo_acqua.ca if profilo_acqua else 0 }}" min="0">
+                    </div>
+                    <div>
+                        <label>Mg²⁺ (mg/L)</label>
+                        <input type="number" step="0.1" name="mg" value="{{ profilo_acqua.mg if profilo_acqua else 0 }}" min="0">
+                    </div>
+                    <div>
+                        <label>Na⁺ (mg/L)</label>
+                        <input type="number" step="0.1" name="na" value="{{ profilo_acqua.na if profilo_acqua else 0 }}" min="0">
+                    </div>
+                    <div>
+                        <label>Cl⁻ (mg/L)</label>
+                        <input type="number" step="0.1" name="cl" value="{{ profilo_acqua.cl if profilo_acqua else 0 }}" min="0">
+                    </div>
+                    <div>
+                        <label>SO₄²⁻ (mg/L)</label>
+                        <input type="number" step="0.1" name="so4" value="{{ profilo_acqua.so4 if profilo_acqua else 0 }}" min="0">
+                    </div>
+                    <div>
+                        <label>HCO₃⁻ (mg/L)</label>
+                        <input type="number" step="0.1" name="hco3" value="{{ profilo_acqua.hco3 if profilo_acqua else 0 }}" min="0">
+                    </div>
+                </div>
+                <button type="submit" style="margin-top:12px;background:#084298;color:white;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-weight:bold;">
+                    💧 Salva profilo acqua
+                </button>
+            </form>
+        </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- PROFILO AMMOSTAMENTO                                             -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="card" id="profilo-mash">
+        <h2>🌡️ Profilo di ammostamento</h2>
+        <style>
+            .mash-step-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 10px 14px; background: #fff8f0; border-radius: 8px; border-left: 4px solid #c8873e; }
+            .mash-step-num { font-size: 11px; font-weight: bold; color: #888; min-width: 22px; text-align: center; }
+            .mash-step-name { font-weight: bold; color: #333; flex: 2; font-size: 14px; }
+            .mash-step-temp { background: #ffe0b2; color: #8a4300; border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: bold; }
+            .mash-step-dur  { background: #e8f5e9; color: #1b5e20; border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: bold; }
+            .mash-form-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; flex-wrap: wrap; }
+            .mash-form-row input[type="text"]   { flex: 2; min-width: 140px; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+            .mash-form-row input[type="number"] { width: 80px; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+            .mash-form-row label { font-size: 11px; font-weight: bold; color: #666; }
+            .mash-form-field { display: flex; flex-direction: column; gap: 3px; }
+            .btn-remove-step { background: none; border: 1px solid #ddd; color: #c00; cursor: pointer; border-radius: 4px; padding: 4px 8px; font-size: 12px; }
+            .btn-add-step { background: #f5ede2; color: #8b5a2b; border: 1px dashed #c8873e; cursor: pointer; border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: bold; margin-top: 4px; }
+        </style>
+
+        {% if profilo_mash %}
+        <p style="margin-bottom:12px;">
+            <strong>{{ profilo_mash.nome }}</strong> ·
+            <span style="font-size:13px;color:#666;">{{ mash_steps|length }} step</span>
+        </p>
+        {% if mash_steps %}
+        <div style="margin-bottom:16px;">
+            {% for step in mash_steps %}
+            <div class="mash-step-row">
+                <div class="mash-step-num">{{ loop.index }}</div>
+                <div class="mash-step-name">{{ step.nome }}</div>
+                <span class="mash-step-temp">{{ step.temp_gradi }}°C</span>
+                <span class="mash-step-dur">{{ step.durata_min }} min</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% else %}
+        <p style="color:#888;font-size:14px;margin-bottom:14px;">Nessun profilo di ammostamento. Aggiungine uno con il modulo.</p>
+        {% endif %}
+
+        <details {% if not profilo_mash %}open{% endif %}>
+            <summary>{{ '✏️ Modifica profilo ammostamento' if profilo_mash else '+ Inserisci profilo ammostamento' }}</summary>
+            <form method="post" action="/ricette/{{ ricetta.id }}/profilo-mash-save" style="margin-top:16px;" id="mash-form">
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">Nome profilo</label>
+                    <input type="text" name="nome_profilo"
+                           value="{{ profilo_mash.nome if profilo_mash else 'Singolo infuso' }}"
+                           style="padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;width:300px;">
+                </div>
+
+                <div id="mash-steps-container">
+                    {% if mash_steps %}
+                    {% for step in mash_steps %}
+                    <div class="mash-form-row step-row">
+                        <div class="mash-form-field">
+                            <label>Nome step</label>
+                            <input type="text" name="step_nome" value="{{ step.nome }}" placeholder="es. Saccarificazione">
+                        </div>
+                        <div class="mash-form-field">
+                            <label>Temp. (°C)</label>
+                            <input type="number" name="step_temp" step="0.5" value="{{ step.temp_gradi }}" min="30" max="100">
+                        </div>
+                        <div class="mash-form-field">
+                            <label>Durata (min)</label>
+                            <input type="number" name="step_durata" value="{{ step.durata_min }}" min="1" max="300">
+                        </div>
+                        <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="mash-form-row step-row">
+                        <div class="mash-form-field">
+                            <label>Nome step</label>
+                            <input type="text" name="step_nome" value="Saccarificazione" placeholder="es. Saccarificazione">
+                        </div>
+                        <div class="mash-form-field">
+                            <label>Temp. (°C)</label>
+                            <input type="number" name="step_temp" step="0.5" value="67" min="30" max="100">
+                        </div>
+                        <div class="mash-form-field">
+                            <label>Durata (min)</label>
+                            <input type="number" name="step_durata" value="60" min="1" max="300">
+                        </div>
+                        <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <button type="button" class="btn-add-step" onclick="aggiungiStep()">+ Aggiungi step</button>
+
+                <div style="margin-top:14px;">
+                    <button type="submit" style="background:#8b5a2b;color:white;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-weight:bold;">
+                        🌡️ Salva profilo ammostamento
+                    </button>
+                </div>
+            </form>
+        </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- INGREDIENTI (tabella completa)                                   -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="card">
         <h2>Ingredienti attuali</h2>
 
@@ -277,7 +625,8 @@
             <thead>
                 <tr>
                     <th>Nome</th>
-                    <th>Categoria</th>
+                    <th>Cat.</th>
+                    <th style="text-align:right;">%&nbsp;cat.</th>
                     <th>Modifica rapida</th>
                     <th>Dati</th>
                     <th>Azioni</th>
@@ -285,12 +634,31 @@
             </thead>
             <tbody>
                 {% for i in ingredienti %}
+                {% set p = percentuali.get(i.id, {}) %}
                 <tr>
                     <td>
                         <strong>{{ i.nome }}</strong><br>
                         <span class="small-note">ID {{ i.id }}</span>
                     </td>
                     <td>{{ i.categoria }}</td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        {% if p %}
+                        <span style="font-weight:bold;color:
+                            {% if i.categoria=='grain' %}#c8873e
+                            {% elif i.categoria=='hop' %}#4a9a3f
+                            {% elif i.categoria=='yeast' %}#d47b2a
+                            {% else %}#7a6b9a{% endif %};">
+                            {{ p.perc }}%
+                        </span>
+                        <div style="width:60px;height:5px;background:#f0e8de;border-radius:3px;margin-top:3px;display:inline-block;vertical-align:middle;">
+                            <div style="width:{{ [p.perc,1]|max }}%;height:100%;border-radius:3px;background:
+                                {% if i.categoria=='grain' %}#c8873e
+                                {% elif i.categoria=='hop' %}#4a9a3f
+                                {% elif i.categoria=='yeast' %}#d47b2a
+                                {% else %}#7a6b9a{% endif %};"></div>
+                        </div>
+                        {% else %}—{% endif %}
+                    </td>
                     <td>
                         <input class="inline-input" type="number" step="0.001" id="qty-{{ i.id }}" value="{{ i.quantita }}">
                         <select class="inline-select" id="unit-{{ i.id }}">
@@ -336,6 +704,133 @@
         </table>
         {% else %}
             <p>Nessun ingrediente presente.</p>
+        {% endif %}
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- AVVIA COTTA                                                      -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="card avvia-panel" id="avvia-cotta">
+        <h2>🚀 Avvia Cotta da questa ricetta</h2>
+        <p style="color:#555;font-size:14px;margin-bottom:16px;">
+            Crea subito un nuovo lotto di produzione basato su <strong>{{ ricetta.nome }}</strong>.
+            Il tracker di processo verrà aperto automaticamente.
+        </p>
+
+        <div id="avvia-form">
+            <form method="post" action="/ricette/{{ ricetta.id }}/avvia-cotta">
+                <div class="form-row-inline">
+                    <div class="f" style="flex:2;">
+                        <label>Nome cotta *</label>
+                        <input type="text" name="nome"
+                               value="{{ ricetta.nome }} — Cotta #{{ n_cotte + 1 }}"
+                               required>
+                    </div>
+                    <div class="f">
+                        <label>Codice batch</label>
+                        <input type="text" name="codice"
+                               placeholder="es. {{ oggi[:4] }}-{{ '%03d'|format(n_cotte + 1) }}">
+                    </div>
+                    <div class="f">
+                        <label>Data brew</label>
+                        <input type="date" name="data_brew" value="{{ oggi }}">
+                    </div>
+                    <div class="f">
+                        <label>Fermentatore</label>
+                        <input type="text" name="fermentatore" placeholder="es. Fermentatore A">
+                    </div>
+                    <div style="align-self:flex-end;">
+                        <button type="submit" class="btn-green">🚀 Avvia ora</button>
+                    </div>
+                </div>
+
+                {% if stats %}
+                <div style="margin-top:14px;padding:12px 16px;background:#f0f7f3;border-radius:8px;font-size:13px;color:#0a3622;display:flex;gap:20px;flex-wrap:wrap;">
+                    <span><strong>OG stimato:</strong> {{ stats.og }}</span>
+                    <span><strong>FG stimato:</strong> {{ stats.fg }}</span>
+                    <span><strong>ABV stimato:</strong> {{ stats.abv }}%</span>
+                    <span><strong>IBU stimati:</strong> {{ stats.ibu }}</span>
+                    <span><strong>Volume:</strong> {{ ricetta.volume_target_litri }} L</span>
+                    {% if stile_corrente %}<span><strong>Stile:</strong> {{ stile_corrente.nome }}</span>{% endif %}
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- STORICO COTTE                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="card" id="storico-cotte">
+        <h2>📦 Storico di produzione
+            <span class="n-cotte-badge">{{ n_cotte }} cott{{ 'a' if n_cotte == 1 else 'e' }}</span>
+        </h2>
+
+        {% if cotte %}
+        <table class="storico-table">
+            <thead>
+                <tr>
+                    <th>Cotta</th>
+                    <th>Stato</th>
+                    <th>Data brew</th>
+                    <th>OG reale</th>
+                    <th>FG reale</th>
+                    <th>ABV</th>
+                    <th>Volume</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in cotte %}
+                <tr>
+                    <td>
+                        <strong>{{ c.nome }}</strong>
+                        {% if c.codice %}<br><span style="font-size:11px;color:#999;">{{ c.codice }}</span>{% endif %}
+                    </td>
+                    <td>
+                        <span class="badge-sm badge-{{ c.stato }}">{{ c.stato|replace('_',' ')|title }}</span>
+                    </td>
+                    <td style="color:#666;font-size:13px;">{{ c.data_brew or '—' }}</td>
+                    <td style="font-weight:bold;">{{ c.og_reale or '—' }}</td>
+                    <td style="font-weight:bold;">{{ c.fg_reale or '—' }}</td>
+                    <td style="font-weight:bold;color:#5a381e;">
+                        {% if c.abv_reale %}{{ c.abv_reale }}%{% else %}—{% endif %}
+                    </td>
+                    <td style="font-size:13px;color:#666;">
+                        {% if c.volume_imbottigliato %}{{ c.volume_imbottigliato }} L{% elif c.volume_post_bollitura %}{{ c.volume_post_bollitura }} L{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <a href="/cotte/{{ c.id }}" class="btn" style="padding:5px 12px;font-size:12px;">Apri tracker →</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if n_cotte > 1 %}
+        <div style="margin-top:14px;padding:12px 16px;background:#f5ede2;border-radius:8px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap;">
+            {% set cotte_con_og = cotte | selectattr('og_reale') | list %}
+            {% set cotte_con_abv = cotte | selectattr('abv_reale') | list %}
+            {% if cotte_con_og %}
+            <span><strong>Media OG:</strong>
+                {{ "%.3f"|format(cotte_con_og|map(attribute='og_reale')|list|sum / cotte_con_og|length) }}
+            </span>
+            {% endif %}
+            {% if cotte_con_abv %}
+            <span><strong>Media ABV:</strong>
+                {{ "%.1f"|format(cotte_con_abv|map(attribute='abv_reale')|list|sum / cotte_con_abv|length) }}%
+            </span>
+            {% endif %}
+            <span><strong>Cotte completate:</strong>
+                {{ cotte | selectattr('stato', 'in', ['pronta','archiviata','imbottigliamento','maturazione']) | list | length }}
+            </span>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <p style="color:#aaa;font-size:14px;margin:12px 0 0 0;">
+            Ancora nessuna cotta prodotta da questa ricetta. Usa il pannello qui sopra per avviarne una.
+        </p>
         {% endif %}
     </div>
 
@@ -474,6 +969,28 @@
         document.addEventListener("DOMContentLoaded", function () {
             aggiornaStats(true);
         });
+
+        function aggiungiStep() {
+            const container = document.getElementById("mash-steps-container");
+            const div = document.createElement("div");
+            div.className = "mash-form-row step-row";
+            div.innerHTML = `
+                <div class="mash-form-field">
+                    <label>Nome step</label>
+                    <input type="text" name="step_nome" placeholder="es. Mash-out">
+                </div>
+                <div class="mash-form-field">
+                    <label>Temp. (°C)</label>
+                    <input type="number" name="step_temp" step="0.5" value="76" min="30" max="100">
+                </div>
+                <div class="mash-form-field">
+                    <label>Durata (min)</label>
+                    <input type="number" name="step_durata" value="10" min="1" max="300">
+                </div>
+                <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
+            `;
+            container.appendChild(div);
+        }
     </script>
 </body>
 </html>
