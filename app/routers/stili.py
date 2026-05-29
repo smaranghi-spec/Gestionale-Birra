@@ -9,161 +9,125 @@ from ..models import Stile
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-# BJCP 2021 — lista completa
-# formato: (nome, categoria_bjcp, og_min, og_max, fg_min, fg_max, ibu_min, ibu_max, srm_min, srm_max, ebc_min, ebc_max, abv_min, abv_max)
 BJCP_2021 = [
-    # 1. Standard American Beer
-    ("1A American Light Lager",          "BJCP 2021", 1.028, 1.040, 0.998, 1.008,  8,  12,  2,  3,  4,  6,  2.8, 4.2),
-    ("1B American Lager",                "BJCP 2021", 1.040, 1.050, 1.004, 1.010,  8,  18,  2,  4,  4,  8,  4.2, 5.3),
-    ("1C Cream Ale",                     "BJCP 2021", 1.042, 1.055, 1.006, 1.012,  8,  20,  2,  5,  4, 10,  4.2, 5.6),
-    ("1D American Wheat Beer",           "BJCP 2021", 1.040, 1.055, 1.008, 1.013, 15,  30,  3,  6,  6, 12,  4.0, 5.5),
-    # 2. International Lager
-    ("2A International Pale Lager",      "BJCP 2021", 1.042, 1.050, 1.008, 1.012, 18,  25,  2,  3,  4,  6,  4.6, 6.0),
-    ("2B International Amber Lager",     "BJCP 2021", 1.042, 1.055, 1.008, 1.014,  8,  25,  7, 14, 14, 28,  4.6, 6.0),
-    ("2C International Dark Lager",      "BJCP 2021", 1.044, 1.056, 1.008, 1.012,  8,  20, 14, 30, 28, 59,  4.2, 6.0),
-    # 3. Czech Lager
-    ("3A Czech Pale Lager",              "BJCP 2021", 1.028, 1.044, 1.008, 1.014, 20,  35,  3,  6,  6, 12,  3.0, 4.1),
-    ("3B Czech Premium Pale Lager",      "BJCP 2021", 1.044, 1.060, 1.013, 1.017, 30,  45,  3, 10,  6, 20,  4.2, 5.8),
-    ("3C Czech Amber Lager",             "BJCP 2021", 1.044, 1.060, 1.013, 1.017, 20,  35, 10, 16, 20, 32,  4.4, 5.8),
-    ("3D Czech Dark Lager",              "BJCP 2021", 1.044, 1.060, 1.013, 1.017, 18,  34, 14, 35, 28, 69,  4.4, 5.8),
-    # 4. Pale Malt Beer
-    ("4A Munich Helles",                 "BJCP 2021", 1.044, 1.048, 1.006, 1.012, 16,  22,  3,  5,  6, 10,  4.7, 5.4),
-    ("4B Festbier",                      "BJCP 2021", 1.054, 1.057, 1.010, 1.012, 18,  25,  4,  7,  8, 14,  5.8, 6.3),
-    ("4C Helles Bock",                   "BJCP 2021", 1.064, 1.072, 1.011, 1.018, 23,  35,  4,  7,  8, 14,  6.3, 7.4),
-    # 5. Pale Bitter European Beer
-    ("5A German Leichtbier",             "BJCP 2021", 1.026, 1.034, 1.006, 1.010, 15,  28,  2,  4,  4,  8,  2.4, 3.6),
-    ("5B Kölsch",                        "BJCP 2021", 1.044, 1.050, 1.007, 1.011, 18,  30,  3,  5,  6, 10,  4.4, 5.2),
-    ("5C German Exportbier",             "BJCP 2021", 1.048, 1.056, 1.010, 1.015, 20,  30,  4,  7,  8, 14,  4.8, 6.0),
-    ("5D German Pils",                   "BJCP 2021", 1.044, 1.050, 1.008, 1.013, 22,  40,  2,  5,  4, 10,  4.4, 5.2),
-    # 6. Amber Malty European Lager
-    ("6A Märzen",                        "BJCP 2021", 1.054, 1.060, 1.010, 1.014, 18,  24,  8, 17, 16, 33,  5.8, 6.3),
-    ("6B Rauchbier",                     "BJCP 2021", 1.050, 1.057, 1.012, 1.016, 20,  30, 12, 22, 24, 43,  4.8, 6.0),
-    ("6C Dunkles Bock",                  "BJCP 2021", 1.064, 1.072, 1.013, 1.019, 20,  27, 14, 22, 28, 43,  6.3, 7.2),
-    # 7. Amber Bitter European Beer
-    ("7A Vienna Lager",                  "BJCP 2021", 1.048, 1.055, 1.010, 1.014, 18,  30,  9, 15, 18, 30,  4.7, 5.5),
-    ("7B Altbier",                       "BJCP 2021", 1.044, 1.052, 1.008, 1.014, 25,  50, 11, 17, 22, 33,  4.3, 5.5),
-    ("7C Kellerbier (Zwickelbier)",      "BJCP 2021", 1.048, 1.056, 1.012, 1.016, 25,  40,  7, 17, 14, 33,  4.7, 5.4),
-    # 8. Dark European Lager
-    ("8A Munich Dunkel",                 "BJCP 2021", 1.048, 1.056, 1.010, 1.016, 18,  28, 14, 28, 28, 55,  4.5, 5.6),
-    ("8B Schwarzbier",                   "BJCP 2021", 1.046, 1.052, 1.010, 1.016, 20,  30, 17, 30, 33, 59,  4.4, 5.4),
-    # 9. Strong European Beer
-    ("9A Doppelbock",                    "BJCP 2021", 1.072, 1.112, 1.016, 1.024, 16,  26,  6, 25, 12, 49,  7.0, 10.0),
-    ("9B Eisbock",                       "BJCP 2021", 1.078, 1.120, 1.020, 1.035, 25,  35, 18, 30, 35, 59,  9.0, 14.0),
-    ("9C Baltic Porter",                 "BJCP 2021", 1.060, 1.090, 1.016, 1.024, 20,  40, 17, 30, 33, 59,  6.5, 9.5),
-    # 10. German Wheat Beer
-    ("10A Weissbier",                    "BJCP 2021", 1.044, 1.052, 1.010, 1.014,  8,  15,  2,  8,  4, 16,  4.3, 5.6),
-    ("10B Dunkles Weissbier",            "BJCP 2021", 1.044, 1.056, 1.010, 1.014, 10,  18, 14, 23, 28, 45,  4.3, 5.6),
-    ("10C Weizenbock",                   "BJCP 2021", 1.064, 1.090, 1.015, 1.022, 15,  30,  6, 25, 12, 49,  6.5, 9.0),
-    ("10D Hefeweizen (Dark Variant)",    "BJCP 2021", 1.040, 1.050, 1.008, 1.012, 10,  15,  4, 10,  8, 20,  3.8, 4.9),
-    # 11. British Bitter
-    ("11A Ordinary Bitter",              "BJCP 2021", 1.030, 1.039, 1.007, 1.011, 25,  35,  8, 14, 16, 28,  3.2, 3.8),
-    ("11B Best Bitter",                  "BJCP 2021", 1.040, 1.048, 1.008, 1.012, 25,  40,  8, 16, 16, 32,  3.8, 4.6),
-    ("11C Strong Bitter",                "BJCP 2021", 1.048, 1.060, 1.010, 1.016, 30,  50,  8, 18, 16, 35,  4.6, 6.2),
-    # 12. Pale Commonwealth Beer
-    ("12A British Golden Ale",           "BJCP 2021", 1.038, 1.053, 1.006, 1.012, 20,  45,  2,  6,  4, 12,  3.8, 5.0),
-    ("12B Australian Sparkling Ale",     "BJCP 2021", 1.042, 1.050, 1.006, 1.010, 20,  35,  4,  7,  8, 14,  4.5, 6.0),
-    ("12C English IPA",                  "BJCP 2021", 1.050, 1.075, 1.010, 1.018, 40,  60,  8, 14, 16, 28,  5.0, 7.5),
-    # 13. Brown British Beer
-    ("13A Dark Mild",                    "BJCP 2021", 1.030, 1.038, 1.008, 1.013, 10,  25, 14, 25, 28, 49,  3.0, 3.8),
-    ("13B British Brown Ale",            "BJCP 2021", 1.040, 1.052, 1.008, 1.013, 20,  30, 12, 22, 24, 43,  4.2, 5.4),
-    ("13C English Porter",               "BJCP 2021", 1.040, 1.052, 1.008, 1.014, 18,  35, 20, 30, 39, 59,  4.0, 5.4),
-    # 14. Scottish Ale
-    ("14A Scottish Light (60/-)",        "BJCP 2021", 1.030, 1.035, 1.010, 1.013, 10,  20, 17, 22, 33, 43,  2.5, 3.2),
-    ("14B Scottish Heavy (70/-)",        "BJCP 2021", 1.035, 1.040, 1.010, 1.015, 12,  20, 12, 20, 24, 39,  3.2, 3.9),
-    ("14C Scottish Export (80/-)",       "BJCP 2021", 1.040, 1.060, 1.010, 1.016, 15,  30, 12, 20, 24, 39,  3.9, 6.0),
-    # 15. Irish Beer
-    ("15A Irish Red Ale",                "BJCP 2021", 1.036, 1.046, 1.010, 1.014, 18,  28,  9, 14, 18, 28,  3.8, 5.0),
-    ("15B Irish Stout",                  "BJCP 2021", 1.036, 1.044, 1.007, 1.011, 25,  40, 25, 40, 49, 79,  4.0, 4.5),
-    ("15C Irish Extra Stout",            "BJCP 2021", 1.052, 1.062, 1.010, 1.014, 35,  50, 25, 40, 49, 79,  5.5, 6.5),
-    # 16. Dark British Beer
-    ("16A Sweet Stout",                  "BJCP 2021", 1.044, 1.060, 1.012, 1.024, 20,  40, 30, 40, 59, 79,  4.0, 6.0),
-    ("16B Oatmeal Stout",                "BJCP 2021", 1.045, 1.065, 1.010, 1.018, 25,  40, 22, 40, 43, 79,  4.2, 5.9),
-    ("16C Tropical Stout",               "BJCP 2021", 1.056, 1.075, 1.010, 1.018, 30,  50, 30, 40, 59, 79,  5.5, 8.0),
-    ("16D Foreign Extra Stout",          "BJCP 2021", 1.056, 1.075, 1.010, 1.018, 50,  70, 30, 40, 59, 79,  6.3, 8.0),
-    # 17. Strong British Ale
-    ("17A British Strong Ale",           "BJCP 2021", 1.055, 1.080, 1.015, 1.022, 30,  60,  8, 22, 16, 43,  5.5, 8.0),
-    ("17B Old Ale",                      "BJCP 2021", 1.060, 1.090, 1.015, 1.022, 30,  60, 10, 22, 20, 43,  6.0, 9.0),
-    ("17C Wee Heavy",                    "BJCP 2021", 1.070, 1.130, 1.018, 1.040, 17,  35, 14, 25, 28, 49,  6.5, 10.0),
-    ("17D English Barleywine",           "BJCP 2021", 1.080, 1.120, 1.018, 1.030, 35,  70, 10, 22, 20, 43,  8.0, 12.0),
-    # 18. Pale American Ale
-    ("18A Blonde Ale",                   "BJCP 2021", 1.038, 1.054, 1.008, 1.013, 15,  28,  3,  6,  6, 12,  3.8, 5.5),
-    ("18B American Pale Ale",            "BJCP 2021", 1.045, 1.060, 1.010, 1.015, 30,  50,  5, 10, 10, 20,  4.5, 6.2),
-    # 19. Amber and Brown American Beer
-    ("19A American Amber Ale",           "BJCP 2021", 1.045, 1.060, 1.010, 1.015, 25,  40, 10, 17, 20, 33,  4.5, 6.2),
-    ("19B California Common",            "BJCP 2021", 1.048, 1.054, 1.011, 1.014, 30,  45, 10, 14, 20, 28,  4.5, 5.5),
-    ("19C American Brown Ale",           "BJCP 2021", 1.045, 1.060, 1.010, 1.016, 20,  30, 18, 35, 35, 69,  4.3, 6.2),
-    # 20. American Porter and Stout
-    ("20A American Porter",              "BJCP 2021", 1.050, 1.070, 1.012, 1.018, 25,  50, 22, 40, 43, 79,  4.8, 6.5),
-    ("20B American Stout",               "BJCP 2021", 1.050, 1.075, 1.010, 1.022, 35,  75, 30, 40, 59, 79,  5.0, 7.0),
-    ("20C Imperial Stout",               "BJCP 2021", 1.075, 1.115, 1.018, 1.030, 50,  90, 30, 40, 59, 79,  8.0, 12.0),
-    # 21. IPA
-    ("21A American IPA",                 "BJCP 2021", 1.056, 1.070, 1.008, 1.014, 40,  70,  6, 14, 12, 28,  5.5, 7.5),
-    ("21B Specialty IPA: Belgian IPA",   "BJCP 2021", 1.058, 1.080, 1.008, 1.016, 50,  70,  5, 15, 10, 30,  6.2, 9.5),
-    ("21B Specialty IPA: Black IPA",     "BJCP 2021", 1.050, 1.085, 1.010, 1.018, 50,  90, 25, 40, 49, 79,  6.0, 10.0),
-    ("21B Specialty IPA: Brown IPA",     "BJCP 2021", 1.056, 1.070, 1.008, 1.016, 40,  70, 11, 19, 22, 37,  5.5, 7.5),
-    ("21B Specialty IPA: Red IPA",       "BJCP 2021", 1.056, 1.070, 1.008, 1.016, 40,  70, 11, 17, 22, 33,  5.5, 7.5),
-    ("21B Specialty IPA: Rye IPA",       "BJCP 2021", 1.056, 1.075, 1.008, 1.014, 50,  75,  6, 14, 12, 28,  5.5, 8.0),
-    ("21B Specialty IPA: White IPA",     "BJCP 2021", 1.056, 1.065, 1.010, 1.016, 40,  70,  5, 8, 10, 16,  5.5, 7.0),
-    ("21C Hazy IPA",                     "BJCP 2021", 1.060, 1.085, 1.010, 1.015, 25,  60,  3,  7,  6, 14,  6.0, 9.0),
-    # 22. Strong American Ale
-    ("22A Double IPA",                   "BJCP 2021", 1.065, 1.085, 1.008, 1.018, 60, 120,  6, 14, 12, 28,  7.5, 10.0),
-    ("22B American Strong Ale",          "BJCP 2021", 1.062, 1.090, 1.014, 1.024, 50,  100,  7, 19, 14, 37,  6.3, 10.0),
-    ("22C American Barleywine",          "BJCP 2021", 1.080, 1.120, 1.016, 1.030, 50, 120, 10, 19, 20, 37,  8.0, 12.0),
-    ("22D Wheatwine",                    "BJCP 2021", 1.080, 1.120, 1.016, 1.030, 30,  60,  8, 15, 16, 30,  8.0, 12.0),
-    # 23. European Sour Ale
-    ("23A Berliner Weisse",              "BJCP 2021", 1.028, 1.032, 1.003, 1.006,  3,   8,  2,  4,  4,  8,  2.8, 3.8),
-    ("23B Flanders Red Ale",             "BJCP 2021", 1.048, 1.057, 1.002, 1.012, 10,  25, 10, 16, 20, 32,  4.6, 6.5),
-    ("23C Oud Bruin",                    "BJCP 2021", 1.040, 1.074, 1.008, 1.012, 20,  35, 15, 22, 30, 43,  4.0, 8.0),
-    ("23D Lambic",                       "BJCP 2021", 1.040, 1.054, 1.001, 1.010,  0,  10,  3,  7,  6, 14,  5.0, 6.5),
-    ("23E Gueuze",                       "BJCP 2021", 1.040, 1.060, 1.006, 1.010,  0,  10,  3,  7,  6, 14,  5.0, 8.0),
-    ("23F Fruit Lambic",                 "BJCP 2021", 1.040, 1.060, 1.006, 1.010,  0,  10,  3,  7,  6, 14,  5.0, 7.0),
-    ("23G Gose",                         "BJCP 2021", 1.036, 1.056, 1.006, 1.010,  5,  15,  3,  4,  6,  8,  4.2, 4.8),
-    # 24. Belgian Ale
-    ("24A Witbier",                      "BJCP 2021", 1.044, 1.052, 1.008, 1.012, 10,  20,  2,  4,  4,  8,  4.5, 5.5),
-    ("24B Belgian Pale Ale",             "BJCP 2021", 1.048, 1.054, 1.010, 1.014, 20,  30,  8, 14, 16, 28,  4.8, 5.5),
-    ("24C Bière de Garde",               "BJCP 2021", 1.060, 1.080, 1.008, 1.016, 18,  28,  6, 19, 12, 37,  6.0, 8.5),
-    # 25. Strong Belgian Ale
-    ("25A Belgian Blond Ale",            "BJCP 2021", 1.062, 1.075, 1.008, 1.018, 15,  30,  4,  7,  8, 14,  6.0, 7.5),
-    ("25B Saison",                       "BJCP 2021", 1.048, 1.065, 1.002, 1.012, 20,  35,  5, 14, 10, 28,  3.5, 9.0),
-    ("25C Belgian Golden Strong Ale",    "BJCP 2021", 1.070, 1.095, 1.005, 1.016, 22,  35,  3,  6,  6, 12,  7.5, 10.5),
-    # 26. Trappist Ale
-    ("26A Trappist Single",              "BJCP 2021", 1.044, 1.054, 1.004, 1.010, 25,  45,  3,  5,  6, 10,  4.8, 6.0),
-    ("26B Belgian Dubbel",               "BJCP 2021", 1.062, 1.075, 1.008, 1.018, 15,  25, 10, 17, 20, 33,  6.0, 7.6),
-    ("26C Belgian Tripel",               "BJCP 2021", 1.075, 1.085, 1.008, 1.014, 20,  40,  4,  7,  8, 14,  7.5, 9.5),
-    ("26D Belgian Dark Strong Ale",      "BJCP 2021", 1.075, 1.110, 1.010, 1.024, 20,  35, 12, 22, 24, 43,  8.0, 12.0),
-    # 27. Historical Beer (stili storici selezionati)
-    ("27A Gruit Ale",                    "BJCP 2021", 1.048, 1.065, 1.010, 1.020,  0,  10,  5, 15, 10, 30,  4.5, 6.5),
-    ("27A Kentucky Common",              "BJCP 2021", 1.044, 1.055, 1.010, 1.018, 15,  30, 11, 20, 22, 39,  4.0, 5.5),
-    ("27A Lichtenhainer",                "BJCP 2021", 1.032, 1.040, 1.008, 1.012, 10,  25,  3,  6,  6, 12,  3.5, 4.7),
-    ("27A London Brown Ale",             "BJCP 2021", 1.033, 1.038, 1.012, 1.015, 15,  20, 22, 35, 43, 69,  2.8, 3.6),
-    ("27A Pre-Prohibition Lager",        "BJCP 2021", 1.044, 1.060, 1.010, 1.015, 25,  40,  3,  6,  6, 12,  4.5, 6.0),
-    ("27A Sahti",                        "BJCP 2021", 1.076, 1.120, 1.016, 1.030,  7,  15, 4,  22,  8, 43,  7.0, 11.0),
-    # 28. American Wild Ale
-    ("28A Brett Beer",                   "BJCP 2021", 1.040, 1.100, 1.004, 1.020, 10,  40,  3, 35,  6, 69,  3.0, 12.0),
-    ("28B Mixed-Fermentation Sour Beer", "BJCP 2021", 1.040, 1.100, 1.006, 1.020,  3,  40,  3, 30,  6, 59,  3.0, 12.0),
-    ("28C Wild Specialty Beer",          "BJCP 2021", 1.040, 1.100, 1.004, 1.020,  3,  40,  3, 40,  6, 79,  3.0, 12.0),
-    # 29. Fruit Beer
-    ("29A Fruit Beer",                   "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 30,  2, 59,  2.5, 12.0),
-    ("29B Fruit and Spice Beer",         "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 30,  2, 59,  2.5, 12.0),
-    ("29C Specialty Fruit Beer",         "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 30,  2, 59,  2.5, 12.0),
-    # 30. Spiced Beer
-    ("30A Spice/Herb/Vegetable Beer",    "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 40,  2, 79,  2.5, 12.0),
-    ("30B Autumn Seasonal Beer",         "BJCP 2021", 1.050, 1.100, 1.010, 1.030, 10,  35,  9, 22, 18, 43,  5.0, 9.0),
-    ("30C Winter Seasonal Beer",         "BJCP 2021", 1.055, 1.120, 1.010, 1.030, 15,  50, 10, 30, 20, 59,  6.0, 12.0),
-    ("30D Specialty Spice Beer",         "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 40,  2, 79,  2.5, 12.0),
-    # 31. Alternative Fermentables Beer
-    ("31A Alternative Grain Beer",       "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 40,  2, 79,  2.5, 12.0),
-    ("31B Alternative Sugar Beer",       "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 40,  2, 79,  2.5, 12.0),
-    # 32. Smoked Beer
-    ("32A Classic Style Smoked Beer",    "BJCP 2021", 1.040, 1.080, 1.010, 1.020, 20,  40,  9, 30, 18, 59,  4.0, 8.9),
-    ("32B Specialty Smoked Beer",        "BJCP 2021", 1.040, 1.110, 1.006, 1.030,  0,  70,  1, 40,  2, 79,  2.5, 12.0),
-    # 33. Wood-Aged Beer
-    ("33A Wood-Aged Beer",               "BJCP 2021", 1.040, 1.120, 1.006, 1.030,  0, 100,  1, 40,  2, 79,  3.0, 14.0),
-    ("33B Specialty Wood-Aged Beer",     "BJCP 2021", 1.040, 1.120, 1.006, 1.030,  0, 100,  1, 40,  2, 79,  3.0, 14.0),
-    # 34. Specialty Beer
-    ("34A Commercial Specialty Beer",    "BJCP 2021", 1.040, 1.120, 1.006, 1.030,  0, 100,  1, 40,  2, 79,  2.5, 14.0),
-    ("34B Mixed-Style Beer",             "BJCP 2021", 1.040, 1.120, 1.006, 1.030,  0, 100,  1, 40,  2, 79,  2.5, 14.0),
-    ("34C Experimental Beer",            "BJCP 2021", 1.040, 1.120, 1.006, 1.030,  0, 100,  1, 40,  2, 79,  2.5, 14.0),
+    ("1A American Light Lager", "BJCP 2021", 1.028, 1.040, 0.998, 1.008, 8, 12, 2, 3, 4, 6, 2.8, 4.2),
+    ("1B American Lager", "BJCP 2021", 1.040, 1.050, 1.004, 1.010, 8, 18, 2, 4, 4, 8, 4.2, 5.3),
+    ("1C Cream Ale", "BJCP 2021", 1.042, 1.055, 1.006, 1.012, 8, 20, 2, 5, 4, 10, 4.2, 5.6),
+    ("1D American Wheat Beer", "BJCP 2021", 1.040, 1.055, 1.008, 1.013, 15, 30, 3, 6, 6, 12, 4.0, 5.5),
+    ("2A International Pale Lager", "BJCP 2021", 1.042, 1.050, 1.008, 1.012, 18, 25, 2, 3, 4, 6, 4.6, 6.0),
+    ("2B International Amber Lager", "BJCP 2021", 1.042, 1.055, 1.008, 1.014, 8, 25, 7, 14, 14, 28, 4.6, 6.0),
+    ("2C International Dark Lager", "BJCP 2021", 1.044, 1.056, 1.008, 1.012, 8, 20, 14, 30, 28, 59, 4.2, 6.0),
+    ("3A Czech Pale Lager", "BJCP 2021", 1.028, 1.044, 1.008, 1.014, 20, 35, 3, 6, 6, 12, 3.0, 4.1),
+    ("3B Czech Premium Pale Lager", "BJCP 2021", 1.044, 1.060, 1.013, 1.017, 30, 45, 3, 10, 6, 20, 4.2, 5.8),
+    ("3C Czech Amber Lager", "BJCP 2021", 1.044, 1.060, 1.013, 1.017, 20, 35, 10, 16, 20, 32, 4.4, 5.8),
+    ("3D Czech Dark Lager", "BJCP 2021", 1.044, 1.060, 1.013, 1.017, 18, 34, 14, 35, 28, 69, 4.4, 5.8),
+    ("4A Munich Helles", "BJCP 2021", 1.044, 1.048, 1.006, 1.012, 16, 22, 3, 5, 6, 10, 4.7, 5.4),
+    ("4B Festbier", "BJCP 2021", 1.054, 1.057, 1.010, 1.012, 18, 25, 4, 7, 8, 14, 5.8, 6.3),
+    ("4C Helles Bock", "BJCP 2021", 1.064, 1.072, 1.011, 1.018, 23, 35, 4, 7, 8, 14, 6.3, 7.4),
+    ("5A German Leichtbier", "BJCP 2021", 1.026, 1.034, 1.006, 1.010, 15, 28, 2, 4, 4, 8, 2.4, 3.6),
+    ("5B Kölsch", "BJCP 2021", 1.044, 1.050, 1.007, 1.011, 18, 30, 3, 5, 6, 10, 4.4, 5.2),
+    ("5C German Exportbier", "BJCP 2021", 1.048, 1.056, 1.010, 1.015, 20, 30, 4, 7, 8, 14, 4.8, 6.0),
+    ("5D German Pils", "BJCP 2021", 1.044, 1.050, 1.008, 1.013, 22, 40, 2, 5, 4, 10, 4.4, 5.2),
+    ("6A Märzen", "BJCP 2021", 1.054, 1.060, 1.010, 1.014, 18, 24, 8, 17, 16, 33, 5.8, 6.3),
+    ("6B Rauchbier", "BJCP 2021", 1.050, 1.057, 1.012, 1.016, 20, 30, 12, 22, 24, 43, 4.8, 6.0),
+    ("6C Dunkles Bock", "BJCP 2021", 1.064, 1.072, 1.013, 1.019, 20, 27, 14, 22, 28, 43, 6.3, 7.2),
+    ("7A Vienna Lager", "BJCP 2021", 1.048, 1.055, 1.010, 1.014, 18, 30, 9, 15, 18, 30, 4.7, 5.5),
+    ("7B Altbier", "BJCP 2021", 1.044, 1.052, 1.008, 1.014, 25, 50, 11, 17, 22, 33, 4.3, 5.5),
+    ("7C Kellerbier (Zwickelbier)", "BJCP 2021", 1.048, 1.056, 1.012, 1.016, 25, 40, 7, 17, 14, 33, 4.7, 5.4),
+    ("8A Munich Dunkel", "BJCP 2021", 1.048, 1.056, 1.010, 1.016, 18, 28, 14, 28, 28, 55, 4.5, 5.6),
+    ("8B Schwarzbier", "BJCP 2021", 1.046, 1.052, 1.010, 1.016, 20, 30, 17, 30, 33, 59, 4.4, 5.4),
+    ("9A Doppelbock", "BJCP 2021", 1.072, 1.112, 1.016, 1.024, 16, 26, 6, 25, 12, 49, 7.0, 10.0),
+    ("9B Eisbock", "BJCP 2021", 1.078, 1.120, 1.020, 1.035, 25, 35, 18, 30, 35, 59, 9.0, 14.0),
+    ("9C Baltic Porter", "BJCP 2021", 1.060, 1.090, 1.016, 1.024, 20, 40, 17, 30, 33, 59, 6.5, 9.5),
+    ("10A Weissbier", "BJCP 2021", 1.044, 1.052, 1.010, 1.014, 8, 15, 2, 8, 4, 16, 4.3, 5.6),
+    ("10B Dunkles Weissbier", "BJCP 2021", 1.044, 1.056, 1.010, 1.014, 10, 18, 14, 23, 28, 45, 4.3, 5.6),
+    ("10C Weizenbock", "BJCP 2021", 1.064, 1.090, 1.015, 1.022, 15, 30, 6, 25, 12, 49, 6.5, 9.0),
+    ("10D Hefeweizen (Dark Variant)", "BJCP 2021", 1.040, 1.050, 1.008, 1.012, 10, 15, 4, 10, 8, 20, 3.8, 4.9),
+    ("11A Ordinary Bitter", "BJCP 2021", 1.030, 1.039, 1.007, 1.011, 25, 35, 8, 14, 16, 28, 3.2, 3.8),
+    ("11B Best Bitter", "BJCP 2021", 1.040, 1.048, 1.008, 1.012, 25, 40, 8, 16, 16, 32, 3.8, 4.6),
+    ("11C Strong Bitter", "BJCP 2021", 1.048, 1.060, 1.010, 1.016, 30, 50, 8, 18, 16, 35, 4.6, 6.2),
+    ("12A British Golden Ale", "BJCP 2021", 1.038, 1.053, 1.006, 1.012, 20, 45, 2, 6, 4, 12, 3.8, 5.0),
+    ("12B Australian Sparkling Ale", "BJCP 2021", 1.042, 1.050, 1.006, 1.010, 20, 35, 4, 7, 8, 14, 4.5, 6.0),
+    ("12C English IPA", "BJCP 2021", 1.050, 1.075, 1.010, 1.018, 40, 60, 8, 14, 16, 28, 5.0, 7.5),
+    ("13A Dark Mild", "BJCP 2021", 1.030, 1.038, 1.008, 1.013, 10, 25, 14, 25, 28, 49, 3.0, 3.8),
+    ("13B British Brown Ale", "BJCP 2021", 1.040, 1.052, 1.008, 1.013, 20, 30, 12, 22, 24, 43, 4.2, 5.4),
+    ("13C English Porter", "BJCP 2021", 1.040, 1.052, 1.008, 1.014, 18, 35, 20, 30, 39, 59, 4.0, 5.4),
+    ("14A Scottish Light (60/-)", "BJCP 2021", 1.030, 1.035, 1.010, 1.013, 10, 20, 17, 22, 33, 43, 2.5, 3.2),
+    ("14B Scottish Heavy (70/-)", "BJCP 2021", 1.035, 1.040, 1.010, 1.015, 12, 20, 12, 20, 24, 39, 3.2, 3.9),
+    ("14C Scottish Export (80/-)", "BJCP 2021", 1.040, 1.060, 1.010, 1.016, 15, 30, 12, 20, 24, 39, 3.9, 6.0),
+    ("15A Irish Red Ale", "BJCP 2021", 1.036, 1.046, 1.010, 1.014, 18, 28, 9, 14, 18, 28, 3.8, 5.0),
+    ("15B Irish Stout", "BJCP 2021", 1.036, 1.044, 1.007, 1.011, 25, 40, 25, 40, 49, 79, 4.0, 4.5),
+    ("15C Irish Extra Stout", "BJCP 2021", 1.052, 1.062, 1.010, 1.014, 35, 50, 25, 40, 49, 79, 5.5, 6.5),
+    ("16A Sweet Stout", "BJCP 2021", 1.044, 1.060, 1.012, 1.024, 20, 40, 30, 40, 59, 79, 4.0, 6.0),
+    ("16B Oatmeal Stout", "BJCP 2021", 1.045, 1.065, 1.010, 1.018, 25, 40, 22, 40, 43, 79, 4.2, 5.9),
+    ("16C Tropical Stout", "BJCP 2021", 1.056, 1.075, 1.010, 1.018, 30, 50, 30, 40, 59, 79, 5.5, 8.0),
+    ("16D Foreign Extra Stout", "BJCP 2021", 1.056, 1.075, 1.010, 1.018, 50, 70, 30, 40, 59, 79, 6.3, 8.0),
+    ("17A British Strong Ale", "BJCP 2021", 1.055, 1.080, 1.015, 1.022, 30, 60, 8, 22, 16, 43, 5.5, 8.0),
+    ("17B Old Ale", "BJCP 2021", 1.060, 1.090, 1.015, 1.022, 30, 60, 10, 22, 20, 43, 6.0, 9.0),
+    ("17C Wee Heavy", "BJCP 2021", 1.070, 1.130, 1.018, 1.040, 17, 35, 14, 25, 28, 49, 6.5, 10.0),
+    ("17D English Barleywine", "BJCP 2021", 1.080, 1.120, 1.018, 1.030, 35, 70, 10, 22, 20, 43, 8.0, 12.0),
+    ("18A Blonde Ale", "BJCP 2021", 1.038, 1.054, 1.008, 1.013, 15, 28, 3, 6, 6, 12, 3.8, 5.5),
+    ("18B American Pale Ale", "BJCP 2021", 1.045, 1.060, 1.010, 1.015, 30, 50, 5, 10, 10, 20, 4.5, 6.2),
+    ("19A American Amber Ale", "BJCP 2021", 1.045, 1.060, 1.010, 1.015, 25, 40, 10, 17, 20, 33, 4.5, 6.2),
+    ("19B California Common", "BJCP 2021", 1.048, 1.054, 1.011, 1.014, 30, 45, 10, 14, 20, 28, 4.5, 5.5),
+    ("19C American Brown Ale", "BJCP 2021", 1.045, 1.060, 1.010, 1.016, 20, 30, 18, 35, 35, 69, 4.3, 6.2),
+    ("20A American Porter", "BJCP 2021", 1.050, 1.070, 1.012, 1.018, 25, 50, 22, 40, 43, 79, 4.8, 6.5),
+    ("20B American Stout", "BJCP 2021", 1.050, 1.075, 1.010, 1.022, 35, 75, 30, 40, 59, 79, 5.0, 7.0),
+    ("20C Imperial Stout", "BJCP 2021", 1.075, 1.115, 1.018, 1.030, 50, 90, 30, 40, 59, 79, 8.0, 12.0),
+    ("21A American IPA", "BJCP 2021", 1.056, 1.070, 1.008, 1.014, 40, 70, 6, 14, 12, 28, 5.5, 7.5),
+    ("21B Specialty IPA: Belgian IPA", "BJCP 2021", 1.058, 1.080, 1.008, 1.016, 50, 70, 5, 15, 10, 30, 6.2, 9.5),
+    ("21B Specialty IPA: Black IPA", "BJCP 2021", 1.050, 1.085, 1.010, 1.018, 50, 90, 25, 40, 49, 79, 6.0, 10.0),
+    ("21B Specialty IPA: Brown IPA", "BJCP 2021", 1.056, 1.070, 1.008, 1.016, 40, 70, 11, 19, 22, 37, 5.5, 7.5),
+    ("21B Specialty IPA: Red IPA", "BJCP 2021", 1.056, 1.070, 1.008, 1.016, 40, 70, 11, 17, 22, 33, 5.5, 7.5),
+    ("21B Specialty IPA: Rye IPA", "BJCP 2021", 1.056, 1.075, 1.008, 1.014, 50, 75, 6, 14, 12, 28, 5.5, 8.0),
+    ("21B Specialty IPA: White IPA", "BJCP 2021", 1.056, 1.065, 1.010, 1.016, 40, 70, 5, 8, 10, 16, 5.5, 7.0),
+    ("21C Hazy IPA", "BJCP 2021", 1.060, 1.085, 1.010, 1.015, 25, 60, 3, 7, 6, 14, 6.0, 9.0),
+    ("22A Double IPA", "BJCP 2021", 1.065, 1.085, 1.008, 1.018, 60, 120, 6, 14, 12, 28, 7.5, 10.0),
+    ("22B American Strong Ale", "BJCP 2021", 1.062, 1.090, 1.014, 1.024, 50, 100, 7, 19, 14, 37, 6.3, 10.0),
+    ("22C American Barleywine", "BJCP 2021", 1.080, 1.120, 1.016, 1.030, 50, 120, 10, 19, 20, 37, 8.0, 12.0),
+    ("22D Wheatwine", "BJCP 2021", 1.080, 1.120, 1.016, 1.030, 30, 60, 8, 15, 16, 30, 8.0, 12.0),
+    ("23A Berliner Weisse", "BJCP 2021", 1.028, 1.032, 1.003, 1.006, 3, 8, 2, 4, 4, 8, 2.8, 3.8),
+    ("23B Flanders Red Ale", "BJCP 2021", 1.048, 1.057, 1.002, 1.012, 10, 25, 10, 16, 20, 32, 4.6, 6.5),
+    ("23C Oud Bruin", "BJCP 2021", 1.040, 1.074, 1.008, 1.012, 20, 35, 15, 22, 30, 43, 4.0, 8.0),
+    ("23D Lambic", "BJCP 2021", 1.040, 1.054, 1.001, 1.010, 0, 10, 3, 7, 6, 14, 5.0, 6.5),
+    ("23E Gueuze", "BJCP 2021", 1.040, 1.060, 1.006, 1.010, 0, 10, 3, 7, 6, 14, 5.0, 8.0),
+    ("23F Fruit Lambic", "BJCP 2021", 1.040, 1.060, 1.006, 1.010, 0, 10, 3, 7, 6, 14, 5.0, 7.0),
+    ("23G Gose", "BJCP 2021", 1.036, 1.056, 1.006, 1.010, 5, 15, 3, 4, 6, 8, 4.2, 4.8),
+    ("24A Witbier", "BJCP 2021", 1.044, 1.052, 1.008, 1.012, 10, 20, 2, 4, 4, 8, 4.5, 5.5),
+    ("24B Belgian Pale Ale", "BJCP 2021", 1.048, 1.054, 1.010, 1.014, 20, 30, 8, 14, 16, 28, 4.8, 5.5),
+    ("24C Bière de Garde", "BJCP 2021", 1.060, 1.080, 1.008, 1.016, 18, 28, 6, 19, 12, 37, 6.0, 8.5),
+    ("25A Belgian Blond Ale", "BJCP 2021", 1.062, 1.075, 1.008, 1.018, 15, 30, 4, 7, 8, 14, 6.0, 7.5),
+    ("25B Saison", "BJCP 2021", 1.048, 1.065, 1.002, 1.012, 20, 35, 5, 14, 10, 28, 3.5, 9.0),
+    ("25C Belgian Golden Strong Ale", "BJCP 2021", 1.070, 1.095, 1.005, 1.016, 22, 35, 3, 6, 6, 12, 7.5, 10.5),
+    ("26A Trappist Single", "BJCP 2021", 1.044, 1.054, 1.004, 1.010, 25, 45, 3, 5, 6, 10, 4.8, 6.0),
+    ("26B Belgian Dubbel", "BJCP 2021", 1.062, 1.075, 1.008, 1.018, 15, 25, 10, 17, 20, 33, 6.0, 7.6),
+    ("26C Belgian Tripel", "BJCP 2021", 1.075, 1.085, 1.008, 1.014, 20, 40, 4, 7, 8, 14, 7.5, 9.5),
+    ("26D Belgian Dark Strong Ale", "BJCP 2021", 1.075, 1.110, 1.010, 1.024, 20, 35, 12, 22, 24, 43, 8.0, 12.0),
+    ("27A Gruit Ale", "BJCP 2021", 1.048, 1.065, 1.010, 1.020, 0, 10, 5, 15, 10, 30, 4.5, 6.5),
+    ("27A Kentucky Common", "BJCP 2021", 1.044, 1.055, 1.010, 1.018, 15, 30, 11, 20, 22, 39, 4.0, 5.5),
+    ("27A Lichtenhainer", "BJCP 2021", 1.032, 1.040, 1.008, 1.012, 10, 25, 3, 6, 6, 12, 3.5, 4.7),
+    ("27A London Brown Ale", "BJCP 2021", 1.033, 1.038, 1.012, 1.015, 15, 20, 22, 35, 43, 69, 2.8, 3.6),
+    ("27A Pre-Prohibition Lager", "BJCP 2021", 1.044, 1.060, 1.010, 1.015, 25, 40, 3, 6, 6, 12, 4.5, 6.0),
+    ("27A Sahti", "BJCP 2021", 1.076, 1.120, 1.016, 1.030, 7, 15, 4, 22, 8, 43, 7.0, 11.0),
+    ("28A Brett Beer", "BJCP 2021", 1.040, 1.100, 1.004, 1.020, 10, 40, 3, 35, 6, 69, 3.0, 12.0),
+    ("28B Mixed-Fermentation Sour Beer", "BJCP 2021", 1.040, 1.100, 1.006, 1.020, 3, 40, 3, 30, 6, 59, 3.0, 12.0),
+    ("28C Wild Specialty Beer", "BJCP 2021", 1.040, 1.100, 1.004, 1.020, 3, 40, 3, 40, 6, 79, 3.0, 12.0),
+    ("29A Fruit Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 30, 2, 59, 2.5, 12.0),
+    ("29B Fruit and Spice Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 30, 2, 59, 2.5, 12.0),
+    ("29C Specialty Fruit Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 30, 2, 59, 2.5, 12.0),
+    ("30A Spice/Herb/Vegetable Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 40, 2, 79, 2.5, 12.0),
+    ("30B Autumn Seasonal Beer", "BJCP 2021", 1.050, 1.100, 1.010, 1.030, 10, 35, 9, 22, 18, 43, 5.0, 9.0),
+    ("30C Winter Seasonal Beer", "BJCP 2021", 1.055, 1.120, 1.010, 1.030, 15, 50, 10, 30, 20, 59, 6.0, 12.0),
+    ("30D Specialty Spice Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 40, 2, 79, 2.5, 12.0),
+    ("31A Alternative Grain Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 40, 2, 79, 2.5, 12.0),
+    ("31B Alternative Sugar Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 40, 2, 79, 2.5, 12.0),
+    ("32A Classic Style Smoked Beer", "BJCP 2021", 1.040, 1.080, 1.010, 1.020, 20, 40, 9, 30, 18, 59, 4.0, 8.9),
+    ("32B Specialty Smoked Beer", "BJCP 2021", 1.040, 1.110, 1.006, 1.030, 0, 70, 1, 40, 2, 79, 2.5, 12.0),
+    ("33A Wood-Aged Beer", "BJCP 2021", 1.040, 1.120, 1.006, 1.030, 0, 100, 1, 40, 2, 79, 3.0, 14.0),
+    ("33B Specialty Wood-Aged Beer", "BJCP 2021", 1.040, 1.120, 1.006, 1.030, 0, 100, 1, 40, 2, 79, 3.0, 14.0),
+    ("34A Commercial Specialty Beer", "BJCP 2021", 1.040, 1.120, 1.006, 1.030, 0, 100, 1, 40, 2, 79, 2.5, 14.0),
+    ("34B Mixed-Style Beer", "BJCP 2021", 1.040, 1.120, 1.006, 1.030, 0, 100, 1, 40, 2, 79, 2.5, 14.0),
+    ("34C Experimental Beer", "BJCP 2021", 1.040, 1.120, 1.006, 1.030, 0, 100, 1, 40, 2, 79, 2.5, 14.0),
 ]
 
 
@@ -178,26 +142,41 @@ def get_db():
 @router.get("/stili", response_class=HTMLResponse)
 def lista_stili(request: Request, msg: str = None, db: Session = Depends(get_db)):
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
-    return templates.TemplateResponse(request, "stili.html", {"stili": stili, "msg": msg})
+    return templates.TemplateResponse(
+        request,
+        "stili.html",
+        context={"stili": stili, "msg": msg},
+    )
 
 
 @router.post("/stili/popola_bjcp")
 def popola_bjcp(db: Session = Depends(get_db)):
     esistenti = {s.nome for s in db.query(Stile.nome).all()}
     nuovi = 0
+
     for row in BJCP_2021:
         nome, linea, og_min, og_max, fg_min, fg_max, ibu_min, ibu_max, srm_min, srm_max, ebc_min, ebc_max, abv_min, abv_max = row
         if nome not in esistenti:
-            db.add(Stile(
-                nome=nome, linea_guida=linea,
-                og_min=og_min, og_max=og_max,
-                fg_min=fg_min, fg_max=fg_max,
-                ibu_min=ibu_min, ibu_max=ibu_max,
-                srm_min=srm_min, srm_max=srm_max,
-                ebc_min=ebc_min, ebc_max=ebc_max,
-                abv_min=abv_min, abv_max=abv_max,
-            ))
+            db.add(
+                Stile(
+                    nome=nome,
+                    linea_guida=linea,
+                    og_min=og_min,
+                    og_max=og_max,
+                    fg_min=fg_min,
+                    fg_max=fg_max,
+                    ibu_min=ibu_min,
+                    ibu_max=ibu_max,
+                    srm_min=srm_min,
+                    srm_max=srm_max,
+                    ebc_min=ebc_min,
+                    ebc_max=ebc_max,
+                    abv_min=abv_min,
+                    abv_max=abv_max,
+                )
+            )
             nuovi += 1
+
     db.commit()
     return RedirectResponse(f"/stili?msg=Importati+{nuovi}+stili+BJCP+2021", status_code=303)
 
@@ -206,23 +185,38 @@ def popola_bjcp(db: Session = Depends(get_db)):
 def nuovo_stile(
     nome: str = Form(...),
     linea_guida: str = Form(""),
-    og_min: float = Form(None), og_max: float = Form(None),
-    fg_min: float = Form(None), fg_max: float = Form(None),
-    ibu_min: float = Form(None), ibu_max: float = Form(None),
-    srm_min: float = Form(None), srm_max: float = Form(None),
-    ebc_min: float = Form(None), ebc_max: float = Form(None),
-    abv_min: float = Form(None), abv_max: float = Form(None),
+    og_min: float = Form(None),
+    og_max: float = Form(None),
+    fg_min: float = Form(None),
+    fg_max: float = Form(None),
+    ibu_min: float = Form(None),
+    ibu_max: float = Form(None),
+    srm_min: float = Form(None),
+    srm_max: float = Form(None),
+    ebc_min: float = Form(None),
+    ebc_max: float = Form(None),
+    abv_min: float = Form(None),
+    abv_max: float = Form(None),
     db: Session = Depends(get_db),
 ):
-    db.add(Stile(
-        nome=nome, linea_guida=linea_guida,
-        og_min=og_min, og_max=og_max,
-        fg_min=fg_min, fg_max=fg_max,
-        ibu_min=ibu_min, ibu_max=ibu_max,
-        srm_min=srm_min, srm_max=srm_max,
-        ebc_min=ebc_min, ebc_max=ebc_max,
-        abv_min=abv_min, abv_max=abv_max,
-    ))
+    db.add(
+        Stile(
+            nome=nome,
+            linea_guida=linea_guida,
+            og_min=og_min,
+            og_max=og_max,
+            fg_min=fg_min,
+            fg_max=fg_max,
+            ibu_min=ibu_min,
+            ibu_max=ibu_max,
+            srm_min=srm_min,
+            srm_max=srm_max,
+            ebc_min=ebc_min,
+            ebc_max=ebc_max,
+            abv_min=abv_min,
+            abv_max=abv_max,
+        )
+    )
     db.commit()
     return RedirectResponse("/stili?msg=Stile+aggiunto", status_code=303)
 
