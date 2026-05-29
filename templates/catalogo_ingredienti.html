@@ -33,8 +33,14 @@
             · <a href="/catalogo/ingredienti/nuovo">Nuovo ingrediente</a>
         </p>
 
+        {% if msg %}
+        <div style="background:#d4edda;color:#155724;border-radius:6px;padding:10px 16px;margin-bottom:12px;font-size:14px;">✓ {{ msg }}</div>
+        {% endif %}
+
         <form method="post" action="/catalogo/ingredienti/popola_demo">
-            <button type="submit">Popola catalogo demo</button>
+            <button type="submit" style="background:#8b5a2b;color:white;border:none;padding:10px 18px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">
+                Importa catalogo completo (malti, luppoli, lieviti, altro)
+            </button>
         </form>
 
         <div class="filters" style="margin-top: 16px;">
