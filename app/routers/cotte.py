@@ -12,15 +12,15 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 FASI_LABEL = {
-    "pianificata":   "Pianificata",
-    "brewday":       "Brew Day",
+    "pianificata": "Pianificata",
+    "brewday": "Brew Day",
     "fermentazione": "Fermentazione",
-    "secondaria":    "Secondaria",
-    "condizionamento":"Condizionamento",
-    "imbottigliamento":"Imbottigliamento",
-    "maturazione":   "Maturazione",
-    "pronta":        "Pronta",
-    "archiviata":    "Archiviata",
+    "secondaria": "Secondaria",
+    "condizionamento": "Condizionamento",
+    "imbottigliamento": "Imbottigliamento",
+    "maturazione": "Maturazione",
+    "pronta": "Pronta",
+    "archiviata": "Archiviata",
 }
 
 
@@ -43,8 +43,6 @@ def _prossimo_stato(stato: str) -> str | None:
     return None
 
 
-# ── Lista cotte ──────────────────────────────────────────────────────────────
-
 @router.get("/cotte", response_class=HTMLResponse)
 def lista_cotte(request: Request, db: Session = Depends(get_db)):
     cotte = db.query(Cotta).order_by(Cotta.id.desc()).all()
@@ -55,16 +53,18 @@ def lista_cotte(request: Request, db: Session = Depends(get_db)):
         if c.stato in contatori:
             contatori[c.stato] += 1
 
-    return templates.TemplateResponse(request, "cotte.html", {
-        "cotte": cotte,
-        "ricette": ricette,
-        "contatori": contatori,
-        "fasi_label": FASI_LABEL,
-        "stati": STATI_COTTA,
-    })
+    return templates.TemplateResponse(
+        request,
+        "cotte.html",
+        context={
+            "cotte": cotte,
+            "ricette": ricette,
+            "contatori": contatori,
+            "fasi_label": FASI_LABEL,
+            "stati": STATI_COTTA,
+        },
+    )
 
-
-# ── Nuova cotta ──────────────────────────────────────────────────────────────
 
 @router.post("/cotte/nuova")
 def nuova_cotta(
@@ -88,18 +88,18 @@ def nuova_cotta(
     db.add(cotta)
     db.flush()
 
-    db.add(LogCotta(
-        cotta_id=cotta.id,
-        timestamp=_now_str(),
-        fase="pianificata",
-        tipo="evento",
-        descrizione="Cotta creata",
-    ))
+    db.add(
+        LogCotta(
+            cotta_id=cotta.id,
+            timestamp=_now_str(),
+            fase="pianificata",
+            tipo="evento",
+            descrizione="Cotta creata",
+        )
+    )
     db.commit()
     return RedirectResponse(f"/cotte/{cotta.id}", status_code=303)
 
-
-# ── Dettaglio cotta ──────────────────────────────────────────────────────────
 
 @router.get("/cotte/{cotta_id}", response_class=HTMLResponse)
 def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_db)):
@@ -120,13 +120,13 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     fg_stimata = None
     if cotta.og_reale and attenuation:
         fg_stimata = round(1 + (cotta.og_reale - 1) * (1 - attenuation / 100), 3)
+
     abv_calcolato = None
     if cotta.og_reale and cotta.fg_reale:
         abv_calcolato = round((cotta.og_reale - cotta.fg_reale) * 131.25, 1)
     elif cotta.og_reale and fg_stimata:
         abv_calcolato = round((cotta.og_reale - fg_stimata) * 131.25, 1)
 
-    # Dati grafico — misurazioni SG e temperatura in ordine cronologico
     misure_sg = [
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
@@ -137,33 +137,36 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
         for e in cotta.log
         if e.tipo == "misura" and e.unita == "°C" and e.valore is not None
     ]
-    # Aggiungi OG al grafico come primo punto se disponibile e non già registrato
+
     if cotta.og_reale and cotta.data_inoculo:
         og_entry = {"t": cotta.data_inoculo + " 00:00", "v": cotta.og_reale}
         if not misure_sg or misure_sg[0]["v"] != cotta.og_reale:
             misure_sg = [og_entry] + misure_sg
+
     if cotta.fg_reale and cotta.data_imbottigliamento:
         fg_entry = {"t": cotta.data_imbottigliamento + " 00:00", "v": cotta.fg_reale}
         if not misure_sg or misure_sg[-1]["v"] != cotta.fg_reale:
             misure_sg = misure_sg + [fg_entry]
 
-    return templates.TemplateResponse(request, "dettaglio_cotta.html", {
-        "cotta": cotta,
-        "log": list(reversed(cotta.log)),
-        "prossimo_stato": prossimo,
-        "prossimo_label": FASI_LABEL.get(prossimo, "") if prossimo else "",
-        "idx_stato": idx_stato,
-        "stati": STATI_COTTA,
-        "fasi_label": FASI_LABEL,
-        "fg_stimata": fg_stimata,
-        "abv_calcolato": abv_calcolato,
-        "oggi": date.today().strftime("%Y-%m-%d"),
-        "misure_sg": misure_sg,
-        "misure_temp": misure_temp,
-    })
+    return templates.TemplateResponse(
+        request,
+        "dettaglio_cotta.html",
+        context={
+            "cotta": cotta,
+            "log": list(reversed(cotta.log)),
+            "prossimo_stato": prossimo,
+            "prossimo_label": FASI_LABEL.get(prossimo, "") if prossimo else "",
+            "idx_stato": idx_stato,
+            "stati": STATI_COTTA,
+            "fasi_label": FASI_LABEL,
+            "fg_stimata": fg_stimata,
+            "abv_calcolato": abv_calcolato,
+            "oggi": date.today().strftime("%Y-%m-%d"),
+            "misure_sg": misure_sg,
+            "misure_temp": misure_temp,
+        },
+    )
 
-
-# ── Avanza stato ─────────────────────────────────────────────────────────────
 
 @router.post("/cotte/{cotta_id}/avanza")
 def avanza_stato(cotta_id: int, db: Session = Depends(get_db)):
@@ -181,18 +184,19 @@ def avanza_stato(cotta_id: int, db: Session = Depends(get_db)):
         if prossimo == "imbottigliamento" and not cotta.data_imbottigliamento:
             cotta.data_imbottigliamento = date.today().isoformat()
 
-        db.add(LogCotta(
-            cotta_id=cotta_id,
-            timestamp=_now_str(),
-            fase=prossimo,
-            tipo="avanzamento",
-            descrizione=f"Avanzato: {FASI_LABEL.get(vecchio)} → {FASI_LABEL.get(prossimo)}",
-        ))
+        db.add(
+            LogCotta(
+                cotta_id=cotta_id,
+                timestamp=_now_str(),
+                fase=prossimo,
+                tipo="avanzamento",
+                descrizione=f"Avanzato: {FASI_LABEL.get(vecchio)} → {FASI_LABEL.get(prossimo)}",
+            )
+        )
         db.commit()
+
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
 
-
-# ── Modifica dati cotta ───────────────────────────────────────────────────────
 
 @router.post("/cotte/{cotta_id}/aggiorna")
 def aggiorna_cotta(
@@ -249,6 +253,7 @@ def aggiorna_cotta(
         "limpidezza": limpidezza,
         "note": note,
     }
+
     for k, v in fields.items():
         if v is not None and v != "":
             setattr(cotta, k, v)
@@ -259,8 +264,6 @@ def aggiorna_cotta(
     db.commit()
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
 
-
-# ── Aggiungi log/misura ───────────────────────────────────────────────────────
 
 @router.post("/cotte/{cotta_id}/log")
 def aggiungi_log(
@@ -277,21 +280,21 @@ def aggiungi_log(
     if not cotta:
         return RedirectResponse("/cotte", status_code=303)
 
-    db.add(LogCotta(
-        cotta_id=cotta_id,
-        timestamp=_now_str(),
-        fase=fase or cotta.stato,
-        tipo=tipo,
-        descrizione=descrizione,
-        valore=valore,
-        unita=unita or None,
-        note=note or None,
-    ))
+    db.add(
+        LogCotta(
+            cotta_id=cotta_id,
+            timestamp=_now_str(),
+            fase=fase or cotta.stato,
+            tipo=tipo,
+            descrizione=descrizione,
+            valore=valore,
+            unita=unita or None,
+            note=note or None,
+        )
+    )
     db.commit()
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
 
-
-# ── Elimina log entry ─────────────────────────────────────────────────────────
 
 @router.post("/cotte/{cotta_id}/log/{log_id}/elimina")
 def elimina_log(cotta_id: int, log_id: int, db: Session = Depends(get_db)):
@@ -301,8 +304,6 @@ def elimina_log(cotta_id: int, log_id: int, db: Session = Depends(get_db)):
         db.commit()
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
 
-
-# ── Elimina cotta ─────────────────────────────────────────────────────────────
 
 @router.post("/cotte/{cotta_id}/elimina")
 def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
