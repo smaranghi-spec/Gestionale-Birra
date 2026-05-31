@@ -102,7 +102,7 @@ def seed_admin(db: Session = Depends(get_db)):
 
 
 @app.get("/attrezzature", response_class=HTMLResponse)
-def lista_attrezzature(request: Request, db: Session = Depends(get_db)):
+def attrezzature(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
@@ -114,26 +114,13 @@ def lista_attrezzature(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@app.post("/attrezzature/nuova")
-def nuova_attrezzatura(
-    request: Request,
-    nome: str = Form(...),
-    tipo: str = Form("generico"),
-    descrizione: str = Form(""),
-    capacita_litri: float = Form(0),
-    ubicazione: str = Form(""),
-    db: Session = Depends(get_db),
-):
+@app.get("/ricette/html", response_class=HTMLResponse)
+def ricette(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    a = Attrezzatura(
-        nome=nome,
-        tipo=tipo,
-        descrizione=descrizione or None,
-        capacita_litri=capacita_litri or None,
-        ubicazione=ubicazione or None,
+    return templates.TemplateResponse(
+        request=request,
+        name="ricette.html",
+        context={"title": "Ricette", "user": user},
     )
-    db.add(a)
-    db.commit()
-    return RedirectResponse(url="/attrezzature", status_code=303)
