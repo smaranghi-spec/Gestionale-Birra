@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
+<div class="card" style="max-width:520px;margin:0 auto;">
   <h1>Login</h1>
-  {% if error %}<p style="color:#b00020;">{{ error }}</p>{% endif %}
+  <p class="muted">Accedi al gestionale.</p>
+
+  {% if error %}
+  <p class="error">{{ error }}</p>
+  {% endif %}
+
   <form method="post" action="/login">
-    <div style="margin-bottom:12px;">
-      <label>Username</label>
-      <input type="text" name="username" required style="width:100%;padding:10px;">
-    </div>
-    <div style="margin-bottom:12px;">
-      <label>Password</label>
-      <input type="password" name="password" required style="width:100%;padding:10px;">
-    </div>
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" placeholder="Password" required>
     <button type="submit">Entra</button>
   </form>
 </div>
