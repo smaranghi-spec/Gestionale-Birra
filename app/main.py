@@ -17,7 +17,6 @@ templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 app = FastAPI(title="Gestionale Birrificio")
 app.add_middleware(SessionMiddleware, secret_key="cambia-questa-chiave-subito")
-
 Base.metadata.create_all(bind=engine)
 
 
@@ -35,7 +34,6 @@ def hash_password(password: str) -> str:
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -45,7 +43,6 @@ class User(Base):
 
 class Attrezzatura(Base):
     __tablename__ = "attrezzature"
-
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False)
     tipo = Column(String, nullable=False, default="generico")
@@ -58,7 +55,6 @@ class Attrezzatura(Base):
 
 class Ricetta(Base):
     __tablename__ = "ricette"
-
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False)
     stile = Column(String, nullable=True)
@@ -178,7 +174,6 @@ def ricette(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-
     items = db.query(Ricetta).order_by(Ricetta.id.desc()).all()
     return templates.TemplateResponse(
         request=request,
