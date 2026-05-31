@@ -1,7 +1,29 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="card">
   <h1>Attrezzature</h1>
-  <p>Pagina attrezzature pronta.</p>
+  <p class="muted">Inserisci e visualizza le attrezzature del birrificio.</p>
+
+  <form method="post" action="/attrezzature/nuova">
+    <input type="text" name="nome" placeholder="Nome attrezzatura" required>
+    <input type="text" name="tipo" placeholder="Tipo">
+    <input type="text" name="descrizione" placeholder="Descrizione">
+    <input type="number" step="0.1" name="capacita_litri" placeholder="Capacità litri">
+    <input type="text" name="ubicazione" placeholder="Ubicazione">
+    <button type="submit">Salva attrezzatura</button>
+  </form>
+</div>
+
+<div class="grid">
+  {% for a in attrezzature %}
+  <div class="card">
+    <h3>{{ a.nome }}</h3>
+    <p>{{ a.tipo or '' }}</p>
+    <p>{{ a.descrizione or '' }}</p>
+    <p>{{ a.capacita_litri or '' }} L</p>
+    <p>{{ a.ubicazione or '' }}</p>
+  </div>
+  {% endfor %}
 </div>
 {% endblock %}
