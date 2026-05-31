@@ -5,11 +5,19 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
-from sqlalchemy.orm import Session
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from starlette.middleware.sessions import SessionMiddleware
 
-from .db import Base, SessionLocal, engine
+DATABASE_URL = "sqlite:///./birrificio.db"
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = BASE_DIR.parent / "templates"
@@ -17,7 +25,6 @@ templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 app = FastAPI(title="Gestionale Birrificio")
 app.add_middleware(SessionMiddleware, secret_key="cambia-questa-chiave-subito")
-Base.metadata.create_all(bind=engine)
 
 
 def get_db():
@@ -62,6 +69,9 @@ class Ricetta(Base):
     litri = Column(Float, nullable=True)
     attiva = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+Base.metadata.create_all(bind=engine)
 
 
 def get_current_user(request: Request, db: Session):
