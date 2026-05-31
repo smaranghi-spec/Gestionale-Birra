@@ -1,28 +1,104 @@
-{% extends "base.html" %}
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or 'Gestionale Birrificio' }}</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1f2937;
+      --border: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0f172a, #111827 50%, #0b1220);
+      color: var(--text);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      background: rgba(17, 24, 39, 0.95);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+    .nav {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px 16px;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .nav a {
+      color: var(--text);
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid var(--border);
+    }
+    .nav a:hover {
+      border-color: var(--accent);
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+    p { color: var(--muted); line-height: 1.5; }
+    input, textarea, button {
+      font: inherit;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text);
+    }
+    button {
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/attrezzature">Attrezzature</a>
+      <a href="/ricette/html">Ricette</a>
+      <a href="/logout">Logout</a>
+    </nav>
+  </header>
 
-{% block content %}
-<div class="card">
-  <h1>Gestionale Birrificio</h1>
-  <p class="muted">Benvenuto, {{ user.username }}.</p>
-</div>
-
-<div class="grid">
-  <div class="card">
-    <h3>Attrezzature</h3>
-    <p>Gestisci impianti, tank, tini e strumenti del birrificio.</p>
-    <a href="/attrezzature">Apri attrezzature</a>
-  </div>
-
-  <div class="card">
-    <h3>Ricette</h3>
-    <p>Apri l’elenco delle ricette e crea nuove cotte.</p>
-    <a href="/ricette/html">Apri ricette</a>
-  </div>
-
-  <div class="card">
-    <h3>Sessione</h3>
-    <p>Quando hai finito puoi uscire in sicurezza dall’account.</p>
-    <a href="/logout">Logout</a>
-  </div>
-</div>
-{% endblock %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
