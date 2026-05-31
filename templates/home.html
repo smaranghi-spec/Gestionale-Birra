@@ -3,26 +3,26 @@
 {% block content %}
 <div class="card">
   <h1>Gestionale Birrificio</h1>
-  <p>Utente: {{ user.username }}</p>
+  <p class="muted">Benvenuto, {{ user.username }}.</p>
 </div>
 
 <div class="grid">
   <div class="card">
     <h3>Attrezzature</h3>
-    <p>Gestione impianti e strumenti.</p>
-    <a href="/attrezzature">Apri</a>
+    <p>Gestisci impianti, tank, tini e strumenti del birrificio.</p>
+    <a href="/attrezzature">Apri attrezzature</a>
   </div>
 
   <div class="card">
     <h3>Ricette</h3>
-    <p>Creazione e gestione ricette.</p>
-    <a href="/ricette/html">Apri</a>
+    <p>Apri l’elenco delle ricette e crea nuove cotte.</p>
+    <a href="/ricette/html">Apri ricette</a>
   </div>
 
   <div class="card">
-    <h3>Logout</h3>
-    <p>Esci dalla sessione utente.</p>
-    <a href="/logout">Esci</a>
+    <h3>Sessione</h3>
+    <p>Quando hai finito puoi uscire in sicurezza dall’account.</p>
+    <a href="/logout">Logout</a>
   </div>
 </div>
 {% endblock %}
