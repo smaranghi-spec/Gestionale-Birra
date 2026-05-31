@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or 'Gestionale Birrificio' }}</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;background:#111;color:#eee}
+    header{padding:16px;background:#1b1b1b;position:sticky;top:0}
+    main{padding:16px;max-width:1100px;margin:0 auto}
+    .card{background:#1f1f1f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:12px}
+    a{color:#9ad}
+    .nav a{display:inline-block;margin-right:12px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <a href="/">Dashboard</a>
+    </div>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
