@@ -50,14 +50,22 @@ def home(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("home.html", {"request": request, "title": "Dashboard", "user": user})
+    return templates.TemplateResponse(
+        request=request,
+        name="home.html",
+        context={"title": "Dashboard", "user": user},
+    )
 
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     if request.session.get("user_id"):
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "title": "Login", "error": None})
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"title": "Login", "error": None},
+    )
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -70,8 +78,9 @@ def do_login(
     user = db.query(User).filter(User.username == username).first()
     if not user or not pwd_context.verify(password, user.password_hash):
         return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "title": "Login", "error": "Credenziali non valide"},
+            request=request,
+            name="login.html",
+            context={"title": "Login", "error": "Credenziali non valide"},
             status_code=401,
         )
 
