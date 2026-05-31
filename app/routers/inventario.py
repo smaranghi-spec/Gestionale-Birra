@@ -82,3 +82,47 @@ def elimina(iid: int, db: Session = Depends(get_db)):
         db.delete(item)
         db.commit()
     return RedirectResponse("/inventario", status_code=303)
+
+
+@router.post("/inventario/da-fattura")
+def importa_da_fattura(
+    data_json: str = Form("[]"),
+    fornitore: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    import json
+    try:
+        righe = json.loads(data_json)
+    except Exception:
+        return RedirectResponse("/inventario?msg=Errore+JSON", status_code=303)
+
+    importati = 0
+    for r in righe:
+        desc = (r.get("descrizione") or "").strip()
+        if not desc:
+            continue
+        qty = float(r.get("quantita") or 0)
+        unita = (r.get("unita") or "pz").strip()
+        pu = float(r.get("prezzo_unitario") or 0)
+        existing = db.query(InventarioItem).filter(
+            InventarioItem.nome.ilike(f"%{desc[:30]}%")
+        ).first()
+        if existing:
+            existing.quantita = (existing.quantita or 0) + qty
+            existing.ultimo_aggiornamento = datetime.now().strftime("%Y-%m-%d %H:%M")
+            if fornitore and not existing.fornitore:
+                existing.fornitore = fornitore
+        else:
+            db.add(InventarioItem(
+                nome=desc,
+                categoria="ingrediente",
+                unita=unita,
+                quantita=qty,
+                quantita_minima=0,
+                prezzo_unitario=pu if pu > 0 else None,
+                fornitore=fornitore or None,
+                ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            ))
+        importati += 1
+    db.commit()
+    return RedirectResponse(f"/inventario?msg=Importati+{importati}+articoli+da+fattura", status_code=303)

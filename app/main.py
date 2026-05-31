@@ -12,6 +12,7 @@ from .routers import (
     acquisti, vendite, auth_router,
 )
 from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
+from .routers import prezzi, fattura
 
 Base.metadata.create_all(bind=engine)
 
@@ -75,6 +76,8 @@ app.include_router(calendario.router)
 app.include_router(pulizie.router)
 app.include_router(inventario.router)
 app.include_router(birre_pub.router)
+app.include_router(prezzi.router)
+app.include_router(fattura.router)
 
 
 @app.get("/", response_class=HTMLResponse)

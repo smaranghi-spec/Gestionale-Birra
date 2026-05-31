@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Scanner Fatture{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">📄 Scanner Fatture & Bolle</h1>
+  <p>Carica una fattura o bolla di acquisto (PDF o foto) per estrarre automaticamente gli articoli acquistati.</p>
+</div>
+
+{% if not has_ai %}
+<div class="alert alert-amber" style="margin-bottom:20px;">
+  ⚡ <strong>Modalità base</strong> — Per l'estrazione automatica da immagini configura
+  <code>OPENAI_API_KEY</code> nelle variabili d'ambiente. I PDF vengono elaborati localmente.
+</div>
+{% endif %}
+
+<!-- Upload form -->
+<div class="card" style="margin-bottom:20px;">
+  <h3 style="font-size:15px;margin-bottom:16px;">📤 Carica documento</h3>
+  <form method="post" action="/fattura" enctype="multipart/form-data">
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;
+      transition:border-color .15s;cursor:pointer;" id="drop-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--amber)'"
+      ondragleave="this.style.borderColor='var(--border)'"
+      ondrop="handleDrop(event)">
+      <div style="font-size:40px;margin-bottom:12px;">📎</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">
+        Clicca o trascina qui il file
+      </div>
+      <p style="font-size:13px;">PDF, JPG, PNG, WebP — max 20 MB</p>
+      <input type="file" id="file-input" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
+        style="display:none;" onchange="showFilename(this)" required>
+      <div id="file-name" style="margin-top:10px;font-size:13px;color:var(--amber);display:none;"></div>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:14px;width:100%;justify-content:center;font-size:15px;">
+      🔍 Analizza documento
+    </button>
+  </form>
+</div>
+
+{% if errore %}
+<div class="alert alert-amber" style="margin-bottom:16px;">⚠️ {{ errore }}</div>
+{% endif %}
+
+{% if img_b64 %}
+<div class="card" style="margin-bottom:20px;">
+  <h3 style="font-size:14px;margin-bottom:12px;">🖼️ Documento caricato</h3>
+  <img src="data:{{ img_mime }};base64,{{ img_b64 }}" alt="Fattura"
+    style="max-width:100%;border-radius:8px;border:1px solid var(--border);">
+</div>
+{% endif %}
+
+{% if righe is not none %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <span class="card-title">📋 Articoli estratti</span>
+      {% if filename %}<span style="font-size:12px;color:var(--muted);margin-left:8px;">{{ filename }}</span>{% endif %}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="addRow()">➕ Riga</button>
+      <button class="btn btn-primary btn-sm" onclick="importaInventario()">📦 Importa in Inventario</button>
+    </div>
+  </div>
+
+  {% if righe %}
+  <div style="overflow-x:auto;">
+    <table class="tbl" id="righe-table">
+      <thead>
+        <tr>
+          <th style="min-width:200px;">Descrizione / Prodotto</th>
+          <th style="width:90px;">Quantità</th>
+          <th style="width:80px;">Unità</th>
+          <th style="width:110px;">€/unità</th>
+          <th style="width:110px;">Totale €</th>
+          <th style="width:40px;"></th>
+        </tr>
+      </thead>
+      <tbody id="righe-body">
+        {% for r in righe %}
+        <tr>
+          <td><input type="text" value="{{ r.get('descrizione','') }}" class="riga-desc" style="width:100%;"></td>
+          <td><input type="number" value="{{ r.get('quantita','') }}" step="0.001" class="riga-qty" style="width:100%;"></td>
+          <td>
+            <select class="riga-unita" style="width:100%;">
+              {% for u in ["kg","g","l","ml","pz","conf","bot"] %}
+              <option {% if r.get('unita','') == u %}selected{% endif %}>{{ u }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input type="number" value="{{ r.get('prezzo_unitario','') }}" step="0.01" class="riga-pu" style="width:100%;"></td>
+          <td><input type="number" value="{{ r.get('totale','') }}" step="0.01" class="riga-tot" style="width:100%;"></td>
+          <td>
+            <button onclick="this.closest('tr').remove()" class="btn btn-danger btn-xs" style="padding:3px 8px;">✕</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty" style="padding:32px;">
+    <div class="empty-icon">📋</div>
+    <p>Nessun articolo estratto automaticamente.</p>
+    <button class="btn btn-ghost" onclick="addRow()">➕ Aggiungi riga manualmente</button>
+  </div>
+  <div style="overflow-x:auto;display:none;" id="empty-table-wrapper">
+    <table class="tbl" id="righe-table">
+      <thead>
+        <tr>
+          <th style="min-width:200px;">Descrizione / Prodotto</th>
+          <th style="width:90px;">Quantità</th>
+          <th style="width:80px;">Unità</th>
+          <th style="width:110px;">€/unità</th>
+          <th style="width:110px;">Totale €</th>
+          <th style="width:40px;"></th>
+        </tr>
+      </thead>
+      <tbody id="righe-body"></tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Form nascosto per importazione -->
+  <form id="import-form" method="post" action="/inventario/da-fattura" style="display:none;">
+    <input type="hidden" name="data_json" id="import-data">
+    <input type="hidden" name="fornitore" id="import-fornitore">
+  </form>
+
+  <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;">
+      <label>Fornitore</label>
+      <input type="text" id="campo-fornitore" placeholder="es. MrMalt, Polsinelli…" style="max-width:280px;">
+    </div>
+    <button class="btn btn-primary" onclick="importaInventario()">
+      📦 Importa articoli in Inventario
+    </button>
+    <button class="btn btn-ghost" onclick="window.print()">🖨️ Stampa</button>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function showFilename(input) {
+  const el = document.getElementById('file-name');
+  if (input.files.length) {
+    el.textContent = '📎 ' + input.files[0].name;
+    el.style.display = 'block';
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.borderColor = 'var(--border)';
+  const files = e.dataTransfer.files;
+  if (files.length) {
+    const input = document.getElementById('file-input');
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    input.files = dt.files;
+    showFilename(input);
+  }
+}
+
+function addRow() {
+  const wrapper = document.getElementById('empty-table-wrapper');
+  if (wrapper) wrapper.style.display = 'block';
+  const tbody = document.getElementById('righe-body');
+  if (!tbody) return;
+  tbody.insertAdjacentHTML('beforeend', `
+    <tr>
+      <td><input type="text" placeholder="Descrizione prodotto" class="riga-desc" style="width:100%;"></td>
+      <td><input type="number" placeholder="1" step="0.001" class="riga-qty" style="width:100%;"></td>
+      <td><select class="riga-unita" style="width:100%;">
+        <option>kg</option><option>g</option><option>l</option>
+        <option>ml</option><option>pz</option><option>conf</option><option>bot</option>
+      </select></td>
+      <td><input type="number" placeholder="0.00" step="0.01" class="riga-pu" style="width:100%;"></td>
+      <td><input type="number" placeholder="0.00" step="0.01" class="riga-tot" style="width:100%;"></td>
+      <td><button onclick="this.closest('tr').remove()" class="btn btn-danger btn-xs">✕</button></td>
+    </tr>
+  `);
+}
+
+function importaInventario() {
+  const tbody = document.getElementById('righe-body');
+  if (!tbody) return alert('Nessuna riga da importare.');
+  const rows = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const desc = tr.querySelector('.riga-desc')?.value?.trim();
+    if (!desc) return;
+    rows.push({
+      descrizione: desc,
+      quantita: parseFloat(tr.querySelector('.riga-qty')?.value) || 0,
+      unita: tr.querySelector('.riga-unita')?.value || 'pz',
+      prezzo_unitario: parseFloat(tr.querySelector('.riga-pu')?.value) || 0,
+      totale: parseFloat(tr.querySelector('.riga-tot')?.value) || 0,
+    });
+  });
+  if (!rows.length) return alert('Nessuna riga da importare.');
+  document.getElementById('import-data').value = JSON.stringify(rows);
+  document.getElementById('import-fornitore').value = document.getElementById('campo-fornitore')?.value || '';
+  document.getElementById('import-form').submit();
+}
+</script>
+
+{% endblock %}

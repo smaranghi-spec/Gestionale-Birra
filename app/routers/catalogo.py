@@ -6,9 +6,11 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import CatalogoIngrediente, IngredienteRicetta
 from ..data_catalogo import TUTTO
+from ..stats import srm_to_hex
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["srm_to_hex"] = srm_to_hex
 
 
 def get_db():
@@ -26,10 +28,17 @@ def lista_catalogo(
     msg: str = None,
     db: Session = Depends(get_db),
 ):
-    query = db.query(CatalogoIngrediente)
+    all_items = db.query(CatalogoIngrediente).all()
+    per_cat = {}
+    for i in all_items:
+        per_cat[i.categoria] = per_cat.get(i.categoria, 0) + 1
+
     if categoria:
-        query = query.filter(CatalogoIngrediente.categoria == categoria)
-    items = query.order_by(CatalogoIngrediente.nome).all()
+        items = [i for i in all_items if i.categoria == categoria]
+    else:
+        items = all_items
+
+    items = sorted(items, key=lambda i: i.nome)
 
     return templates.TemplateResponse(
         "catalogo_ingredienti.html",
@@ -38,6 +47,8 @@ def lista_catalogo(
             "items": items,
             "categoria_attiva": categoria,
             "msg": msg,
+            "per_cat": per_cat,
+            "totale": len(all_items),
         },
     )
 
@@ -252,3 +263,12 @@ def aggiungi_a_ricetta(
     db.commit()
 
     return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
+
+
+@router.post("/catalogo/ingredienti/{item_id}/elimina")
+def elimina_ingrediente(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
+    if item:
+        db.delete(item)
+        db.commit()
+    return RedirectResponse("/catalogo/ingredienti", status_code=303)

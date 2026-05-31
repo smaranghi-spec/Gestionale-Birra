@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Comparatore Prezzi{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">🛒 Comparatore Prezzi</h1>
+  <p>Cerca un ingrediente e confronta i prezzi su MrMalt, Polsinelli, Beer&Wine e AEB Group in tempo reale.</p>
+</div>
+
+<!-- Search bar -->
+<form method="get" action="/prezzi/cerca" style="margin-bottom:28px;">
+  <div style="display:flex;gap:10px;max-width:640px;">
+    <input type="text" name="q" value="{{ query }}" placeholder="es. Citra, Pilsner Malt, US-05…"
+      style="flex:1;font-size:15px;" autocomplete="off" autofocus>
+    <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:14px;">
+      🔍 Cerca
+    </button>
+  </div>
+  <p style="margin-top:8px;font-size:12px;">Suggerimenti: usa nomi in inglese per risultati migliori (es. "Citra" non "Luppolo Citra")</p>
+</form>
+
+{% if risultati is none %}
+<!-- Stato iniziale -->
+<div class="card" style="text-align:center;padding:48px;">
+  <div style="font-size:48px;margin-bottom:16px;">🔍</div>
+  <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">Cerca un ingrediente</div>
+  <p>Inserisci il nome di un malto, luppolo, lievito o additivo.<br>
+  I prezzi vengono cercati in tempo reale sui siti dei fornitori.</p>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+    {% for tag in ["Citra", "Pilsner Malt", "US-05", "Saaz", "Munich Malt", "Cascade"] %}
+    <a href="/prezzi/cerca?q={{ tag }}" class="btn btn-ghost" style="font-size:12px;">{{ tag }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% elif risultati|length == 0 %}
+<div class="card empty">
+  <div class="empty-icon">😕</div>
+  <p>Nessun risultato. Prova con un altro termine.</p>
+</div>
+
+{% else %}
+
+<!-- Riepilogo per fornitore -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:24px;">
+  {% for f in risultati %}
+  <div class="card card-sm" style="margin-bottom:0;border-top:3px solid
+    {% if loop.index == 1 %}#f59e0b{% elif loop.index == 2 %}#3b82f6{% elif loop.index == 3 %}#10b981{% else %}#8b5cf6{% endif %};">
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">
+      {{ f.fornitore }}
+    </div>
+    {% if f.errore %}
+    <div style="font-size:11px;color:var(--red);">⚠ {{ f.errore }}</div>
+    {% else %}
+    <div style="font-size:12px;color:var(--muted);">
+      {{ f.risultati|length }} risultat{% if f.risultati|length == 1 %}o{% else %}i{% endif %}
+    </div>
+    {% endif %}
+    <a href="{{ f.url_ricerca }}" target="_blank" rel="noopener"
+      style="font-size:11px;color:var(--amber);">Apri sito →</a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Tabella comparativa -->
+{% for f in risultati %}
+{% if f.risultati %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">
+    <div>
+      <span class="card-title">{{ f.fornitore }}</span>
+      {% if f.errore %}
+      <span class="badge badge-red" style="margin-left:8px;">Errore</span>
+      {% endif %}
+    </div>
+    <a href="{{ f.url_ricerca }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">
+      Apri su sito →
+    </a>
+  </div>
+
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Prodotto</th>
+        <th style="width:120px;text-align:right;">Prezzo</th>
+        <th style="width:80px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in f.risultati %}
+      <tr>
+        <td>
+          <span style="color:var(--text);font-weight:500;">{{ r.nome[:80] }}{% if r.nome|length > 80 %}…{% endif %}</span>
+          {% if r.get('nota') %}<br><span style="font-size:11px;color:var(--muted);">{{ r.nota }}</span>{% endif %}
+        </td>
+        <td style="text-align:right;font-weight:700;">
+          {% if r.prezzo %}
+          <span style="color:var(--green);">€ {{ "%.2f"|format(r.prezzo) }}</span>
+          {% else %}
+          <span style="color:var(--muted);">N/D</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ r.url }}" target="_blank" rel="noopener"
+            class="btn btn-ghost btn-xs">Vedi →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% elif not f.errore %}
+<div class="card card-sm" style="margin-bottom:12px;">
+  <span style="color:var(--muted);font-size:13px;">
+    <strong>{{ f.fornitore }}</strong> — Nessun risultato trovato per "{{ query }}".
+    <a href="{{ f.url_ricerca }}" target="_blank">Cerca manualmente →</a>
+  </span>
+</div>
+{% endif %}
+{% endfor %}
+
+<div class="card" style="background:var(--amber-dim);border-color:var(--amber);margin-top:8px;">
+  <p style="color:var(--amber);font-size:12px;margin:0;">
+    ℹ️ <strong>Nota:</strong> I prezzi vengono estratti in tempo reale dai siti dei fornitori.
+    Alcuni siti usano JavaScript per caricare i prezzi e potrebbero non essere disponibili.
+    Verifica sempre il prezzo definitivo sul sito del fornitore prima dell'acquisto.
+  </p>
+</div>
+
+{% endif %}
+
+{% endblock %}
