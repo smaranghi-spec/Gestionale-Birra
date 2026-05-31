@@ -1,9 +1,9 @@
 from pathlib import Path
+import hashlib
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -13,7 +13,6 @@ from .models import Attrezzatura, Ricetta, User
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = BASE_DIR.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI(title="Gestionale Birrificio")
 app.add_middleware(SessionMiddleware, secret_key="cambia-questa-chiave-subito")
@@ -26,6 +25,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 def get_current_user(request: Request, db: Session):
@@ -76,7 +79,7 @@ def do_login(
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.username == username).first()
-    if not user or not pwd_context.verify(password, user.password_hash):
+    if not user or user.password_hash != hash_password(password):
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -99,7 +102,7 @@ def logout(request: Request):
 def seed_admin(db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == "admin").first()
     if not user:
-        user = User(username="admin", password_hash=pwd_context.hash("admin123"))
+        user = User(username="admin", password_hash=hash_password("admin123"))
         db.add(user)
         db.commit()
     return {"ok": True, "username": "admin", "password": "admin123"}
