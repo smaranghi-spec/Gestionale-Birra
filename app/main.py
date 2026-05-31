@@ -17,6 +17,7 @@ templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 app = FastAPI(title="Gestionale Birrificio")
 app.add_middleware(SessionMiddleware, secret_key="cambia-questa-chiave-subito")
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -34,6 +35,7 @@ def hash_password(password: str) -> str:
 
 class User(Base):
     __tablename__ = "users"
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -43,12 +45,25 @@ class User(Base):
 
 class Attrezzatura(Base):
     __tablename__ = "attrezzature"
+
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False)
     tipo = Column(String, nullable=False, default="generico")
     descrizione = Column(Text)
     capacita_litri = Column(Float)
     ubicazione = Column(String)
+    attiva = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Ricetta(Base):
+    __tablename__ = "ricette"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    stile = Column(String, nullable=True)
+    descrizione = Column(Text, nullable=True)
+    litri = Column(Float, nullable=True)
     attiva = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -65,21 +80,39 @@ def home(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse(request=request, name="home.html", context={"title": "Dashboard", "user": user})
+    return templates.TemplateResponse(
+        request=request,
+        name="home.html",
+        context={"title": "Dashboard", "user": user},
+    )
 
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     if request.session.get("user_id"):
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login", "error": None})
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"title": "Login", "error": None},
+    )
 
 
 @app.post("/login", response_class=HTMLResponse)
-def do_login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def do_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db),
+):
     user = db.query(User).filter(User.username == username).first()
     if not user or user.password_hash != hash_password(password):
-        return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login", "error": "Credenziali non valide"}, status_code=401)
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"title": "Login", "error": "Credenziali non valide"},
+            status_code=401,
+        )
     request.session["user_id"] = user.id
     request.session["username"] = user.username
     return RedirectResponse(url="/", status_code=303)
@@ -106,12 +139,38 @@ def attrezzature(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    attrezzature = db.query(Attrezzatura).order_by(Attrezzatura.id.desc()).all()
+    items = db.query(Attrezzatura).order_by(Attrezzatura.id.desc()).all()
     return templates.TemplateResponse(
         request=request,
         name="attrezzature.html",
-        context={"title": "Attrezzature", "user": user, "attrezzature": attrezzature},
+        context={"title": "Attrezzature", "user": user, "attrezzature": items},
     )
+
+
+@app.post("/attrezzature/nuova")
+def nuova_attrezzatura(
+    request: Request,
+    nome: str = Form(...),
+    tipo: str = Form("generico"),
+    descrizione: str = Form(""),
+    capacita_litri: float = Form(0),
+    ubicazione: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    item = Attrezzatura(
+        nome=nome,
+        tipo=tipo,
+        descrizione=descrizione or None,
+        capacita_litri=capacita_litri or None,
+        ubicazione=ubicazione or None,
+    )
+    db.add(item)
+    db.commit()
+    return RedirectResponse(url="/attrezzature", status_code=303)
 
 
 @app.get("/ricette/html", response_class=HTMLResponse)
@@ -119,8 +178,34 @@ def ricette(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
+
+    items = db.query(Ricetta).order_by(Ricetta.id.desc()).all()
     return templates.TemplateResponse(
         request=request,
         name="ricette.html",
-        context={"title": "Ricette", "user": user},
+        context={"title": "Ricette", "user": user, "ricette": items},
     )
+
+
+@app.post("/ricette/nuova")
+def nuova_ricetta(
+    request: Request,
+    nome: str = Form(...),
+    stile: str = Form(""),
+    descrizione: str = Form(""),
+    litri: float = Form(0),
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    item = Ricetta(
+        nome=nome,
+        stile=stile or None,
+        descrizione=descrizione or None,
+        litri=litri or None,
+    )
+    db.add(item)
+    db.commit()
+    return RedirectResponse(url="/ricette/html", status_code=303)
