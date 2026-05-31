@@ -3,11 +3,13 @@
 {% block content %}
 <div class="card">
   <h1>Ricette</h1>
+  <p class="muted">Inserisci e visualizza le ricette salvate.</p>
+
   <form method="post" action="/ricette/nuova">
-    <input type="text" name="nome" placeholder="Nome ricetta" required style="width:100%;padding:10px;margin-bottom:8px;">
-    <input type="text" name="stile" placeholder="Stile" style="width:100%;padding:10px;margin-bottom:8px;">
-    <textarea name="descrizione" placeholder="Descrizione" style="width:100%;padding:10px;margin-bottom:8px;min-height:90px;"></textarea>
-    <input type="number" step="0.1" name="litri" placeholder="Litri" style="width:100%;padding:10px;margin-bottom:8px;">
+    <input type="text" name="nome" placeholder="Nome ricetta" required>
+    <input type="text" name="stile" placeholder="Stile">
+    <textarea name="descrizione" placeholder="Descrizione"></textarea>
+    <input type="number" step="0.1" name="litri" placeholder="Litri">
     <button type="submit">Salva ricetta</button>
   </form>
 </div>
