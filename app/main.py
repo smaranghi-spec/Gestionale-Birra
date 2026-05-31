@@ -1,14 +1,18 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from .db import engine
 from .models import Base
-from .routers import ricette, catalogo, ingredienti, stili, cotte, importa, acquisti
+from .routers import acquisti, catalogo, cotte, importa, ingredienti, ricette, stili
+
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATE_DIR = BASE_DIR.parent / "templates"
+templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 Base.metadata.create_all(bind=engine)
-
-templates = Jinja2Templates(directory="templates")
 
 
 def run_migrations():
@@ -41,4 +45,4 @@ app.include_router(acquisti.router)
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse(request, "home.html", {})
