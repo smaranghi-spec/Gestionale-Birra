@@ -1,216 +1,137 @@
-from pathlib import Path
-import hashlib
-from datetime import datetime
-
-from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+import os
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, create_engine
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
-DATABASE_URL = "sqlite:///./birrificio.db"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
+from .db import engine
+from .models import Base
+from .routers import (
+    ricette, catalogo, ingredienti, stili, cotte, importa,
+    acquisti, vendite, auth_router,
 )
+from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+Base.metadata.create_all(bind=engine)
 
-BASE_DIR = Path(__file__).resolve().parent
-TEMPLATE_DIR = BASE_DIR.parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+templates = Jinja2Templates(directory="templates")
+
+SECRET_KEY = os.environ.get("SECRET_KEY", "birrificio-gestionale-2024-segreto")
+
+
+def run_migrations():
+    import sqlite3
+    conn = sqlite3.connect("./gestionale_birra.db")
+    for sql in [
+        "ALTER TABLE ingredienti_ricetta ADD COLUMN prezzo_unitario REAL",
+        "ALTER TABLE ricette ADD COLUMN pubblica INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN nome TEXT DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN ruolo TEXT DEFAULT 'birraio'",
+    ]:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+
+
+run_migrations()
+
+# ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
+
+EXEMPT = ("/login", "/register", "/birre", "/debug", "/static")
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if any(path.startswith(e) for e in EXEMPT):
+            return await call_next(request)
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return RedirectResponse("/login", status_code=303)
+        return await call_next(request)
+
+
+# ── APP ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Gestionale Birrificio")
-app.add_middleware(SessionMiddleware, secret_key="cambia-questa-chiave-subito")
+app.add_middleware(AuthMiddleware)
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+app.include_router(auth_router.router)
+app.include_router(ricette.router)
+app.include_router(catalogo.router)
+app.include_router(ingredienti.router)
+app.include_router(stili.router)
+app.include_router(cotte.router)
+app.include_router(importa.router)
+app.include_router(acquisti.router)
+app.include_router(vendite.router)
+app.include_router(attrezzature.router)
+app.include_router(calendario.router)
+app.include_router(pulizie.router)
+app.include_router(inventario.router)
+app.include_router(birre_pub.router)
 
 
-def get_db():
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse(request, "home.html", {
+        "session": request.session,
+    })
+
+
+@app.get("/debug/seed-admin")
+def seed_admin():
+    from .db import SessionLocal
+    from .models import User
+    db = SessionLocal()
+    u = db.query(User).filter(User.username == "admin").first()
+    if not u:
+        u = User(username="admin", password_hash=User.hash_pw("admin123"),
+                 nome="Amministratore", ruolo="admin")
+        db.add(u)
+        db.commit()
+        db.close()
+        return {"created": True, "username": "admin", "password": "admin123"}
+    db.close()
+    return {"exists": True, "username": "admin",
+            "hint": "Se non riesci ad accedere vai a /debug/reset-admin"}
+
+
+@app.get("/api/stats-home")
+def stats_home():
+    from .db import SessionLocal
+    from .models import Ricetta, Cotta, CatalogoIngrediente, Stile
     db = SessionLocal()
     try:
-        yield db
+        return {
+            "n_ricette": db.query(Ricetta).count(),
+            "n_cotte": db.query(Cotta).filter(Cotta.stato != "archiviata").count(),
+            "n_catalogo": db.query(CatalogoIngrediente).count(),
+            "n_stili": db.query(Stile).count(),
+        }
     finally:
         db.close()
 
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class Attrezzatura(Base):
-    __tablename__ = "attrezzature"
-    id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String, nullable=False)
-    tipo = Column(String, nullable=False, default="generico")
-    descrizione = Column(Text)
-    capacita_litri = Column(Float)
-    ubicazione = Column(String)
-    attiva = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class Ricetta(Base):
-    __tablename__ = "ricette"
-    id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String, nullable=False)
-    stile = Column(String, nullable=True)
-    descrizione = Column(Text, nullable=True)
-    litri = Column(Float, nullable=True)
-    attiva = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-Base.metadata.create_all(bind=engine)
-
-
-def get_current_user(request: Request, db: Session):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == user_id).first()
-
-
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse(
-        request=request,
-        name="home.html",
-        context={"title": "Dashboard", "user": user},
-    )
-
-
-@app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    if request.session.get("user_id"):
-        return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(
-        request=request,
-        name="login.html",
-        context={"title": "Login", "error": None},
-    )
-
-
-@app.post("/login", response_class=HTMLResponse)
-def do_login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    user = db.query(User).filter(User.username == username).first()
-    if not user or user.password_hash != hash_password(password):
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={"title": "Login", "error": "Credenziali non valide"},
-            status_code=401,
-        )
-    request.session["user_id"] = user.id
-    request.session["username"] = user.username
-    return RedirectResponse(url="/", status_code=303)
-
-
-@app.get("/logout")
-def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/login", status_code=303)
-
-
-@app.get("/debug/seed-admin")
-def seed_admin(db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == "admin").first()
-    if not user:
-        user = User(username="admin", password_hash=hash_password("admin123"))
-        db.add(user)
-        db.commit()
-    return {"ok": True, "username": "admin", "password": "admin123"}
-
-
-@app.get("/attrezzature", response_class=HTMLResponse)
-def attrezzature(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-    items = db.query(Attrezzatura).order_by(Attrezzatura.id.desc()).all()
-    return templates.TemplateResponse(
-        request=request,
-        name="attrezzature.html",
-        context={"title": "Attrezzature", "user": user, "attrezzature": items},
-    )
-
-
-@app.post("/attrezzature/nuova")
-def nuova_attrezzatura(
-    request: Request,
-    nome: str = Form(...),
-    tipo: str = Form("generico"),
-    descrizione: str = Form(""),
-    capacita_litri: float = Form(0),
-    ubicazione: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-
-    item = Attrezzatura(
-        nome=nome,
-        tipo=tipo,
-        descrizione=descrizione or None,
-        capacita_litri=capacita_litri or None,
-        ubicazione=ubicazione or None,
-    )
-    db.add(item)
+@app.get("/debug/reset-admin")
+def reset_admin():
+    from .db import SessionLocal
+    from .models import User
+    db = SessionLocal()
+    u = db.query(User).filter(User.username == "admin").first()
+    if u:
+        u.password_hash = User.hash_pw("admin123")
+        u.ruolo = "admin"
+        u.is_active = True
+    else:
+        u = User(username="admin", password_hash=User.hash_pw("admin123"),
+                 nome="Amministratore", ruolo="admin")
+        db.add(u)
     db.commit()
-    return RedirectResponse(url="/attrezzature", status_code=303)
-
-
-@app.get("/ricette/html", response_class=HTMLResponse)
-def ricette(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-    items = db.query(Ricetta).order_by(Ricetta.id.desc()).all()
-    return templates.TemplateResponse(
-        request=request,
-        name="ricette.html",
-        context={"title": "Ricette", "user": user, "ricette": items},
-    )
-
-
-@app.post("/ricette/nuova")
-def nuova_ricetta(
-    request: Request,
-    nome: str = Form(...),
-    stile: str = Form(""),
-    descrizione: str = Form(""),
-    litri: float = Form(0),
-    db: Session = Depends(get_db),
-):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-
-    item = Ricetta(
-        nome=nome,
-        stile=stile or None,
-        descrizione=descrizione or None,
-        litri=litri or None,
-    )
-    db.add(item)
-    db.commit()
-    return RedirectResponse(url="/ricette/html", status_code=303)
+    db.close()
+    return {"reset": True, "username": "admin", "password": "admin123"}

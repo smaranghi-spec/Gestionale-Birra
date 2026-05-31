@@ -1,27 +1,141 @@
 {% extends "base.html" %}
-
+{% block title %}Ricette{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Ricette</h1>
-  <p class="muted">Inserisci e visualizza le ricette salvate.</p>
 
-  <form method="post" action="/ricette/nuova">
-    <input type="text" name="nome" placeholder="Nome ricetta" required>
-    <input type="text" name="stile" placeholder="Stile">
-    <textarea name="descrizione" placeholder="Descrizione"></textarea>
-    <input type="number" step="0.1" name="litri" placeholder="Litri">
-    <button type="submit">Salva ricetta</button>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 style="font-size:22px;margin-bottom:4px;">🧪 Ricette</h1>
+    <p>{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %} create</p>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('form-nuova').style.display=document.getElementById('form-nuova').style.display==='none'?'block':'none'">
+    ➕ Nuova ricetta
+  </button>
+</div>
+
+<!-- Modulo nuova ricetta -->
+<div id="form-nuova" style="display:none;margin-bottom:20px;">
+<div class="card">
+  <h3 style="font-size:15px;margin-bottom:16px;">➕ Crea Nuova Ricetta</h3>
+  <form method="post" action="/ricette/html">
+    <input type="hidden" name="versione" value="1">
+    <div class="form-grid">
+      <div class="form-row" style="grid-column:span 2;">
+        <label>Nome ricetta *</label>
+        <input type="text" name="nome" placeholder="es. Weizen Estiva" required>
+      </div>
+      <div class="form-row">
+        <label>Tipo</label>
+        <select name="tipo">
+          <option>All Grain</option><option>BIAB</option><option>Partial Mash</option><option>Extract</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Stile BJCP</label>
+        <select name="stile_id">
+          <option value="">— Nessuno —</option>
+          {% for s in stili %}
+          <option value="{{ s.id }}">{{ s.nome }} {% if s.linea_guida %}({{ s.linea_guida }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Volume target (L)</label>
+        <input type="number" name="volume_target_litri" step="0.1" value="20" min="1">
+      </div>
+      <div class="form-row">
+        <label>Efficienza (%)</label>
+        <input type="number" name="efficienza" step="0.1" value="75" min="1" max="100">
+      </div>
+      <div class="form-row" style="grid-column:span 2;">
+        <label>Note</label>
+        <textarea name="note" rows="2" placeholder="Descrizione, note…"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button type="submit" class="btn btn-primary">✓ Crea Ricetta</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('form-nuova').style.display='none'">Annulla</button>
+    </div>
   </form>
 </div>
-
-<div class="grid">
-  {% for r in ricette %}
-  <div class="card">
-    <h3>{{ r.nome }}</h3>
-    <p>{{ r.stile or '' }}</p>
-    <p>{{ r.descrizione or '' }}</p>
-    <p>{{ r.litri or '' }} L</p>
-  </div>
-  {% endfor %}
 </div>
+
+{% if ricette %}
+<!-- Filtro -->
+<div style="margin-bottom:14px;">
+  <input type="text" id="search-ricette" placeholder="🔍 Cerca per nome o stile…"
+    style="max-width:360px;" oninput="filterRicette(this.value)">
+</div>
+
+<div id="ricette-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
+{% for r in ricette %}
+<a href="/ricette/{{ r.id }}" style="text-decoration:none;" class="ricetta-card"
+   data-search="{{ (r.nome ~ ' ' ~ (r.stile.nome if r.stile else ''))|lower }}">
+<div class="card" style="padding:18px 20px;cursor:pointer;transition:border-color .15s;border:1px solid var(--border);margin-bottom:0;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+    <div style="font-size:16px;font-weight:700;color:var(--text);">{{ r.nome }}</div>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      {% if r.stile %}
+      <span class="badge badge-amber" style="font-size:10px;">{{ r.tipo or 'AG' }}</span>
+      {% endif %}
+      {% set n_cotte = cotte_count.get(r.id, 0) %}
+      {% if n_cotte > 0 %}
+      <span class="badge badge-green" style="font-size:10px;">{{ n_cotte }} cott{% if n_cotte == 1 %}a{% else %}e{% endif %}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% if r.stile %}
+  <div style="font-size:12px;color:var(--amber);margin-bottom:6px;">{{ r.stile.nome }}</div>
+  {% endif %}
+  <div style="font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;">
+    <span>🧴 {{ r.volume_target_litri or 20 }} L</span>
+    <span>⚡ {{ r.efficienza or 75 }}%</span>
+    {% if r.ingredienti %}
+    <span>🌾 {{ r.ingredienti|length }} ingr.</span>
+    {% endif %}
+  </div>
+  {% if r.note %}
+  <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+    {{ r.note[:80] }}{% if r.note|length > 80 %}…{% endif %}
+  </div>
+  {% endif %}
+</div>
+</a>
+{% endfor %}
+</div>
+
+<div id="no-results" style="display:none;" class="card empty">
+  <div class="empty-icon">🔍</div>
+  <p>Nessuna ricetta trovata con questo filtro.</p>
+</div>
+
+<script>
+function filterRicette(q) {
+  const cards = document.querySelectorAll('.ricetta-card');
+  let visible = 0;
+  q = q.toLowerCase();
+  cards.forEach(c => {
+    const match = !q || c.dataset.search.includes(q);
+    c.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+}
+document.querySelectorAll('.ricetta-card .card').forEach(c => {
+  c.addEventListener('mouseenter', () => c.style.borderColor = 'var(--amber)');
+  c.addEventListener('mouseleave', () => c.style.borderColor = 'var(--border)');
+});
+</script>
+
+{% else %}
+<div class="card empty">
+  <div class="empty-icon">🧪</div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:10px;">Nessuna ricetta</div>
+  <p>Crea la tua prima ricetta o importa un file BeerXML.</p>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+    <button class="btn btn-primary" onclick="document.getElementById('form-nuova').style.display='block';this.scrollIntoView();">➕ Crea Ricetta</button>
+    <a href="/importa/beerxml" class="btn btn-ghost">📥 Importa BeerXML</a>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}

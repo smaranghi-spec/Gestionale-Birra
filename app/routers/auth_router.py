@@ -2,11 +2,9 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from ..db import SessionLocal
-from ..models import Utente
-from ..auth import hash_password, verify_password
+from ..models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -23,11 +21,15 @@ def get_db():
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, db: Session = Depends(get_db)):
     if request.session.get("user_id"):
-        return RedirectResponse("/", status_code=303)
-    n_utenti = db.query(Utente).count()
+        u = db.query(User).filter(User.id == request.session["user_id"]).first()
+        if u and u.is_active:
+            return RedirectResponse("/", status_code=303)
+        request.session.clear()
+    n = db.query(User).count()
     return templates.TemplateResponse(request, "login.html", {
         "errore": None,
-        "primo_accesso": n_utenti == 0,
+        "primo_accesso": n == 0,
+        "session": {},
     })
 
 
@@ -38,17 +40,18 @@ def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    utente = db.query(Utente).filter(Utente.username == username, Utente.attivo == 1).first()
-    if not utente or not verify_password(password, utente.password_hash):
-        n_utenti = db.query(Utente).count()
+    u = db.query(User).filter(User.username == username, User.is_active == True).first()
+    if not u or not u.check_pw(password):
+        n = db.query(User).count()
         return templates.TemplateResponse(request, "login.html", {
             "errore": "Username o password non corretti.",
-            "primo_accesso": n_utenti == 0,
+            "primo_accesso": n == 0,
+            "session": {},
         })
-    request.session["user_id"] = utente.id
-    request.session["username"] = utente.username
-    request.session["nome"] = utente.nome or utente.username
-    request.session["ruolo"] = utente.ruolo
+    request.session["user_id"] = u.id
+    request.session["username"] = u.username
+    request.session["nome"] = u.nome or u.username
+    request.session["ruolo"] = u.ruolo
     return RedirectResponse("/", status_code=303)
 
 
@@ -60,11 +63,13 @@ def logout(request: Request):
 
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request, db: Session = Depends(get_db)):
-    n_utenti = db.query(Utente).count()
-    ruolo_session = request.session.get("ruolo", "")
-    if n_utenti > 0 and ruolo_session != "admin":
+    n = db.query(User).count()
+    if n > 0 and request.session.get("ruolo") != "admin":
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse(request, "register.html", {"errore": None})
+    return templates.TemplateResponse(request, "register.html", {
+        "errore": None,
+        "session": request.session,
+    })
 
 
 @router.post("/register")
@@ -75,33 +80,31 @@ def register(
     nome: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    n_utenti = db.query(Utente).count()
-    ruolo_session = request.session.get("ruolo", "")
-    if n_utenti > 0 and ruolo_session != "admin":
+    from datetime import datetime
+    n = db.query(User).count()
+    if n > 0 and request.session.get("ruolo") != "admin":
         return RedirectResponse("/login", status_code=303)
-
-    existing = db.query(Utente).filter(Utente.username == username).first()
-    if existing:
+    if db.query(User).filter(User.username == username).first():
         return templates.TemplateResponse(request, "register.html", {
-            "errore": "Username già in uso. Scegli un altro username."
+            "errore": "Username già in uso.",
+            "session": request.session,
         })
-
-    ruolo = "admin" if n_utenti == 0 else "birraio"
-    utente = Utente(
+    ruolo = "admin" if n == 0 else "birraio"
+    u = User(
         username=username,
-        password_hash=hash_password(password),
+        password_hash=User.hash_pw(password),
         nome=nome.strip() or username,
         ruolo=ruolo,
-        attivo=1,
-        data_creazione=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        is_active=True,
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
     )
-    db.add(utente)
+    db.add(u)
     db.commit()
-    db.refresh(utente)
-    request.session["user_id"] = utente.id
-    request.session["username"] = utente.username
-    request.session["nome"] = utente.nome
-    request.session["ruolo"] = utente.ruolo
+    db.refresh(u)
+    request.session["user_id"] = u.id
+    request.session["username"] = u.username
+    request.session["nome"] = u.nome
+    request.session["ruolo"] = u.ruolo
     return RedirectResponse("/", status_code=303)
 
 
@@ -109,7 +112,7 @@ def register(
 def gestisci_utenti(request: Request, db: Session = Depends(get_db)):
     if request.session.get("ruolo") != "admin":
         return RedirectResponse("/", status_code=303)
-    utenti = db.query(Utente).order_by(Utente.id).all()
+    utenti = db.query(User).order_by(User.id).all()
     return templates.TemplateResponse(request, "utenti.html", {
         "utenti": utenti,
         "session": request.session,
@@ -120,8 +123,8 @@ def gestisci_utenti(request: Request, db: Session = Depends(get_db)):
 def toggle_utente(uid: int, request: Request, db: Session = Depends(get_db)):
     if request.session.get("ruolo") != "admin":
         return RedirectResponse("/", status_code=303)
-    utente = db.query(Utente).filter(Utente.id == uid).first()
-    if utente and utente.id != request.session.get("user_id"):
-        utente.attivo = 0 if utente.attivo else 1
+    u = db.query(User).filter(User.id == uid).first()
+    if u and u.id != request.session.get("user_id"):
+        u.is_active = not u.is_active
         db.commit()
     return RedirectResponse("/utenti", status_code=303)

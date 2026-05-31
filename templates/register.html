@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registrazione — Gestionale Birrificio</title>
+  <style>
+    :root{--bg:#0d1117;--card:#1c2333;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+      --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);--red:#f85149;--red-dim:rgba(248,81,73,.12);}
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;
+      background:var(--bg);color:var(--text);min-height:100vh;
+      display:flex;align-items:center;justify-content:center;padding:20px;}
+    .wrap{width:100%;max-width:420px;}
+    .brand{text-align:center;margin-bottom:28px;}
+    .brand span{font-size:48px;display:block;margin-bottom:8px;}
+    h1{font-size:22px;font-weight:700;margin:0 0 4px;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;}
+    .card h2{font-size:17px;font-weight:600;margin:0 0 20px;}
+    .form-row{margin-bottom:14px;}
+    label{display:block;font-size:11px;font-weight:600;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+    input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);
+      background:var(--bg);color:var(--text);font:inherit;font-size:14px;}
+    input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-dim);}
+    .btn{width:100%;padding:11px;border-radius:8px;border:none;
+      background:var(--amber);color:#000;font:700 14px/1 inherit;cursor:pointer;margin-top:4px;}
+    .btn:hover{filter:brightness(1.1);}
+    .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;
+      border:1px solid var(--red);background:var(--red-dim);color:var(--red);}
+    .link-row{text-align:center;margin-top:14px;font-size:13px;color:var(--muted);}
+    .link-row a{color:var(--amber);}
+    small{color:var(--muted);font-size:12px;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <span>🍺</span>
+    <h1>Gestionale Birrificio</h1>
+  </div>
+  <div class="card">
+    <h2>Crea account</h2>
+    {% if errore %}<div class="alert">{{ errore }}</div>{% endif %}
+    <form method="post" action="/register">
+      <div class="form-row">
+        <label>Nome visualizzato</label>
+        <input type="text" name="nome" placeholder="es. Marco Rossi">
+      </div>
+      <div class="form-row">
+        <label>Username *</label>
+        <input type="text" name="username" placeholder="username" required>
+        <small>Verrà usato per il login</small>
+      </div>
+      <div class="form-row">
+        <label>Password *</label>
+        <input type="password" name="password" placeholder="Almeno 6 caratteri" required minlength="6">
+      </div>
+      <button type="submit" class="btn">Crea account</button>
+    </form>
+    <div class="link-row"><a href="/login">← Torna al login</a></div>
+  </div>
+</div>
+</body>
+</html>

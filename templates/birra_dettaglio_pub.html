@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ birra.nome }} — Le Nostre Birre</title>
+  <style>
+    :root{--bg:#0d1117;--card:#1c2333;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+      --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);}
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;
+      background:var(--bg);color:var(--text);}
+    header{background:rgba(22,27,34,.95);backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);padding:0 24px;}
+    .nav-inner{max-width:800px;margin:0 auto;height:56px;display:flex;align-items:center;gap:12px;}
+    .brand{font-size:18px;font-weight:700;color:var(--amber);text-decoration:none;}
+    .back{color:var(--muted);text-decoration:none;font-size:14px;}
+    .back:hover{color:var(--text);}
+    .page{max-width:800px;margin:0 auto;padding:32px 24px 60px;}
+    .hero{margin-bottom:32px;}
+    .beer-title{font-size:32px;font-weight:800;margin:0 0 8px;}
+    .beer-style{color:var(--amber);font-size:14px;font-weight:600;margin-bottom:16px;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;}
+    .stat-row{display:flex;gap:24px;flex-wrap:wrap;padding:16px;background:var(--card);
+      border:1px solid var(--border);border-radius:12px;margin-bottom:16px;}
+    .stat{text-align:center;flex:1;min-width:80px;}
+    .stat .val{font-size:22px;font-weight:700;color:var(--text);}
+    .stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+    h3{font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text);}
+    .ing-row{display:flex;justify-content:space-between;padding:8px 0;
+      border-bottom:1px solid rgba(48,54,61,.4);font-size:13px;}
+    .ing-row:last-child{border:none;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;
+      background:var(--amber-dim);color:var(--amber);}
+  </style>
+</head>
+<body>
+<header>
+  <div class="nav-inner">
+    <a href="/birre" class="back">← Tutte le birre</a>
+    <a href="/birre" class="brand" style="margin-left:auto;">🍺 Le Nostre Birre</a>
+  </div>
+</header>
+
+<div class="page">
+  <div class="hero">
+    <div style="font-size:64px;margin-bottom:12px;">🍺</div>
+    <h1 class="beer-title">{{ birra.nome }}</h1>
+    {% if stile %}<div class="beer-style">{{ stile.nome }}</div>{% endif %}
+    {% if birra.note %}<p style="color:var(--muted);font-size:15px;line-height:1.6;max-width:560px;">{{ birra.note }}</p>{% endif %}
+  </div>
+
+  {% if birra.ingredienti %}
+  <div class="card">
+    <h3>🌾 Ingredienti principali</h3>
+    {% for cat in ['grain','hop','yeast','misc'] %}
+    {% set ing_cat = birra.ingredienti|selectattr('categoria','equalto',cat)|list %}
+    {% if ing_cat %}
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">
+        {% if cat=='grain' %}🌾 Malti{% elif cat=='hop' %}🌿 Luppoli{% elif cat=='yeast' %}🧫 Lievito{% else %}✨ Altro{% endif %}
+      </div>
+      {% for i in ing_cat %}
+      <div class="ing-row">
+        <span>{{ i.nome }}</span>
+        <span style="color:var(--muted);">{{ i.quantita }} {{ i.unita }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div style="text-align:center;padding:32px;color:var(--muted);font-size:14px;">
+    Prodotta artigianalmente con passione 🍺
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Inventario{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">📊 Inventario</h1>
+  <p>Consumabili e non consumabili. Aggiorna le quantità e monitora le soglie minime.</p>
+</div>
+
+{% if sotto_soglia %}
+<div class="alert alert-red" style="margin-bottom:20px;">
+  ⚠️ <strong>{{ sotto_soglia|length }} articoli sotto la soglia minima:</strong>
+  {% for s in sotto_soglia %}<strong>{{ s.nome }}</strong> ({{ s.quantita }} {{ s.unita }}){% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+
+  <div>
+    {% if items %}
+    {% set cat_groups = {} %}
+    {% for item in items %}
+      {% if item.categoria not in cat_groups %}{% set _ = cat_groups.update({item.categoria: []}) %}{% endif %}
+    {% endfor %}
+
+    {% for cat in categorie %}
+    {% set cat_items = items|selectattr('categoria','equalto',cat)|list %}
+    {% if cat_items %}
+    <div class="card" style="margin-bottom:14px;padding:0;overflow:hidden;">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);">
+        <span class="badge badge-{% if cat=='consumabile' %}amber{% elif cat=='non_consumabile' %}blue{% else %}gray{% endif %}">{{ cat|replace('_',' ')|title }}</span>
+        <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ cat_items|length }} articoli</span>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Articolo</th><th>Q.tà attuale</th><th>Soglia min.</th><th>Prezzo unit.</th><th>Fornitore</th><th>Aggiornato</th><th></th></tr></thead>
+        <tbody>
+        {% for item in cat_items %}
+        {% set sotto = item.quantita_minima and item.quantita <= item.quantita_minima %}
+        <tr>
+          <td>
+            <div style="font-weight:600;{% if sotto %}color:var(--red);{% endif %}">{{ item.nome }}</div>
+            {% if item.note %}<div style="font-size:10px;color:var(--muted);">{{ item.note[:50] }}</div>{% endif %}
+          </td>
+          <td>
+            <span style="font-weight:700;color:{% if sotto %}var(--red){% else %}var(--text){% endif %};">{{ item.quantita }} {{ item.unita }}</span>
+            {% if sotto %}<span class="badge badge-red" style="margin-left:4px;">! basso</span>{% endif %}
+          </td>
+          <td style="color:var(--muted);">{{ item.quantita_minima or '—' }} {{ item.unita if item.quantita_minima else '' }}</td>
+          <td style="color:var(--muted);">{% if item.prezzo_unitario %}€{{ '%.2f'|format(item.prezzo_unitario) }}{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:var(--muted);">{{ item.fornitore or '—' }}</td>
+          <td style="font-size:11px;color:var(--muted);">{{ item.ultimo_aggiornamento or '—' }}</td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:nowrap;">
+              <form method="post" action="/inventario/{{ item.id }}/aggiorna" style="display:flex;gap:3px;">
+                <input type="number" name="delta" step="0.1" placeholder="±" style="width:60px;padding:3px 6px;font-size:12px;" required>
+                <button type="submit" class="btn btn-ghost btn-xs">↻</button>
+              </form>
+              <form method="post" action="/inventario/{{ item.id }}/elimina">
+                <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% else %}
+    <div class="card empty">
+      <div class="empty-icon">📊</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">Inventario vuoto</div>
+      <p>Inizia aggiungendo articoli dal modulo a destra.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuovo Articolo</h3>
+    <form method="post" action="/inventario/nuovo">
+      <div class="form-row"><label>Nome *</label><input type="text" name="nome" placeholder="es. Tappi a corona" required></div>
+      <div class="form-row"><label>Categoria</label>
+        <select name="categoria">{% for c in categorie %}<option>{{ c }}</option>{% endfor %}</select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-row"><label>Unità</label>
+          <select name="unita">{% for u in unita %}<option>{{ u }}</option>{% endfor %}</select>
+        </div>
+        <div class="form-row"><label>Q.tà attuale</label><input type="number" name="quantita" step="0.01" value="0" placeholder="0"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-row"><label>Soglia minima</label><input type="number" name="quantita_minima" step="0.01" value="0" placeholder="0"></div>
+        <div class="form-row"><label>Prezzo (€/unità)</label><input type="number" name="prezzo_unitario" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="form-row"><label>Fornitore</label><input type="text" name="fornitore" placeholder="es. BrewFerm"></div>
+      <div class="form-row"><label>Note</label><textarea name="note" rows="2" placeholder="Note…"></textarea></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">➕ Aggiungi</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

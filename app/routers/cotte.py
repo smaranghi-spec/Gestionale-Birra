@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA
+from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA, Degustazione
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -151,6 +151,13 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
         if not misure_sg or misure_sg[-1]["v"] != cotta.fg_reale:
             misure_sg = misure_sg + [fg_entry]
 
+    degustazioni = (
+        db.query(Degustazione)
+        .filter(Degustazione.cotta_id == cotta_id)
+        .order_by(Degustazione.data.desc())
+        .all()
+    )
+
     return templates.TemplateResponse(
         request,
         "dettaglio_cotta.html",
@@ -167,37 +174,10 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             "oggi": date.today().strftime("%Y-%m-%d"),
             "misure_sg": misure_sg,
             "misure_temp": misure_temp,
+            "degustazioni": degustazioni,
         },
     )
 
-    if cotta.og_reale and cotta.data_inoculo:
-        og_entry = {"t": cotta.data_inoculo + " 00:00", "v": cotta.og_reale}
-        if not misure_sg or misure_sg[0]["v"] != cotta.og_reale:
-            misure_sg = [og_entry] + misure_sg
-
-    if cotta.fg_reale and cotta.data_imbottigliamento:
-        fg_entry = {"t": cotta.data_imbottigliamento + " 00:00", "v": cotta.fg_reale}
-        if not misure_sg or misure_sg[-1]["v"] != cotta.fg_reale:
-            misure_sg = misure_sg + [fg_entry]
-
-    return templates.TemplateResponse(
-        "dettaglio_cotta.html",
-        {
-            "request": request,
-            "cotta": cotta,
-            "log": list(reversed(cotta.log)),
-            "prossimo_stato": prossimo,
-            "prossimo_label": FASI_LABEL.get(prossimo, "") if prossimo else "",
-            "idx_stato": idx_stato,
-            "stati": STATI_COTTA,
-            "fasi_label": FASI_LABEL,
-            "fg_stimata": fg_stimata,
-            "abv_calcolato": abv_calcolato,
-            "oggi": date.today().strftime("%Y-%m-%d"),
-            "misure_sg": misure_sg,
-            "misure_temp": misure_temp,
-        },
-    )
 
 
 @router.post("/cotte/{cotta_id}/avanza")
@@ -351,3 +331,45 @@ def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
         db.delete(cotta)
         db.commit()
     return RedirectResponse("/cotte", status_code=303)
+
+
+@router.post("/cotte/{cotta_id}/degustazioni")
+def aggiungi_degustazione(
+    cotta_id: int,
+    data: str = Form(""),
+    degustatore: str = Form(""),
+    aroma: float = Form(0),
+    gusto: float = Form(0),
+    aspetto: float = Form(0),
+    sensazione: float = Form(0),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    from datetime import date as _date
+    punteggio = round((aroma + gusto + aspetto + sensazione) / 4, 1) if any([aroma, gusto, aspetto, sensazione]) else None
+    d = Degustazione(
+        cotta_id=cotta_id,
+        data=data or _date.today().isoformat(),
+        degustatore=degustatore or None,
+        aroma=aroma or None,
+        gusto=gusto or None,
+        aspetto=aspetto or None,
+        sensazione=sensazione or None,
+        note=note or None,
+        punteggio=punteggio,
+    )
+    db.add(d)
+    db.commit()
+    return RedirectResponse(f"/cotte/{cotta_id}#degustazioni", status_code=303)
+
+
+@router.post("/cotte/{cotta_id}/degustazioni/{deg_id}/elimina")
+def elimina_degustazione(cotta_id: int, deg_id: int, db: Session = Depends(get_db)):
+    d = db.query(Degustazione).filter(
+        Degustazione.id == deg_id,
+        Degustazione.cotta_id == cotta_id,
+    ).first()
+    if d:
+        db.delete(d)
+        db.commit()
+    return RedirectResponse(f"/cotte/{cotta_id}#degustazioni", status_code=303)

@@ -3,115 +3,243 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title or 'Gestionale Birrificio' }}</title>
+  <title>{% block title %}Gestionale Birrificio{% endblock %}</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --card: #1f2937;
-      --border: #374151;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #60a5fa;
-      --accent2: #34d399;
-      --danger: #f87171;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --card: #1c2333;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --amber: #f59e0b;
+      --amber-dark: #d97706;
+      --amber-dim: rgba(245,158,11,0.12);
+      --green: #3fb950;
+      --green-dim: rgba(63,185,80,0.12);
+      --red: #f85149;
+      --red-dim: rgba(248,81,73,0.12);
+      --blue: #58a6ff;
+      --blue-dim: rgba(88,166,255,0.12);
+      --radius: 10px;
     }
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: linear-gradient(180deg, #0f172a, #111827 50%, #0b1220);
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Arial, sans-serif;
+      background: var(--bg);
       color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
     }
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: rgba(17, 24, 39, 0.95);
+    a { color: var(--amber); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1,h2,h3,h4 { margin-top:0; font-weight:600; }
+    p { color: var(--muted); margin: 0 0 12px; }
+
+    /* ── NAVBAR ─────────────────────────────── */
+    .navbar {
+      position: sticky; top:0; z-index:100;
+      background: rgba(22,27,34,0.95);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(8px);
+      padding: 0 20px;
     }
-    .nav {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 14px 16px;
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-      align-items: center;
+    .navbar-inner {
+      max-width: 1400px; margin: 0 auto;
+      display: flex; align-items: center; gap: 6px;
+      height: 56px; flex-wrap: nowrap;
     }
-    .nav a {
-      color: var(--text);
-      text-decoration: none;
-      padding: 8px 12px;
-      border-radius: 10px;
-      background: #0b1220;
+    .navbar-brand {
+      font-size: 18px; font-weight: 700; color: var(--amber);
+      white-space: nowrap; margin-right: 12px; text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .navbar-brand:hover { text-decoration: none; color: var(--amber-dark); }
+    .nav-links {
+      display: flex; align-items: center; gap: 2px;
+      overflow-x: auto; flex: 1;
+      scrollbar-width: none;
+    }
+    .nav-links::-webkit-scrollbar { display: none; }
+    .nav-links a {
+      color: var(--muted); font-size: 13px; font-weight: 500;
+      padding: 6px 10px; border-radius: 6px;
+      white-space: nowrap; text-decoration: none;
+      transition: color .15s, background .15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .nav-links a.active { color: var(--amber); background: var(--amber-dim); }
+    .nav-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink:0; }
+    .navbar-user {
+      display: flex; align-items: center; gap: 8px;
+      margin-left: 8px; flex-shrink: 0;
+    }
+    .user-badge {
+      background: var(--amber-dim); border: 1px solid var(--amber);
+      color: var(--amber); font-size: 12px; font-weight: 600;
+      padding: 4px 10px; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .btn-logout {
+      color: var(--muted); font-size: 12px; padding: 4px 8px;
+      border-radius: 6px; text-decoration: none;
       border: 1px solid var(--border);
     }
-    .nav a:hover {
-      border-color: var(--accent);
-      color: white;
-    }
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 20px 16px 40px;
-    }
+    .btn-logout:hover { color: var(--red); border-color: var(--red); text-decoration: none; }
+
+    /* ── LAYOUT ─────────────────────────────── */
+    .page { max-width: 1400px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    /* ── CARDS ─────────────────────────────── */
     .card {
-      background: rgba(31, 41, 55, 0.9);
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 18px;
-      margin-bottom: 14px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 14px;
+    .card-sm { padding: 14px 18px; }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
     }
-    h1, h2, h3 { margin-top: 0; }
-    p { color: var(--muted); line-height: 1.5; }
-    a { color: var(--accent); }
-    input, textarea, button {
-      font: inherit;
+    .card-title { font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
+
+    /* ── GRID ─────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; }
+
+    /* ── STAT BOXES ─────────────────────────── */
+    .stat-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 4px;
     }
-    input, textarea {
-      width: 100%;
-      padding: 10px 12px;
-      margin-bottom: 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #0b1220;
-      color: var(--text);
+    .stat-box .label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-box .value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-box .sub { font-size: 12px; color: var(--muted); }
+    .stat-amber .value { color: var(--amber); }
+    .stat-green .value { color: var(--green); }
+    .stat-blue .value { color: var(--blue); }
+    .stat-red .value { color: var(--red); }
+
+    /* ── BUTTONS ─────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px; border: none;
+      font: 600 13px/1 inherit; cursor: pointer; text-decoration: none;
+      transition: filter .15s, background .15s;
+      white-space: nowrap;
     }
-    button {
-      border: 0;
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      font-weight: 700;
+    .btn:hover { filter: brightness(1.1); text-decoration: none; }
+    .btn-primary { background: var(--amber); color: #000; }
+    .btn-secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+    .btn-success { background: var(--green); color: #000; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 6px; }
+
+    /* ── FORMS ─────────────────────────────── */
+    .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; }
+    label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    input, select, textarea {
+      width: 100%; padding: 9px 12px;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: var(--panel); color: var(--text);
+      font: inherit; font-size: 14px;
+      transition: border .15s;
     }
-    button:hover { filter: brightness(1.05); }
-    .muted { color: var(--muted); }
-    .success { color: var(--accent2); }
-    .error { color: var(--danger); }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--amber);
+      box-shadow: 0 0 0 3px var(--amber-dim);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    select option { background: var(--panel); }
+
+    /* ── TABLE ─────────────────────────────── */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .tbl th {
+      text-align: left; padding: 10px 12px;
+      color: var(--muted); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tbl td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.5); vertical-align: middle; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── BADGES ─────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-amber { background: var(--amber-dim); color: var(--amber); }
+    .badge-green { background: var(--green-dim); color: var(--green); }
+    .badge-red { background: var(--red-dim); color: var(--red); }
+    .badge-blue { background: var(--blue-dim); color: var(--blue); }
+    .badge-gray { background: rgba(139,148,158,.15); color: var(--muted); }
+
+    /* ── ALERTS ─────────────────────────────── */
+    .alert {
+      padding: 12px 16px; border-radius: 8px;
+      font-size: 14px; margin-bottom: 16px;
+      border: 1px solid;
+    }
+    .alert-red { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+    .alert-green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .alert-amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+
+    /* ── DIVIDER ─────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* ── EMPTY STATE ─────────────────────────── */
+    .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* ── NAV ACTIVE DETECTION ───────────────── */
+    {% block extra_style %}{% endblock %}
   </style>
 </head>
 <body>
-  <header>
-    <nav class="nav">
-      <a href="/">Dashboard</a>
-      <a href="/attrezzature">Attrezzature</a>
-      <a href="/ricette/html">Ricette</a>
-      <a href="/logout">Logout</a>
-    </nav>
-  </header>
 
-  <main>
-    {% block content %}{% endblock %}
-  </main>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="navbar-brand">🍺 Birrificio</a>
+    <div class="nav-links">
+      <a href="/">🏠 Dashboard</a>
+      <a href="/ricette/html">🧪 Ricette</a>
+      <a href="/cotte">🍺 Cotte</a>
+      <div class="nav-sep"></div>
+      <a href="/catalogo/ingredienti">📦 Catalogo</a>
+      <a href="/stili">🌿 Stili</a>
+      <a href="/attrezzature">⚙️ Attrezzature</a>
+      <a href="/inventario">📊 Inventario</a>
+      <div class="nav-sep"></div>
+      <a href="/calendario">📅 Calendario</a>
+      <a href="/pulizie">🧹 Pulizie</a>
+      <a href="/vendite">💰 Vendite</a>
+      <div class="nav-sep"></div>
+      <a href="/acquisti">🛒 Acquisti</a>
+      <a href="/birre" target="_blank">🌐 Pub</a>
+      {% if session and session.ruolo == 'admin' %}<a href="/utenti">👥 Utenti</a>{% endif %}
+    </div>
+    <div class="navbar-user">
+      {% if session and session.nome %}
+        <span class="user-badge">👤 {{ session.nome }}</span>
+      {% endif %}
+      <a href="/logout" class="btn-logout">Esci</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  {% block content %}{% endblock %}
+</div>
+
 </body>
 </html>

@@ -1,20 +1,95 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Vendite</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f3ee; }
-        .card { background: white; padding: 24px; border-radius: 12px; max-width: 900px; }
-        h1 { color: #5a381e; }
-        a { color: #8b5a2b; font-weight: bold; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>Vendite</h1>
-        <p>Sezione per ordini clienti e spedizioni.</p>
-        <p><a href="/">Torna alla home</a></p>
+{% extends "base.html" %}
+{% block title %}Vendite{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">💰 Vendite</h1>
+  <p>Registra vendite, clienti e monitora il fatturato.</p>
+</div>
+
+<div class="grid-4" style="margin-bottom:20px;">
+  <div class="stat-box stat-amber"><div class="label">Fatturato totale</div><div class="value">€{{ '%.2f'|format(fatturato) }}</div><div class="sub">Tutte le vendite</div></div>
+  <div class="stat-box stat-green"><div class="label">Litri venduti</div><div class="value">{{ fatturato and litri or '0' }} L</div><div class="sub">Totale</div></div>
+  <div class="stat-box stat-blue"><div class="label">Clienti</div><div class="value">{{ n_clienti }}</div><div class="sub">Unici</div></div>
+  <div class="stat-box"><div class="label">Vendite</div><div class="value">{{ vendite|length }}</div><div class="sub">Registrate</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+
+  <div>
+    {% if trend %}
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:14px;">📈 Andamento mensile (ultimi 6 mesi)</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;height:80px;">
+        {% set max_val = trend|map(attribute=1)|max %}
+        {% for mese, val in trend %}
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="font-size:10px;color:var(--muted);">€{{ '%.0f'|format(val) }}</div>
+          <div style="width:100%;background:var(--amber);border-radius:4px 4px 0 0;
+            height:{{ ((val / max_val) * 60)|int if max_val > 0 else 4 }}px;min-height:4px;"></div>
+          <div style="font-size:10px;color:var(--muted);">{{ mese[5:] }}</div>
+        </div>
+        {% endfor %}
+      </div>
     </div>
-</body>
-</html>
+    {% endif %}
+
+    {% if vendite %}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead><tr><th>Data</th><th>Prodotto</th><th>Cliente</th><th>Qt</th><th>Importo</th><th></th></tr></thead>
+        <tbody>
+        {% for v in vendite %}
+        <tr>
+          <td style="color:var(--muted);font-size:12px;">{{ v.data }}</td>
+          <td>
+            <div style="font-weight:600;">{{ v.prodotto }}</div>
+            {% if v.note %}<div style="font-size:11px;color:var(--muted);">{{ v.note[:50] }}</div>{% endif %}
+          </td>
+          <td>{{ v.cliente or '—' }}</td>
+          <td>
+            {% if v.quantita_litri %}{{ v.quantita_litri }} L{% endif %}
+            {% if v.n_bottiglie %}{{ v.n_bottiglie }} bott.{% endif %}
+          </td>
+          <td style="font-weight:700;color:var(--amber);">
+            {% if v.prezzo_euro %}€{{ '%.2f'|format(v.prezzo_euro) }}{% else %}—{% endif %}
+          </td>
+          <td>
+            <form method="post" action="/vendite/{{ v.id }}/elimina">
+              <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card empty"><div class="empty-icon">💰</div><p>Nessuna vendita registrata.</p></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova Vendita</h3>
+    <form method="post" action="/vendite">
+      <div class="form-row"><label>Data *</label><input type="date" name="data" value="{{ oggi }}" required></div>
+      <div class="form-row"><label>Prodotto *</label><input type="text" name="prodotto" placeholder="Nome birra / prodotto" required></div>
+      <div class="form-row"><label>Ricetta (opz.)</label>
+        <select name="ricetta_id">
+          <option value="0">— nessuna —</option>
+          {% for r in ricette %}<option value="{{ r.id }}">{{ r.nome }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label>Cliente</label><input type="text" name="cliente" placeholder="Nome cliente"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-row"><label>Litri</label><input type="number" name="quantita_litri" step="0.1" placeholder="0.0"></div>
+        <div class="form-row"><label>N° bottiglie</label><input type="number" name="n_bottiglie" placeholder="0"></div>
+      </div>
+      <div class="form-row"><label>Prezzo (€)</label><input type="number" name="prezzo_euro" step="0.01" placeholder="0.00"></div>
+      <div class="form-row"><label>Note</label><textarea name="note" rows="2" placeholder="Note aggiuntive…"></textarea></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">💾 Registra</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

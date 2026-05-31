@@ -1,218 +1,122 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Tracker di Processo — Cotte</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; background: #f7f3ee; color: #222; }
+{% extends "base.html" %}
+{% block title %}Cotte — Tracker di Processo{% endblock %}
+{% block content %}
 
-        .topbar { background: #5a381e; color: white; padding: 12px 32px; display: flex; align-items: center; gap: 16px; }
-        .topbar a { color: #f5deb3; text-decoration: none; font-size: 14px; }
-        .topbar h1 { margin: 0; font-size: 20px; flex: 1; }
-
-        .container { max-width: 1100px; margin: 28px auto; padding: 0 24px; }
-
-        .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-        .stat-pill {
-            background: white; border-radius: 20px; padding: 8px 18px;
-            font-size: 13px; display: flex; align-items: center; gap: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        }
-        .stat-pill .dot { width: 10px; height: 10px; border-radius: 50%; }
-
-        .card { background: white; border-radius: 10px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
-        h2 { color: #5a381e; margin-top: 0; }
-
-        .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-        .form-row .f { flex: 1; min-width: 160px; }
-        .form-row .f.wide { flex: 2; }
-        label { display: block; font-size: 12px; font-weight: bold; color: #666; margin-bottom: 3px; }
-        input, select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; background: #fdfaf7; }
-        input:focus, select:focus { outline: none; border-color: #8b5a2b; }
-
-        .btn { background: #8b5a2b; color: white; border: none; padding: 9px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; white-space: nowrap; }
-        .btn:hover { background: #6f451f; }
-
-        .cotte-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-
-        .cotta-card {
-            background: white; border-radius: 10px; padding: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-            border-left: 5px solid #ccc;
-            text-decoration: none; color: inherit;
-            transition: box-shadow 0.15s, transform 0.1s;
-            display: block;
-        }
-        .cotta-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
-
-        .cotta-card.stato-pianificata { border-left-color: #adb5bd; }
-        .cotta-card.stato-brewday { border-left-color: #fd7e14; }
-        .cotta-card.stato-fermentazione { border-left-color: #20c997; }
-        .cotta-card.stato-secondaria { border-left-color: #0dcaf0; }
-        .cotta-card.stato-condizionamento { border-left-color: #6610f2; }
-        .cotta-card.stato-imbottigliamento { border-left-color: #0d6efd; }
-        .cotta-card.stato-maturazione { border-left-color: #6f42c1; }
-        .cotta-card.stato-pronta { border-left-color: #198754; }
-        .cotta-card.stato-archiviata { border-left-color: #6c757d; }
-
-        .cotta-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        .cotta-nome { font-size: 16px; font-weight: bold; color: #5a381e; }
-        .cotta-codice { font-size: 12px; color: #999; }
-
-        .badge {
-            display: inline-block; padding: 3px 10px; border-radius: 12px;
-            font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .badge-pianificata { background: #e9ecef; color: #495057; }
-        .badge-brewday { background: #fff3cd; color: #856404; }
-        .badge-fermentazione { background: #d1f2eb; color: #0e6251; }
-        .badge-secondaria { background: #d0f5f5; color: #0e6655; }
-        .badge-condizionamento { background: #e8d5f5; color: #4a148c; }
-        .badge-imbottigliamento { background: #cfe2ff; color: #084298; }
-        .badge-maturazione { background: #e8daff; color: #3d1a78; }
-        .badge-pronta { background: #d1e7dd; color: #0a3622; }
-        .badge-archiviata { background: #f8f9fa; color: #6c757d; }
-
-        .cotta-meta { font-size: 12px; color: #666; margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
-        .cotta-meta span { display: flex; align-items: center; gap: 4px; }
-
-        .cotta-stats { display: flex; gap: 12px; margin-top: 12px; }
-        .mini-stat { text-align: center; }
-        .mini-stat .val { font-size: 16px; font-weight: bold; color: #5a381e; }
-        .mini-stat .lbl { font-size: 11px; color: #999; }
-
-        .empty { text-align: center; padding: 60px 20px; color: #aaa; }
-        .empty-icon { font-size: 56px; margin-bottom: 12px; }
-
-        details summary { cursor: pointer; color: #8b5a2b; font-weight: bold; font-size: 14px; list-style: none; }
-        details summary::-webkit-details-marker { display: none; }
-        details summary::before { content: '▶ '; font-size: 11px; }
-        details[open] summary::before { content: '▼ '; }
-
-        @media (max-width: 768px) {
-            .topbar { padding: 12px 18px; }
-            .container { padding: 0 16px; }
-            .cotte-grid { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-
-<div class="topbar">
-    <a href="/ricette/html">Ricette</a>
-    <h1>🏭 Tracker di Processo</h1>
-    <a href="/importa/beerxml" style="background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:5px;font-size:13px;">Importa BeerXML</a>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 style="font-size:22px;margin-bottom:4px;">🍺 Cotte — Tracker di Processo</h1>
+    <p>{{ cotte|length }} cott{% if cotte|length == 1 %}a{% else %}e{% endif %} totali</p>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('form-nuova').style.display=document.getElementById('form-nuova').style.display==='none'?'block':'none'">
+    ➕ Nuova Cotta
+  </button>
 </div>
 
-<div class="container">
+<!-- Stats bar -->
+{% if cotte %}
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+  {% for stato in stati %}
+  {% if contatori[stato] > 0 %}
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;
+    padding:6px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;">
+    <span style="width:8px;height:8px;border-radius:50%;display:inline-block;
+      background:{% if stato=='brewday' %}#fb923c{% elif stato=='fermentazione' %}#34d399{% elif stato=='secondaria' %}#38bdf8{% elif stato=='pronta' %}#4ade80{% elif stato=='archiviata' %}#6b7280{% elif stato=='imbottigliamento' %}#60a5fa{% elif stato=='maturazione' %}#a78bfa{% elif stato=='condizionamento' %}#c084fc{% else %}#9ca3af{% endif %};"></span>
+    <span style="color:var(--muted);">{{ fasi_label[stato] }}</span>
+    <span style="color:var(--text);">{{ contatori[stato] }}</span>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
 
-    <div class="stats-bar">
-        {% for stato in stati %}
-        {% if contatori[stato] > 0 %}
-        <div class="stat-pill">
-            <div class="dot" style="{% if stato == 'brewday' %}background:#fd7e14{% elif stato == 'fermentazione' %}background:#20c997{% elif stato == 'secondaria' %}background:#0dcaf0{% elif stato == 'pronta' %}background:#198754{% elif stato == 'archiviata' %}background:#6c757d{% elif stato == 'imbottigliamento' %}background:#0d6efd{% elif stato == 'maturazione' %}background:#6f42c1{% elif stato == 'condizionamento' %}background:#6610f2{% else %}background:#adb5bd{% endif %};"></div>
-            <strong>{{ contatori[stato] }}</strong> {{ fasi_label[stato] }}
-        </div>
-        {% endif %}
-        {% endfor %}
-        <div class="stat-pill"><strong>{{ cotte|length }}</strong> totale</div>
+<!-- Form nuova cotta -->
+<div id="form-nuova" style="display:none;margin-bottom:20px;">
+<div class="card">
+  <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova Cotta</h3>
+  <form method="post" action="/cotte/nuova">
+    <div class="form-grid">
+      <div class="form-row" style="grid-column:span 2;">
+        <label>Nome cotta *</label>
+        <input type="text" name="nome" placeholder="es. IPA Estiva #3" required>
+      </div>
+      <div class="form-row">
+        <label>Codice batch</label>
+        <input type="text" name="codice" placeholder="es. 2024-003">
+      </div>
+      <div class="form-row">
+        <label>Ricetta base</label>
+        <select name="ricetta_id">
+          <option value="0">— Nessuna —</option>
+          {% for r in ricette %}
+          <option value="{{ r.id }}">{{ r.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Data brew</label>
+        <input type="date" name="data_brew">
+      </div>
+      <div class="form-row">
+        <label>Fermentatore</label>
+        <input type="text" name="fermentatore" placeholder="es. Fermentatore A">
+      </div>
     </div>
-
-    <div class="card">
-        <details>
-            <summary>+ Nuova cotta</summary>
-            <form method="post" action="/cotte/nuova" style="margin-top:16px;">
-                <div class="form-row">
-                    <div class="f wide">
-                        <label>Nome cotta *</label>
-                        <input type="text" name="nome" placeholder="es. IPA Estiva #3" required>
-                    </div>
-                    <div class="f">
-                        <label>Codice batch</label>
-                        <input type="text" name="codice" placeholder="es. 2024-003">
-                    </div>
-                    <div class="f wide">
-                        <label>Ricetta base</label>
-                        <select name="ricetta_id">
-                            <option value="0">— Nessuna ricetta —</option>
-                            {% for r in ricette %}
-                            <option value="{{ r.id }}">{{ r.nome }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="f">
-                        <label>Data brew</label>
-                        <input type="date" name="data_brew">
-                    </div>
-                    <div class="f">
-                        <label>Fermentatore</label>
-                        <input type="text" name="fermentatore" placeholder="es. Fermentatore A">
-                    </div>
-                    <div style="align-self:flex-end;">
-                        <button type="submit" class="btn">Crea cotta</button>
-                    </div>
-                </div>
-            </form>
-        </details>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button type="submit" class="btn btn-primary">🚀 Crea Cotta</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('form-nuova').style.display='none'">Annulla</button>
     </div>
+  </form>
+</div>
+</div>
 
-    {% if cotte %}
-    <div class="cotte-grid">
-        {% for c in cotte %}
-        <a href="/cotte/{{ c.id }}" class="cotta-card stato-{{ c.stato }}">
-            <div class="cotta-header">
-                <div>
-                    <div class="cotta-nome">{{ c.nome }}</div>
-                    {% if c.codice %}<div class="cotta-codice">{{ c.codice }}</div>{% endif %}
-                </div>
-                <span class="badge badge-{{ c.stato }}">{{ fasi_label[c.stato] }}</span>
-            </div>
-
-            <div class="cotta-meta">
-                {% if c.ricetta %}<span>📋 {{ c.ricetta.nome }}</span>{% endif %}
-                {% if c.data_brew %}<span>📅 {{ c.data_brew }}</span>{% endif %}
-                {% if c.fermentatore %}<span>🧪 {{ c.fermentatore }}</span>{% endif %}
-            </div>
-
-            {% if c.og_reale or c.fg_reale or c.abv_reale or c.volume_imbottigliato %}
-            <div class="cotta-stats">
-                {% if c.og_reale %}
-                <div class="mini-stat">
-                    <div class="val">{{ c.og_reale }}</div>
-                    <div class="lbl">OG</div>
-                </div>
-                {% endif %}
-                {% if c.fg_reale %}
-                <div class="mini-stat">
-                    <div class="val">{{ c.fg_reale }}</div>
-                    <div class="lbl">FG</div>
-                </div>
-                {% endif %}
-                {% if c.abv_reale %}
-                <div class="mini-stat">
-                    <div class="val">{{ c.abv_reale }}%</div>
-                    <div class="lbl">ABV</div>
-                </div>
-                {% endif %}
-                {% if c.volume_imbottigliato %}
-                <div class="mini-stat">
-                    <div class="val">{{ c.volume_imbottigliato }}L</div>
-                    <div class="lbl">Imbottigl.</div>
-                </div>
-                {% endif %}
-            </div>
-            {% endif %}
-        </a>
-        {% endfor %}
+<!-- Lista cotte -->
+{% if cotte %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
+  {% for c in cotte %}
+  {% set stato_color = {'brewday':'#fb923c','fermentazione':'#34d399','secondaria':'#38bdf8',
+    'pronta':'#4ade80','archiviata':'#6b7280','imbottigliamento':'#60a5fa',
+    'maturazione':'#a78bfa','condizionamento':'#c084fc','pianificata':'#9ca3af'} %}
+  <a href="/cotte/{{ c.id }}" style="text-decoration:none;">
+  <div class="card" style="padding:18px 20px;cursor:pointer;margin-bottom:0;
+    border-left:4px solid {{ stato_color.get(c.stato, '#9ca3af') }};
+    border-radius:12px;transition:border-color .15s;"
+    onmouseenter="this.style.borderColor='var(--amber)'"
+    onmouseleave="this.style.borderColor='{{ stato_color.get(c.stato, '#9ca3af') }}'">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">{{ c.nome }}</div>
+        {% if c.codice %}<div style="font-size:11px;color:var(--muted);">{{ c.codice }}</div>{% endif %}
+      </div>
+      <span class="badge" style="background:{{ stato_color.get(c.stato,'#9ca3af') }}20;
+        color:{{ stato_color.get(c.stato,'#9ca3af') }};font-size:10px;">{{ fasi_label[c.stato] }}</span>
     </div>
-    {% else %}
-    <div class="empty">
-        <div class="empty-icon">🍺</div>
-        <p>Nessuna cotta ancora. Crea la prima batch qui sopra.</p>
+    <div style="font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+      {% if c.ricetta %}<span>📋 {{ c.ricetta.nome }}</span>{% endif %}
+      {% if c.data_brew %}<span>📅 {{ c.data_brew }}</span>{% endif %}
+      {% if c.fermentatore %}<span>🧪 {{ c.fermentatore }}</span>{% endif %}
+    </div>
+    {% if c.og_reale or c.fg_reale or c.abv_reale or c.volume_imbottigliato %}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+      {% if c.og_reale %}<div><div style="font-size:14px;font-weight:700;color:var(--text);">{{ c.og_reale }}</div><div style="font-size:10px;color:var(--muted);">OG</div></div>{% endif %}
+      {% if c.fg_reale %}<div><div style="font-size:14px;font-weight:700;color:var(--text);">{{ c.fg_reale }}</div><div style="font-size:10px;color:var(--muted);">FG</div></div>{% endif %}
+      {% if c.abv_reale %}<div><div style="font-size:14px;font-weight:700;color:var(--amber);">{{ c.abv_reale }}%</div><div style="font-size:10px;color:var(--muted);">ABV</div></div>{% endif %}
+      {% if c.volume_imbottigliato %}<div><div style="font-size:14px;font-weight:700;color:var(--green);">{{ c.volume_imbottigliato }}L</div><div style="font-size:10px;color:var(--muted);">Imbottigl.</div></div>{% endif %}
     </div>
     {% endif %}
-
+  </div>
+  </a>
+  {% endfor %}
 </div>
-</body>
-</html>
+{% else %}
+<div class="card empty">
+  <div class="empty-icon">🍺</div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Nessuna cotta</div>
+  <p>Crea la prima batch o importa una ricetta BeerXML.</p>
+  <button class="btn btn-primary" style="margin-top:12px;"
+    onclick="document.getElementById('form-nuova').style.display='block';window.scrollTo(0,0);">
+    ➕ Crea la prima cotta
+  </button>
+</div>
+{% endif %}
+
+{% endblock %}

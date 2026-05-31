@@ -1,29 +1,80 @@
 {% extends "base.html" %}
-
+{% block title %}Attrezzature{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Attrezzature</h1>
-  <p class="muted">Inserisci e visualizza le attrezzature del birrificio.</p>
 
-  <form method="post" action="/attrezzature/nuova">
-    <input type="text" name="nome" placeholder="Nome attrezzatura" required>
-    <input type="text" name="tipo" placeholder="Tipo">
-    <input type="text" name="descrizione" placeholder="Descrizione">
-    <input type="number" step="0.1" name="capacita_litri" placeholder="Capacità litri">
-    <input type="text" name="ubicazione" placeholder="Ubicazione">
-    <button type="submit">Salva attrezzatura</button>
-  </form>
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">⚙️ Profilo Attrezzatura</h1>
+  <p>Impianti, fermentatori, pompe, strumenti — tutto il tuo setup in un posto.</p>
 </div>
 
-<div class="grid">
-  {% for a in attrezzature %}
-  <div class="card">
-    <h3>{{ a.nome }}</h3>
-    <p>{{ a.tipo or '' }}</p>
-    <p>{{ a.descrizione or '' }}</p>
-    <p>{{ a.capacita_litri or '' }} L</p>
-    <p>{{ a.ubicazione or '' }}</p>
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;flex-wrap:wrap;">
+
+  <div>
+    {% if attrezzature %}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead>
+          <tr><th>Nome</th><th>Tipo</th><th>Capacità</th><th>Ubicazione</th><th>Ultima manutenzione</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for a in attrezzature %}
+        <tr>
+          <td>
+            <div style="font-weight:600;">{{ a.nome }}</div>
+            {% if a.marca or a.modello %}<div style="font-size:11px;color:var(--muted);">{{ a.marca or '' }} {{ a.modello or '' }}</div>{% endif %}
+          </td>
+          <td><span class="badge badge-amber">{{ a.tipo }}</span></td>
+          <td>{{ ('%.1f L' % a.capacita_litri) if a.capacita_litri else '—' }}</td>
+          <td>{{ a.ubicazione or '—' }}</td>
+          <td>
+            {% if a.ultima_manutenzione %}
+              <span class="badge badge-green">{{ a.ultima_manutenzione }}</span>
+            {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+          </td>
+          <td style="white-space:nowrap;">
+            <form method="post" action="/attrezzature/{{ a.id }}/manutenzione" style="display:inline-flex;gap:4px;margin-right:4px;">
+              <input type="date" name="data" style="padding:3px 6px;font-size:11px;width:130px;" required>
+              <button type="submit" class="btn btn-ghost btn-xs">🔧</button>
+            </form>
+            <form method="post" action="/attrezzature/{{ a.id }}/elimina" style="display:inline;">
+              <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card empty">
+      <div class="empty-icon">⚙️</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">Nessuna attrezzatura</div>
+      <p>Aggiungi la prima attrezzatura usando il modulo a destra.</p>
+    </div>
+    {% endif %}
   </div>
-  {% endfor %}
+
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova Attrezzatura</h3>
+    <form method="post" action="/attrezzature/nuova">
+      <div class="form-row"><label>Nome *</label><input type="text" name="nome" placeholder="es. Pentola bollitore 50L" required></div>
+      <div class="form-row"><label>Tipo</label>
+        <select name="tipo">{% for t in tipi %}<option>{{ t }}</option>{% endfor %}</select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-row"><label>Marca</label><input type="text" name="marca" placeholder="es. Ss Brewtech"></div>
+        <div class="form-row"><label>Modello</label><input type="text" name="modello" placeholder="es. InfuSsion"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-row"><label>Capacità (L)</label><input type="number" name="capacita_litri" step="0.1" placeholder="30"></div>
+        <div class="form-row"><label>Ubicazione</label><input type="text" name="ubicazione" placeholder="Sala cotta"></div>
+      </div>
+      <div class="form-row"><label>N° Seriale</label><input type="text" name="numero_seriale" placeholder="Opzionale"></div>
+      <div class="form-row"><label>Data acquisto</label><input type="date" name="data_acquisto"></div>
+      <div class="form-row"><label>Note</label><textarea name="note" rows="2" placeholder="Annotazioni…"></textarea></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:4px;">➕ Aggiungi</button>
+    </form>
+  </div>
+
 </div>
 {% endblock %}

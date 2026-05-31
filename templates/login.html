@@ -1,18 +1,92 @@
-{% extends "base.html" %}
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accedi — Gestionale Birrificio</title>
+  <style>
+    :root {
+      --bg:#0d1117;--card:#1c2333;--border:#30363d;
+      --text:#e6edf3;--muted:#8b949e;
+      --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);
+      --red:#f85149;--red-dim:rgba(248,81,73,.12);
+      --green:#3fb950;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;
+      background:var(--bg);color:var(--text);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .login-wrap{width:100%;max-width:420px;}
+    .brand{text-align:center;margin-bottom:32px;}
+    .brand-icon{font-size:56px;display:block;margin-bottom:12px;}
+    .brand h1{font-size:22px;font-weight:700;margin:0 0 4px;color:var(--text);}
+    .brand p{color:var(--muted);font-size:14px;margin:0;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;}
+    .card h2{font-size:17px;font-weight:600;margin:0 0 20px;}
+    .form-row{margin-bottom:14px;}
+    label{display:block;font-size:11px;font-weight:600;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+    input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);
+      background:var(--bg);color:var(--text);font:inherit;font-size:14px;}
+    input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-dim);}
+    .btn{width:100%;padding:11px;border-radius:8px;border:none;
+      background:var(--amber);color:#000;font:700 14px/1 inherit;cursor:pointer;margin-top:8px;}
+    .btn:hover{filter:brightness(1.1);}
+    .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;
+      border:1px solid var(--red);background:var(--red-dim);color:var(--red);}
+    .primo{padding:14px;border-radius:8px;border:1px solid var(--amber);
+      background:var(--amber-dim);color:var(--amber);font-size:13px;margin-bottom:20px;}
+    .link-row{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
+    .link-row a{color:var(--amber);}
+  </style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="brand">
+    <span class="brand-icon">🍺</span>
+    <h1>Gestionale Birrificio</h1>
+    <p>Accedi per gestire il tuo birrificio</p>
+  </div>
 
-{% block content %}
-<div class="card" style="max-width:520px;margin:0 auto;">
-  <h1>Login</h1>
-  <p class="muted">Accedi al gestionale.</p>
-
-  {% if error %}
-  <p class="error">{{ error }}</p>
+  {% if primo_accesso %}
+  <div class="primo">
+    🎉 <strong>Benvenuto!</strong> Nessun utente registrato. Crea il tuo account amministratore.
+    <div style="margin-top:8px;">
+      <a href="/register" style="color:inherit;text-decoration:underline;font-weight:600;">→ Registra il primo account</a>
+    </div>
+  </div>
   {% endif %}
 
-  <form method="post" action="/login">
-    <input type="text" name="username" placeholder="Username" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <button type="submit">Entra</button>
-  </form>
+  <div class="card">
+    <h2>Accedi</h2>
+
+    {% if errore %}
+    <div class="alert">{{ errore }}</div>
+    {% endif %}
+
+    <form method="post" action="/login">
+      <div class="form-row">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="username" required autofocus>
+      </div>
+      <div class="form-row">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn">Entra →</button>
+    </form>
+
+    {% if primo_accesso %}
+    <div class="link-row">
+      <a href="/register">Crea il primo account</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--muted);">
+    Primo accesso? Vai a <a href="/debug/seed-admin" style="color:var(--amber);">/debug/seed-admin</a>
+    per creare il profilo <code>admin</code> con password <code>admin123</code>
+  </div>
 </div>
-{% endblock %}
+</body>
+</html>

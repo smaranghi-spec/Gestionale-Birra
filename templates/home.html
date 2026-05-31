@@ -1,28 +1,144 @@
 {% extends "base.html" %}
-
+{% block title %}Dashboard — Gestionale Birrificio{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Gestionale Birrificio</h1>
-  <p class="muted">Benvenuto, {{ user.username }}.</p>
+
+<div style="margin-bottom:24px;">
+  <h1 style="font-size:24px;margin-bottom:4px;">
+    👋 Ciao, {{ session.nome or session.username or 'Birraio' }}!
+  </h1>
+  <p>Gestionale Birrificio — tutti i moduli in un unico posto.</p>
 </div>
 
-<div class="grid">
-  <div class="card">
-    <h3>Attrezzature</h3>
-    <p>Gestisci impianti, tank, tini e strumenti del birrificio.</p>
-    <a href="/attrezzature">Apri attrezzature</a>
+<div class="grid-4" style="margin-bottom:24px;">
+  <div class="stat-box stat-amber">
+    <div class="label">Ricette</div>
+    <div class="value" id="n-ricette">—</div>
+    <div class="sub">Ricette create</div>
   </div>
-
-  <div class="card">
-    <h3>Ricette</h3>
-    <p>Apri l’elenco delle ricette e crea nuove ricette.</p>
-    <a href="/ricette/html">Apri ricette</a>
+  <div class="stat-box stat-green">
+    <div class="label">Cotte attive</div>
+    <div class="value" id="n-cotte">—</div>
+    <div class="sub">In produzione</div>
   </div>
-
-  <div class="card">
-    <h3>Sessione</h3>
-    <p>Quando hai finito puoi uscire in sicurezza dall’account.</p>
-    <a href="/logout">Logout</a>
+  <div class="stat-box stat-blue">
+    <div class="label">Ingredienti</div>
+    <div class="value" id="n-catalogo">—</div>
+    <div class="sub">In catalogo</div>
+  </div>
+  <div class="stat-box">
+    <div class="label">Stili BJCP</div>
+    <div class="value" id="n-stili">—</div>
+    <div class="sub">Disponibili</div>
   </div>
 </div>
+
+<div class="grid-3">
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🧪 Ricette</div>
+      <a href="/ricette/html" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Gestisci le tue ricette, calcola OG, IBU, colore, ABV e costi.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <a href="/ricette/html" class="btn btn-ghost btn-xs">Elenco ricette</a>
+      <a href="/importa/beerxml" class="btn btn-ghost btn-xs">Importa BeerXML</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🍺 Cotte</div>
+      <a href="/cotte/html" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Tracker di produzione, log fermentazione, imbottigliamento.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <a href="/cotte/html" class="btn btn-ghost btn-xs">Tutte le cotte</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📦 Catalogo</div>
+      <a href="/catalogo/ingredienti" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Oltre 290 ingredienti: malti, luppoli, lieviti, adjuncts.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <a href="/catalogo/ingredienti" class="btn btn-ghost btn-xs">Sfoglia catalogo</a>
+      <a href="/stili/html" class="btn btn-ghost btn-xs">Stili BJCP</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">⚙️ Attrezzature</div>
+      <a href="/attrezzature" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Profilo dell'impianto: pentole, fermentatori, pompe e strumenti.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📊 Inventario</div>
+      <a href="/inventario" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Consumabili e non: tieni traccia delle scorte e soglie minime.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📅 Calendario & Presenze</div>
+      <a href="/calendario" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Pianifica cotte, imbottigliamenti, eventi. Check-in / check-out presenze.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🧹 Registro Pulizie</div>
+      <a href="/pulizie" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Tieni traccia di ogni operazione di pulizia e sanificazione dell'impianto.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">💰 Vendite</div>
+      <a href="/vendite" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Registra vendite di birra, clienti, fatturato e andamento mensile.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🛒 Acquisti</div>
+      <a href="/acquisti" class="btn btn-primary btn-sm">Apri</a>
+    </div>
+    <p>Negozi e fornitori selezionati per materie prime e attrezzature.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🌐 Pagina Birre Pubblica</div>
+      <a href="/birre" target="_blank" class="btn btn-ghost btn-sm">Apri ↗</a>
+    </div>
+    <p>Pagina pubblica con le birre disponibili. Rendi pubblica una ricetta dal dettaglio ricetta.</p>
+  </div>
+
+</div>
+
+<script>
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stats-home');
+    if(!r.ok) return;
+    const d = await r.json();
+    document.getElementById('n-ricette').textContent = d.n_ricette ?? '—';
+    document.getElementById('n-cotte').textContent = d.n_cotte ?? '—';
+    document.getElementById('n-catalogo').textContent = d.n_catalogo ?? '—';
+    document.getElementById('n-stili').textContent = d.n_stili ?? '—';
+  } catch(e) {}
+}
+loadStats();
+</script>
 {% endblock %}

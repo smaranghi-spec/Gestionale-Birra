@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Calendario{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 style="font-size:22px;margin-bottom:4px;">📅 Calendario & Presenze</h1>
+    <p>Pianifica cotte, imbottigliamenti ed eventi. Registra le presenze in birrificio.</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="/calendario?mese={{ mese_prec }}" class="btn btn-ghost btn-sm">‹ Prec</a>
+    <span style="font-weight:600;font-size:15px;min-width:140px;text-align:center;">{{ mese_nome }}</span>
+    <a href="/calendario?mese={{ mese_succ }}" class="btn btn-ghost btn-sm">Succ ›</a>
+  </div>
+</div>
+
+<!-- CHECK-IN / CHECK-OUT -->
+<div class="card" style="margin-bottom:20px;padding:14px 20px;">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <span style="font-weight:600;color:var(--text);">⏱ Presenze oggi ({{ oggi }})</span>
+    {% if presenza_oggi %}
+      <span class="badge badge-green">✓ Check-in: {{ presenza_oggi.check_in }}</span>
+      {% if presenza_oggi.check_out %}
+        <span class="badge badge-amber">Uscita: {{ presenza_oggi.check_out }} — {{ presenza_oggi.ore_totali or '?' }} ore</span>
+      {% else %}
+        <form method="post" action="/presenze/checkout" style="display:inline;">
+          <button type="submit" class="btn btn-amber btn-sm" style="background:var(--amber);color:#000;">Check-out ora</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <form method="post" action="/presenze/checkin" style="display:inline;">
+        <button type="submit" class="btn btn-success btn-sm">✓ Check-in ora</button>
+      </form>
+    {% endif %}
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('form-manuale').style.display=document.getElementById('form-manuale').style.display==='none'?'flex':'none'">📝 Inserimento manuale</button>
+  </div>
+  <div id="form-manuale" style="display:none;margin-top:12px;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+    <form method="post" action="/presenze/manuale" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+      <div class="form-row" style="margin:0;"><label>Data</label><input type="date" name="data" value="{{ oggi }}" style="width:140px;" required></div>
+      <div class="form-row" style="margin:0;"><label>Nome</label><input type="text" name="utente_nome" value="{{ session.nome or '' }}" style="width:130px;" required></div>
+      <div class="form-row" style="margin:0;"><label>Entrata</label><input type="time" name="check_in" style="width:110px;"></div>
+      <div class="form-row" style="margin:0;"><label>Uscita</label><input type="time" name="check_out" style="width:110px;"></div>
+      <div class="form-row" style="margin:0;"><label>Note</label><input type="text" name="note" style="width:150px;" placeholder="Opzionale"></div>
+      <button type="submit" class="btn btn-primary btn-sm">Salva</button>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+
+  <!-- CALENDARIO GRID -->
+  <div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
+        {% for g in ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'] %}
+        <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">{{ g }}</div>
+        {% endfor %}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);">
+        <!-- Empty cells before first day -->
+        {% for i in range(primo_giorno) %}
+        <div style="min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:rgba(0,0,0,.1);"></div>
+        {% endfor %}
+
+        {% for giorno in giorni %}
+        {% set is_oggi = ('%04d-%02d-%02d' % (mese_corrente.year, mese_corrente.month, giorno)) == oggi %}
+        {% set eventi_g = eventi_per_giorno.get(giorno, []) %}
+        <div style="min-height:90px;padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+          {% if is_oggi %}background:var(--amber-dim);{% endif %}
+          {% if (primo_giorno + giorno - 1) % 7 == 6 %}border-right:none;{% endif %}">
+          <div style="font-size:12px;font-weight:{% if is_oggi %}700{% else %}500{% endif %};
+            color:{% if is_oggi %}var(--amber){% else %}var(--muted){% endif %};margin-bottom:4px;">{{ giorno }}</div>
+          {% for ev in eventi_g %}
+          <div style="font-size:10px;padding:2px 5px;border-radius:4px;margin-bottom:2px;
+            background:{% if ev.tipo=='cotta' %}var(--amber-dim){% elif ev.tipo=='imbottigliamento' %}var(--green-dim){% elif ev.tipo=='pulizia' %}var(--blue-dim){% else %}rgba(255,255,255,.06){% endif %};
+            color:{% if ev.tipo=='cotta' %}var(--amber){% elif ev.tipo=='imbottigliamento' %}var(--green){% elif ev.tipo=='pulizia' %}var(--blue){% else %}var(--text){% endif %};
+            {% if ev.completato %}opacity:.5;text-decoration:line-through;{% endif %}
+            cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;"
+            title="{{ ev.titolo }}">
+            {{ ev.titolo[:20] }}{% if ev.titolo|length > 20 %}…{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Presenze del mese -->
+    {% if presenze %}
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title" style="margin-bottom:12px;">👥 Presenze del mese</div>
+      <table class="tbl">
+        <thead><tr><th>Data</th><th>Chi</th><th>Entrata</th><th>Uscita</th><th>Ore</th></tr></thead>
+        <tbody>
+        {% for p in presenze %}
+        <tr>
+          <td>{{ p.data }}</td><td>{{ p.utente_nome }}</td>
+          <td>{{ p.check_in or '—' }}</td><td>{{ p.check_out or '—' }}</td>
+          <td>{% if p.ore_totali %}<span class="badge badge-green">{{ p.ore_totali }}h</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- SIDEBAR: eventi del mese + nuovo evento -->
+  <div>
+    <div class="card" style="margin-bottom:14px;">
+      <h3 style="font-size:15px;margin-bottom:14px;">➕ Nuovo Evento</h3>
+      <form method="post" action="/calendario/evento">
+        <div class="form-row"><label>Data *</label><input type="date" name="data" value="{{ oggi }}" required></div>
+        <div class="form-row"><label>Ora</label><input type="time" name="ora"></div>
+        <div class="form-row"><label>Tipo</label>
+          <select name="tipo">{% for t in tipi_evento %}<option>{{ t }}</option>{% endfor %}</select>
+        </div>
+        <div class="form-row"><label>Titolo *</label><input type="text" name="titolo" placeholder="es. Brew day IPA" required></div>
+        <div class="form-row"><label>Ricetta</label>
+          <select name="ricetta_id">
+            <option value="0">— nessuna —</option>
+            {% for r in ricette %}<option value="{{ r.id }}">{{ r.nome }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-row"><label>Responsabile</label><input type="text" name="responsabile" placeholder="{{ session.nome or '' }}"></div>
+        <div class="form-row"><label>Note</label><textarea name="descrizione" rows="2" placeholder="Dettagli…"></textarea></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">➕ Aggiungi</button>
+      </form>
+    </div>
+
+    <!-- Lista eventi del mese -->
+    {% set tutti_eventi = eventi_per_giorno.values()|list %}
+    {% if tutti_eventi %}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;">
+        📋 Eventi del mese
+      </div>
+      {% for giorno, evs in eventi_per_giorno.items()|sort %}
+      {% for ev in evs %}
+      <div style="padding:10px 16px;border-bottom:1px solid rgba(48,54,61,.4);display:flex;align-items:flex-start;gap:10px;{% if ev.completato %}opacity:.5;{% endif %}">
+        <div style="flex:1;">
+          <div style="font-size:12px;color:var(--muted);">{{ mese_corrente.strftime('%d/%m') | replace(mese_corrente.strftime('%d'), '%02d'|format(giorno)) }}{% if ev.ora %} {{ ev.ora }}{% endif %}</div>
+          <div style="font-size:13px;font-weight:600;{% if ev.completato %}text-decoration:line-through;{% endif %}">{{ ev.titolo }}</div>
+          <span class="badge badge-{% if ev.tipo=='cotta' %}amber{% elif ev.tipo=='imbottigliamento' %}green{% else %}gray{% endif %}">{{ ev.tipo }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <form method="post" action="/calendario/evento/{{ ev.id }}/completa">
+            <button type="submit" class="btn btn-ghost btn-xs">{% if ev.completato %}↩{% else %}✓{% endif %}</button>
+          </form>
+          <form method="post" action="/calendario/evento/{{ ev.id }}/elimina">
+            <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

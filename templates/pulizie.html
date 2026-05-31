@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Registro Pulizie{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">🧹 Registro Pulizie & Sanificazioni</h1>
+  <p>Tieni traccia di ogni operazione di pulizia, sanificazione e disinfezione dell'impianto.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+
+  <div>
+    {% if pulizie %}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead><tr><th>Data</th><th>Tipo</th><th>Luogo</th><th>Operatore</th><th>Detergente</th><th>Note</th><th></th></tr></thead>
+        <tbody>
+        {% for p in pulizie %}
+        <tr>
+          <td style="color:var(--muted);font-size:12px;white-space:nowrap;">{{ p.data }}</td>
+          <td><span class="badge badge-blue">{{ p.tipo_pulizia }}</span></td>
+          <td style="font-weight:500;">{{ p.luogo }}</td>
+          <td>{{ p.operatore or '—' }}</td>
+          <td style="font-size:12px;color:var(--muted);">{{ p.detergente or '—' }}</td>
+          <td style="font-size:12px;color:var(--muted);max-width:180px;">{{ (p.note or '')[:60] }}</td>
+          <td>
+            <form method="post" action="/pulizie/{{ p.id }}/elimina">
+              <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card empty">
+      <div class="empty-icon">🧹</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">Nessuna pulizia registrata</div>
+      <p>Inizia a registrare le operazioni di pulizia dal modulo a destra.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:16px;">🧹 Registra Pulizia</h3>
+    <form method="post" action="/pulizie">
+      <div class="form-row"><label>Data *</label><input type="date" name="data" value="{{ oggi }}" required></div>
+      <div class="form-row"><label>Tipo pulizia *</label>
+        <select name="tipo_pulizia" required>
+          {% for t in tipi_pulizia %}<option>{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label>Luogo / Attrezzatura *</label>
+        <select name="luogo" required>
+          {% for l in luoghi %}<option>{{ l }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label>Detergente / Sanificante</label>
+        <input type="text" name="detergente" placeholder="es. PBW, Star San, NaOH 2%">
+      </div>
+      <div class="form-row"><label>Note</label>
+        <textarea name="note" rows="3" placeholder="Concentrazione, tempo di contatto, osservazioni…"></textarea>
+      </div>
+      <div style="padding:10px;background:var(--amber-dim);border-radius:8px;font-size:12px;color:var(--amber);margin-bottom:12px;">
+        👤 Registrato come: <strong>{{ session.nome or 'Anonimo' }}</strong>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">✓ Registra</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Gestione Utenti{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">👥 Gestione Utenti</h1>
+  <p>Visualizza e gestisci gli utenti del gestionale. Solo gli amministratori possono accedere a questa sezione.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="tbl">
+      <thead><tr><th>Username</th><th>Nome</th><th>Ruolo</th><th>Registrato</th><th>Stato</th><th></th></tr></thead>
+      <tbody>
+      {% for u in utenti %}
+      <tr>
+        <td style="font-weight:600;">{{ u.username }}</td>
+        <td>{{ u.nome or '—' }}</td>
+        <td>
+          {% if u.ruolo == 'admin' %}
+            <span class="badge badge-amber">🔑 Admin</span>
+          {% else %}
+            <span class="badge badge-gray">Birraio</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--muted);">{{ u.created_at or '—' }}</td>
+        <td>
+          {% if u.is_active %}
+            <span class="badge badge-green">Attivo</span>
+          {% else %}
+            <span class="badge badge-red">Disabilitato</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.id != session.user_id %}
+          <form method="post" action="/utenti/{{ u.id }}/toggle">
+            <button type="submit" class="btn btn-ghost btn-xs">
+              {% if u.is_active %}Disabilita{% else %}Abilita{% endif %}
+            </button>
+          </form>
+          {% else %}
+          <span style="font-size:11px;color:var(--muted);">Tu</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:8px;">➕ Invita Utente</h3>
+    <p style="font-size:13px;margin-bottom:16px;">Condividi il link di registrazione con il nuovo membro del team.</p>
+    <div style="padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);font-family:monospace;font-size:13px;word-break:break-all;color:var(--text);">
+      /register
+    </div>
+    <p style="font-size:12px;margin-top:10px;">Il link è accessibile a chiunque. Dopo la registrazione, potrai assegnare i ruoli qui.</p>
+    <a href="/register" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Vai alla registrazione</a>
+  </div>
+
+</div>
+{% endblock %}

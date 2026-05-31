@@ -584,5 +584,105 @@
 </script>
 {% endif %}
 
+
+<style>
+.deg-card{background:#fff;border-radius:8px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.deg-scores{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0;}
+.deg-score{text-align:center;min-width:56px;}
+.deg-score .sv{font-size:18px;font-weight:700;color:#5a381e;}
+.deg-score .sl{font-size:10px;color:#999;}
+.deg-score .bar{height:4px;border-radius:2px;background:#e8ddd0;margin-top:3px;}
+.deg-score .fill{height:100%;border-radius:2px;background:#8b5a2b;}
+.deg-punteggio{font-size:22px;font-weight:800;color:#5a381e;}
+.deg-meta{font-size:12px;color:#888;}
+.form-degu{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+</style>
+
+<div class="container" style="max-width:1050px;margin:0 auto;padding:0 20px 40px;">
+<div id="degustazioni" class="card" style="border-top:3px solid #8b5a2b;">
+  <h2 style="color:#5a381e;font-size:16px;margin-bottom:16px;">🍷 Schede di Degustazione</h2>
+
+  <!-- Form nuova degustazione -->
+  <details style="margin-bottom:20px;">
+    <summary style="cursor:pointer;color:#8b5a2b;font-weight:700;font-size:13px;list-style:none;">➕ Aggiungi scheda degustazione</summary>
+    <form method="post" action="/cotte/{{ cotta.id }}/degustazioni" style="margin-top:14px;">
+      <div class="form-degu">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Data</label>
+          <input type="date" name="data" value="{{ oggi }}" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Degustatore</label>
+          <input type="text" name="degustatore" placeholder="Nome / iniziali" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Aroma (0–10)</label>
+          <input type="number" name="aroma" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Gusto (0–10)</label>
+          <input type="number" name="gusto" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Aspetto (0–10)</label>
+          <input type="number" name="aspetto" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Sensazione (0–10)</label>
+          <input type="number" name="sensazione" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Note di degustazione</label>
+        <textarea name="note" rows="3" placeholder="Impressioni, difetti riscontrati, confronto con stile…" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;resize:vertical;"></textarea>
+      </div>
+      <button type="submit" style="margin-top:10px;background:#8b5a2b;color:white;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;">✓ Salva scheda</button>
+    </form>
+  </details>
+
+  <!-- Lista degustazioni -->
+  {% if degustazioni %}
+    {% for d in degustazioni %}
+    <div class="deg-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div>
+          <span class="deg-meta">{{ d.data }}{% if d.degustatore %} · {{ d.degustatore }}{% endif %}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          {% if d.punteggio %}
+          <div style="text-align:right;">
+            <span class="deg-punteggio">{{ d.punteggio }}</span>
+            <span style="font-size:13px;color:#888;">/10</span>
+          </div>
+          {% endif %}
+          <form method="post" action="/cotte/{{ cotta.id }}/degustazioni/{{ d.id }}/elimina" style="margin:0;" onsubmit="return confirm('Eliminare questa scheda?')">
+            <button type="submit" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:12px;padding:4px 8px;border-radius:4px;border:1px solid #c0392b;">✕</button>
+          </form>
+        </div>
+      </div>
+      <div class="deg-scores">
+        {% for label, val in [('Aroma', d.aroma), ('Gusto', d.gusto), ('Aspetto', d.aspetto), ('Sensazione', d.sensazione)] %}
+        {% if val is not none %}
+        <div class="deg-score">
+          <div class="sv">{{ val }}</div>
+          <div class="sl">{{ label }}</div>
+          <div class="bar"><div class="fill" style="width:{{ (val/10*100)|int }}%;"></div></div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% if d.note %}
+      <div style="font-size:13px;color:#555;margin-top:8px;padding-top:8px;border-top:1px solid #f0e6d3;line-height:1.5;">{{ d.note }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="text-align:center;padding:30px;color:#bbb;font-size:13px;">
+      🍷 Nessuna scheda di degustazione ancora. Aggiungi la prima qui sopra.
+    </div>
+  {% endif %}
+</div>
+</div>
+
 </body>
 </html>
