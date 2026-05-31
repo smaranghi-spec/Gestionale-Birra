@@ -294,3 +294,14 @@ class RegistroPulizie(Base):
     detergente = Column(String, nullable=True)
     note = Column(Text, nullable=True)
     timestamp = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class BrewMonkConfig(Base):
+    __tablename__ = "brewmonk_config"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, nullable=False, default="")
+    password = Column(String, nullable=False, default="")
+    base_url = Column(String, nullable=False, default="https://mybrewmonk.eu")
+    attivo = Column(Boolean, default=False)
+    ultimo_sync = Column(String, nullable=True)
+    note = Column(Text, nullable=True)

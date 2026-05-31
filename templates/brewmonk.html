@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% block title %}BrewMonk — Controllo Produzione{% endblock %}
+
+{% block content %}
+<style>
+.bm-grid { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; }
+.bm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.4rem; }
+.bm-card h3 { color: var(--amber); font-size: 1rem; font-weight: 600; margin: 0 0 1rem; text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: .5rem; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; display: inline-block; }
+.status-dot.off { background: #6b7280; box-shadow: none; }
+.status-dot.pulse { animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.live-widget { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.live-box { background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+.live-box .label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .4rem; }
+.live-box .value { font-size: 1.6rem; font-weight: 700; color: var(--amber); }
+.live-box .sub { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+.progress-wrap { background: #1e2535; border-radius: 4px; height: 8px; margin-top: .6rem; overflow: hidden; }
+.progress-bar-inner { height: 100%; background: linear-gradient(90deg, var(--amber), #f97316); border-radius: 4px; transition: width .5s; }
+.recipe-row { display: flex; align-items: center; justify-content: space-between; padding: .55rem .7rem; background: #0a0f1a; border: 1px solid var(--border); border-radius: 6px; margin-bottom: .5rem; }
+.recipe-row .rname { font-size: .9rem; color: var(--text); font-weight: 500; }
+.recipe-row .rtype { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+.recipe-actions { display: flex; gap: .4rem; align-items: center; }
+.btn-push { background: var(--amber); color: #000; border: none; border-radius: 5px; padding: .3rem .8rem; font-size: .78rem; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+.btn-push:hover { opacity: .85; }
+.btn-push:disabled { opacity: .4; cursor: not-allowed; }
+.btn-xml { background: transparent; border: 1px solid var(--amber); color: var(--amber); border-radius: 5px; padding: .3rem .7rem; font-size: .75rem; cursor: pointer; text-decoration: none; display: inline-block; transition: background .2s; }
+.btn-xml:hover { background: rgba(245,158,11,.12); }
+.push-result { font-size: .75rem; margin-top: .3rem; }
+.push-ok { color: #4ade80; }
+.push-err { color: #f87171; }
+.session-row { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid var(--border); font-size: .82rem; }
+.session-row:last-child { border: none; }
+.cfg-form input[type=text], .cfg-form input[type=password] { width: 100%; background: #0a0f1a; border: 1px solid var(--border); border-radius: 5px; padding: .5rem .7rem; color: var(--text); font-size: .88rem; margin-bottom: .7rem; }
+.cfg-form input:focus { border-color: var(--amber); outline: none; }
+.btn-cfg { background: var(--amber); color: #000; border: none; border-radius: 6px; padding: .5rem 1.2rem; font-weight: 600; cursor: pointer; font-size: .88rem; }
+.btn-cfg:hover { opacity: .85; }
+.btn-test { background: transparent; border: 1px solid #4ade80; color: #4ade80; border-radius: 6px; padding: .5rem 1rem; font-size: .82rem; cursor: pointer; margin-left: .5rem; transition: background .2s; }
+.btn-test:hover { background: rgba(74,222,128,.1); }
+.bm-tabs { display: flex; gap: .5rem; margin-bottom: 1.2rem; }
+.bm-tab { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); padding: .4rem 1rem; font-size: .82rem; cursor: pointer; }
+.bm-tab.active { background: var(--amber); color: #000; border-color: var(--amber); font-weight: 600; }
+.bm-panel { display: none; }
+.bm-panel.active { display: block; }
+.alert-bm { padding: .6rem 1rem; border-radius: 6px; font-size: .83rem; margin-bottom: 1rem; }
+.alert-ok { background: rgba(74,222,128,.1); border: 1px solid #4ade80; color: #4ade80; }
+.alert-err { background: rgba(248,113,113,.1); border: 1px solid #f87171; color: #f87171; }
+.sync-time { font-size: .73rem; color: var(--muted); margin-top: .5rem; }
+.remote-recipe-item { display: flex; align-items: center; justify-content: space-between; padding: .4rem .6rem; background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.15); border-radius: 6px; margin-bottom: .4rem; font-size: .83rem; }
+.section-title { font-size: 1.3rem; font-weight: 700; color: var(--text); margin: 0 0 1.5rem; display: flex; align-items: center; gap: .7rem; }
+.section-title span { font-size: 1.5rem; }
+</style>
+
+<div class="section-title"><span>🍺</span> BrewMonk — Controllo Produzione</div>
+
+{% if msg %}
+<div class="alert-bm {% if 'errore' in msg.lower() or 'fallito' in msg.lower() %}alert-err{% else %}alert-ok{% endif %}">{{ msg }}</div>
+{% endif %}
+
+<div class="bm-grid">
+
+  <!-- LEFT: Config + Status -->
+  <div>
+    <!-- Config Card -->
+    <div class="bm-card" style="margin-bottom:1.2rem">
+      <h3>⚙️ Credenziali BrewMonk</h3>
+      <form method="post" action="/brewmonk/salva-config" class="cfg-form">
+        <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:.2rem">Username</label>
+        <input type="text" name="username" value="{{ cfg.username }}" placeholder="utente@email.com" autocomplete="off">
+        <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:.2rem">Password</label>
+        <input type="password" name="password" placeholder="{% if cfg.password %}••••••••{% else %}Password{% endif %}">
+        <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:.2rem">Note</label>
+        <input type="text" name="note" value="{{ cfg.note or '' }}" placeholder="Note opzionali">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-top:.2rem">
+          <button type="submit" class="btn-cfg">💾 Salva</button>
+          <button type="button" class="btn-test" onclick="testLogin()">🔌 Testa connessione</button>
+        </div>
+      </form>
+      <div id="test-result" style="font-size:.8rem;margin-top:.6rem"></div>
+      {% if cfg.attivo %}
+      <div style="display:flex;align-items:center;gap:.4rem;margin-top:.8rem">
+        <span class="status-dot pulse"></span>
+        <span style="font-size:.8rem;color:#4ade80">Connesso a mybrewmonk.eu</span>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;gap:.4rem;margin-top:.8rem">
+        <span class="status-dot off"></span>
+        <span style="font-size:.8rem;color:var(--muted)">Non configurato</span>
+      </div>
+      {% endif %}
+      {% if cfg.ultimo_sync %}
+      <div class="sync-time">Ultimo sync: {{ cfg.ultimo_sync }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Live Status Card -->
+    <div class="bm-card">
+      <h3>
+        <span class="status-dot {% if cfg.attivo %}pulse{% else %}off{% endif %}"></span>
+        Stato Live
+        {% if cfg.attivo %}
+        <button onclick="aggiornaStato()" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:.2rem .5rem;font-size:.7rem;cursor:pointer">↻ Aggiorna</button>
+        {% endif %}
+      </h3>
+
+      {% if not cfg.attivo %}
+      <p style="color:var(--muted);font-size:.85rem">Configura le credenziali BrewMonk per vedere lo stato live della cotta e della fermentazione.</p>
+      {% else %}
+      <div id="live-stato">
+        <div class="live-widget">
+          <div class="live-box">
+            <div class="label">🔥 Cotta</div>
+            <div class="value" id="brew-stato">—</div>
+            <div class="sub" id="brew-step">—</div>
+            <div class="sub" id="brew-temp"></div>
+            <div class="progress-wrap" id="brew-prog-wrap" style="display:none">
+              <div class="progress-bar-inner" id="brew-prog" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="live-box">
+            <div class="label">🌡️ Fermentazione</div>
+            <div class="value" id="ferm-stato">—</div>
+            <div class="sub" id="ferm-step">—</div>
+            <div class="sub" id="ferm-temp"></div>
+            <div class="sub" id="ferm-giorni"></div>
+          </div>
+        </div>
+        <div id="sessioni-list">
+          <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Ultime sessioni BrewMonk</div>
+          <div id="sessioni-rows"><div style="color:var(--muted);font-size:.82rem">Caricamento…</div></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RIGHT: Recipes + Remote -->
+  <div>
+    <div class="bm-card">
+      <div class="bm-tabs">
+        <button class="bm-tab active" onclick="showTab('locale')">📋 Ricette Gestionale</button>
+        <button class="bm-tab" onclick="showTab('remote')">☁️ Ricette BrewMonk</button>
+      </div>
+
+      <!-- Ricette locali -->
+      <div id="tab-locale" class="bm-panel active">
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
+          Premi <strong style="color:var(--amber)">Push →</strong> per inviare direttamente la ricetta su BrewMonk, oppure scarica il file BeerXML.
+        </p>
+        {% if ricette %}
+        {% for r in ricette %}
+        <div class="recipe-row" id="row-{{ r.id }}">
+          <div>
+            <div class="rname">{{ r.nome }}</div>
+            <div class="rtype">{{ r.tipo }} · {{ r.volume_target_litri }}L · v{{ r.versione }}</div>
+          </div>
+          <div>
+            <div class="recipe-actions">
+              {% if cfg.attivo %}
+              <button class="btn-push" onclick="pushRicetta({{ r.id }}, '{{ r.nome|e }}', this)">Push →</button>
+              {% endif %}
+              <a href="/brewmonk/download-xml/{{ r.id }}" class="btn-xml" download>⬇ XML</a>
+              <a href="/ricette/{{ r.id }}" class="btn-xml" style="font-size:.7rem">Dettaglio</a>
+            </div>
+            <div id="push-result-{{ r.id }}" class="push-result"></div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color:var(--muted);font-size:.85rem">Nessuna ricetta trovata. <a href="/ricette/html" style="color:var(--amber)">Crea una ricetta</a></p>
+        {% endif %}
+      </div>
+
+      <!-- Ricette remote -->
+      <div id="tab-remote" class="bm-panel">
+        {% if cfg.attivo %}
+        <div style="display:flex;justify-content:flex-end;margin-bottom:.8rem">
+          <button class="btn-test" onclick="caricaRicetteRemote()">↻ Carica da BrewMonk</button>
+        </div>
+        <div id="remote-list"><p style="color:var(--muted);font-size:.85rem">Clicca "Carica da BrewMonk" per vedere le ricette presenti sul tuo account.</p></div>
+        {% else %}
+        <p style="color:var(--muted);font-size:.85rem">Configura le credenziali per accedere alle ricette remote.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bm-card" style="margin-top:1.2rem">
+      <h3>ℹ️ Come funziona l'integrazione</h3>
+      <ul style="color:var(--muted);font-size:.83rem;line-height:1.8;padding-left:1.2rem;margin:0">
+        <li><strong style="color:var(--text)">Push ricetta</strong> — invia il BeerXML della ricetta direttamente su BrewMonk tramite import automatico</li>
+        <li><strong style="color:var(--text)">Stato live</strong> — mostra temperatura, step corrente e progresso della cotta e della fermentazione in tempo reale</li>
+        <li><strong style="color:var(--text)">Sessioni</strong> — elenca le ultime cotte registrate su BrewMonk</li>
+        <li><strong style="color:var(--text)">Download BeerXML</strong> — scarica il file per importazione manuale se preferisci</li>
+      </ul>
+      <div style="margin-top:1rem">
+        <a href="https://mybrewmonk.eu" target="_blank" style="color:var(--amber);font-size:.82rem">→ Apri mybrewmonk.eu</a>
+        &nbsp;&nbsp;
+        <a href="https://mybrewmonk.eu/recipe" target="_blank" style="color:var(--amber);font-size:.82rem">→ Ricette BrewMonk</a>
+        &nbsp;&nbsp;
+        <a href="https://mybrewmonk.eu/brew" target="_blank" style="color:var(--amber);font-size:.82rem">→ Brewing</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.bm-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.bm-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+async function testLogin() {
+  const el = document.getElementById('test-result');
+  el.textContent = 'Connessione in corso…';
+  el.style.color = 'var(--muted)';
+  try {
+    const r = await fetch('/brewmonk/test-login');
+    const d = await r.json();
+    el.textContent = d.msg;
+    el.style.color = d.ok ? '#4ade80' : '#f87171';
+  } catch(e) {
+    el.textContent = 'Errore di connessione';
+    el.style.color = '#f87171';
+  }
+}
+
+async function pushRicetta(id, nome, btn) {
+  const resultEl = document.getElementById('push-result-' + id);
+  btn.disabled = true;
+  btn.textContent = '…';
+  resultEl.textContent = '';
+  try {
+    const r = await fetch('/brewmonk/push/' + id, {method: 'POST'});
+    const d = await r.json();
+    resultEl.textContent = d.msg;
+    resultEl.className = 'push-result ' + (d.ok ? 'push-ok' : 'push-err');
+    btn.textContent = d.ok ? '✓' : '✗';
+    if (d.ok && d.recipe_id) {
+      const link = document.createElement('a');
+      link.href = 'https://mybrewmonk.eu/recipe/' + d.recipe_id;
+      link.target = '_blank';
+      link.textContent = ' → Apri su BrewMonk';
+      link.style.color = 'var(--amber)';
+      link.style.fontSize = '.73rem';
+      resultEl.appendChild(link);
+    }
+  } catch(e) {
+    resultEl.textContent = 'Errore di rete';
+    resultEl.className = 'push-result push-err';
+    btn.textContent = '✗';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Push →'; }, 4000);
+}
+
+async function aggiornaStato() {
+  try {
+    const r = await fetch('/brewmonk/stato');
+    const d = await r.json();
+    if (d.errore) return;
+
+    const brew = d.brew || {};
+    const ferm = d.fermentazione || {};
+
+    document.getElementById('brew-stato').textContent = brew.stato === 'attivo' ? '🟢 Attivo' : '⚫ Inattivo';
+    document.getElementById('brew-step').textContent = brew.step || '—';
+    document.getElementById('brew-temp').textContent = brew.temperatura ? '🌡 ' + brew.temperatura : '';
+    if (brew.progresso !== null && brew.progresso !== undefined) {
+      document.getElementById('brew-prog-wrap').style.display = 'block';
+      document.getElementById('brew-prog').style.width = brew.progresso + '%';
+    }
+
+    document.getElementById('ferm-stato').textContent = ferm.stato === 'attivo' ? '🟢 Attivo' : '⚫ Inattivo';
+    document.getElementById('ferm-step').textContent = ferm.step || '—';
+    document.getElementById('ferm-temp').textContent = ferm.temperatura ? '🌡 ' + ferm.temperatura : '';
+    document.getElementById('ferm-giorni').textContent = ferm.giorni ? '📅 ' + ferm.giorni + ' giorni' : '';
+
+    const sessRows = document.getElementById('sessioni-rows');
+    const sessions = d.sessioni || [];
+    if (sessions.length === 0) {
+      sessRows.innerHTML = '<div style="color:var(--muted);font-size:.82rem">Nessuna sessione trovata</div>';
+    } else {
+      sessRows.innerHTML = sessions.map(s =>
+        `<div class="session-row">
+          <span style="color:var(--text)">${s.ricetta || '—'}</span>
+          <span style="color:var(--muted)">${s.data || ''}</span>
+        </div>`
+      ).join('');
+    }
+  } catch(e) {
+    console.error('Errore stato live:', e);
+  }
+}
+
+async function caricaRicetteRemote() {
+  const el = document.getElementById('remote-list');
+  el.innerHTML = '<p style="color:var(--muted);font-size:.83rem">Caricamento…</p>';
+  try {
+    const r = await fetch('/brewmonk/ricette-remote');
+    const d = await r.json();
+    if (d.errore) {
+      el.innerHTML = `<p style="color:#f87171;font-size:.83rem">${d.errore}</p>`;
+      return;
+    }
+    const ricette = d.ricette || [];
+    if (ricette.length === 0) {
+      el.innerHTML = '<p style="color:var(--muted);font-size:.83rem">Nessuna ricetta trovata su BrewMonk.</p>';
+    } else {
+      el.innerHTML = ricette.map(r =>
+        `<div class="remote-recipe-item">
+          <span>${r.nome || 'Senza nome'}</span>
+          ${r.id ? `<a href="https://mybrewmonk.eu/recipe/${r.id}" target="_blank" style="color:var(--amber);font-size:.75rem">Apri →</a>` : ''}
+        </div>`
+      ).join('');
+    }
+  } catch(e) {
+    el.innerHTML = '<p style="color:#f87171;font-size:.83rem">Errore di connessione</p>';
+  }
+}
+
+{% if cfg.attivo %}
+aggiornaStato();
+setInterval(aggiornaStato, 30000);
+{% endif %}
+</script>
+{% endblock %}
