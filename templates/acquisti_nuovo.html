@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Nuovo Ordine Acquisto{% endblock %}
+{% block content %}
+<style>
+.form-label { font-size:.75rem; color:var(--muted); display:block; margin-bottom:.2rem; }
+.form-input { width:100%; background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.45rem .7rem; color:var(--text); font-size:.85rem; margin-bottom:.65rem; box-sizing:border-box; }
+.form-input:focus { border-color:var(--amber); outline:none; }
+select.form-input { appearance:none; }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.5rem 1.2rem; font-weight:700; cursor:pointer; font-size:.88rem; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.5rem 1rem; font-size:.82rem; cursor:pointer; }
+.btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
+.riga-row { display:grid; grid-template-columns:1fr 100px 80px 80px 100px 80px 36px; gap:.4rem; align-items:center; background:#0a0f1a; border:1px solid var(--border); border-radius:6px; padding:.55rem .7rem; margin-bottom:.4rem; }
+.riga-input { background:transparent; border:none; color:var(--text); font-size:.83rem; padding:.2rem 0; width:100%; }
+.riga-input:focus { outline:1px solid var(--amber); border-radius:3px; }
+select.riga-input { background:#0a0f1a; border:1px solid var(--border); border-radius:3px; padding:.2rem; }
+.riga-header { display:grid; grid-template-columns:1fr 100px 80px 80px 100px 80px 36px; gap:.4rem; padding:.2rem .7rem; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.2rem; }
+.totale-box { background:#0a0f1a; border:1px solid var(--border); border-radius:7px; padding:.8rem 1.2rem; margin-top:1rem; display:flex; justify-content:space-between; align-items:center; }
+.totale-val { font-size:1.4rem; font-weight:700; color:var(--amber); }
+.an-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1rem; }
+.an-card h3 { color:var(--amber); font-size:.88rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; }
+</style>
+
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
+  <a href="/acquisti" style="color:var(--muted);font-size:.83rem;text-decoration:none">← Ordini</a>
+  <h1 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0">🛒 Nuovo Ordine di Acquisto</h1>
+</div>
+
+<form method="post" action="/acquisti/crea" id="form-ordine">
+  <input type="hidden" name="righe_json" id="righe-json-hidden">
+
+  <div class="an-card">
+    <h3>📋 Informazioni Ordine</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 1rem">
+      <div>
+        <label class="form-label">Fornitore</label>
+        <select class="form-input" name="fornitore">
+          <option value="">— Seleziona fornitore —</option>
+          {% for f in fornitori %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+          <option value="altro">Altro…</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Data ordine</label>
+        <input class="form-input" type="date" name="data" id="data-oggi">
+      </div>
+      <div>
+        <label class="form-label">Note</label>
+        <input class="form-input" type="text" name="note" placeholder="Note ordine…">
+      </div>
+    </div>
+  </div>
+
+  <div class="an-card">
+    <h3>📦 Articoli</h3>
+    <div style="display:flex;gap:.6rem;margin-bottom:.8rem;flex-wrap:wrap">
+      <button type="button" onclick="aggiungiRiga()" class="btn-amber">+ Aggiungi articolo</button>
+      <button type="button" onclick="aggiungiDaPreset('luppolo')" class="btn-ghost">+ Luppolo</button>
+      <button type="button" onclick="aggiungiDaPreset('malto')" class="btn-ghost">+ Malto</button>
+      <button type="button" onclick="aggiungiDaPreset('lievito')" class="btn-ghost">+ Lievito</button>
+    </div>
+    <div class="riga-header">
+      <div>Descrizione</div><div>Categoria</div><div>Qtà</div><div>Unità</div><div>€/u</div><div>Subtotale</div><div></div>
+    </div>
+    <div id="righe-container"></div>
+    <div class="totale-box">
+      <span style="color:var(--muted);font-size:.9rem">Totale ordine</span>
+      <div class="totale-val">€<span id="totale-display">0.00</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.8rem;margin-top:.5rem">
+    <button type="submit" class="btn-amber" onclick="preparaSubmit()">💾 Crea Ordine</button>
+    <a href="/acquisti" class="btn-ghost">Annulla</a>
+  </div>
+</form>
+
+<script>
+const CATEGORIE = {{ categorie | tojson }};
+const UNITA = {{ unita | tojson }};
+let righe = [];
+
+document.getElementById('data-oggi').value = new Date().toISOString().split('T')[0];
+
+function renderRighe() {
+  const c = document.getElementById('righe-container');
+  if (righe.length === 0) {
+    c.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.83rem">Nessun articolo. Clicca "+ Aggiungi articolo".</div>';
+    aggiornaView();
+    return;
+  }
+  c.innerHTML = righe.map((r, i) => `
+    <div class="riga-row">
+      <input class="riga-input" placeholder="Nome articolo" value="${r.nome || ''}" oninput="aggiorna(${i},'nome',this.value)">
+      <select class="riga-input" onchange="aggiorna(${i},'categoria',this.value)">
+        ${CATEGORIE.map(c => `<option value="${c}" ${r.categoria===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <input class="riga-input" type="number" step="0.01" min="0" value="${r.quantita||1}" oninput="aggiorna(${i},'quantita',parseFloat(this.value)||0)" style="text-align:right">
+      <select class="riga-input" onchange="aggiorna(${i},'unita',this.value)">
+        ${UNITA.map(u => `<option value="${u}" ${r.unita===u?'selected':''}>${u}</option>`).join('')}
+      </select>
+      <input class="riga-input" type="number" step="0.01" min="0" placeholder="0.00" value="${r.prezzo_unitario||''}" oninput="aggiorna(${i},'prezzo_unitario',parseFloat(this.value)||0)" style="text-align:right">
+      <div style="font-size:.83rem;font-weight:600;color:var(--amber);text-align:right">€${((r.quantita||1)*(r.prezzo_unitario||0)).toFixed(2)}</div>
+      <button type="button" onclick="rimuoviRiga(${i})" style="background:transparent;border:none;color:#f87171;cursor:pointer;font-size:1rem">✕</button>
+    </div>
+  `).join('');
+  aggiornaView();
+}
+
+function aggiorna(idx, campo, val) {
+  righe[idx][campo] = val;
+  const subtotEl = document.querySelectorAll('.riga-row')[idx];
+  if (subtotEl) {
+    const sub = subtotEl.querySelector('div[style*="amber"]');
+    if (sub) sub.textContent = '€' + ((righe[idx].quantita||1)*(righe[idx].prezzo_unitario||0)).toFixed(2);
+  }
+  aggiornaView();
+}
+
+function aggiornaView() {
+  const tot = righe.reduce((s,r) => s + (r.quantita||1)*(r.prezzo_unitario||0), 0);
+  document.getElementById('totale-display').textContent = tot.toFixed(2);
+}
+
+function aggiungiRiga(preset={}) {
+  righe.push({nome: preset.nome||'', categoria: preset.categoria||'ingrediente', quantita: preset.quantita||1, unita: preset.unita||'kg', prezzo_unitario: 0});
+  renderRighe();
+}
+
+function aggiungiDaPreset(tipo) {
+  const p = {luppolo:{nome:'Luppolo ',categoria:'ingrediente',quantita:0.1,unita:'kg'},malto:{nome:'Malto ',categoria:'ingrediente',quantita:5,unita:'kg'},lievito:{nome:'Lievito ',categoria:'ingrediente',quantita:1,unita:'pz'}};
+  aggiungiRiga(p[tipo]||{});
+}
+
+function rimuoviRiga(idx) {
+  righe.splice(idx,1);
+  renderRighe();
+}
+
+function preparaSubmit() {
+  document.getElementById('righe-json-hidden').value = JSON.stringify(righe);
+}
+
+renderRighe();
+</script>
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Profilo Impianto Birrificio{% endblock %}
+{% block content %}
+<style>
+.imp-grid { display:grid; grid-template-columns:320px 1fr; gap:1.5rem; }
+.imp-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1rem; }
+.imp-card h3 { color:var(--amber); font-size:.88rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; }
+.profilo-box { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; margin-bottom:.8rem; }
+.profilo-box.principale { border-color:var(--amber); }
+.profilo-nome { font-size:1.05rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:.6rem; }
+.profilo-badge { background:var(--amber); color:#000; font-size:.65rem; font-weight:700; padding:.15rem .5rem; border-radius:10px; text-transform:uppercase; }
+.spec-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.8rem; }
+.spec-item { background:#131922; border-radius:5px; padding:.5rem .6rem; }
+.spec-val { font-size:1.1rem; font-weight:700; color:var(--amber); }
+.spec-lbl { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:.1rem; }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.4rem .9rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.4rem .9rem; font-size:.8rem; cursor:pointer; }
+.btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
+.btn-b50 { background:linear-gradient(135deg,#f59e0b,#f97316); color:#000; border:none; border-radius:8px; padding:.7rem 1.4rem; font-weight:700; font-size:.95rem; cursor:pointer; width:100%; margin-bottom:.8rem; }
+.form-label { font-size:.75rem; color:var(--muted); display:block; margin-bottom:.2rem; }
+.form-input { width:100%; background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.45rem .7rem; color:var(--text); font-size:.85rem; margin-bottom:.65rem; box-sizing:border-box; }
+.form-input:focus { border-color:var(--amber); outline:none; }
+.btn-submit { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.5rem 1.2rem; font-weight:700; cursor:pointer; font-size:.88rem; }
+.alert-ok { background:rgba(74,222,128,.1); border:1px solid #4ade80; color:#4ade80; padding:.6rem 1rem; border-radius:6px; font-size:.83rem; margin-bottom:1rem; }
+.calc-box { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:1rem; margin-top:1rem; }
+.calc-row { display:flex; justify-content:space-between; padding:.3rem 0; border-bottom:1px solid #1e2535; font-size:.85rem; }
+.calc-row:last-child { border:none; font-weight:700; color:var(--amber); }
+</style>
+
+<div style="font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:1.2rem">⚙️ Profilo Impianto Birrificio</div>
+
+{% if msg %}<div class="alert-ok">{{ msg }}</div>{% endif %}
+
+<div class="imp-grid">
+  <!-- LEFT: Form + B50 preset -->
+  <div>
+    <div class="imp-card">
+      <h3>⚡ Preset Rapido</h3>
+      <form method="post" action="/impianto/preset-b50">
+        <button type="submit" class="btn-b50">🍺 Aggiungi BrewMonk B50</button>
+      </form>
+      <p style="font-size:.78rem;color:var(--muted);margin:0">Aggiunge automaticamente il profilo BrewMonk B50 con tutti i parametri configurati (50L batch, 72% efficienza, 7% perdita bollitura/h).</p>
+    </div>
+
+    <div class="imp-card">
+      <h3>➕ Nuovo Profilo Personalizzato</h3>
+      <form method="post" action="/impianto/nuovo">
+        <label class="form-label">Nome impianto *</label>
+        <input class="form-input" name="nome" required placeholder="es. Nano-birrificio 20L">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 .8rem">
+          <div>
+            <label class="form-label">Marca</label>
+            <input class="form-input" name="marca" placeholder="BrewMonk, Speidel…">
+          </div>
+          <div>
+            <label class="form-label">Modello</label>
+            <input class="form-input" name="modello" placeholder="B50, Braumeister…">
+          </div>
+          <div>
+            <label class="form-label">Vol. batch (L) *</label>
+            <input class="form-input" name="vol_batch_litri" type="number" step="0.5" value="50">
+          </div>
+          <div>
+            <label class="form-label">Vol. pre-boil (L)</label>
+            <input class="form-input" name="vol_preboil_litri" type="number" step="0.5" value="57">
+          </div>
+          <div>
+            <label class="form-label">Vol. mash (L)</label>
+            <input class="form-input" name="vol_mash_litri" type="number" step="0.5" value="67">
+          </div>
+          <div>
+            <label class="form-label">Dead space (L)</label>
+            <input class="form-input" name="dead_space_litri" type="number" step="0.1" value="3.5">
+          </div>
+          <div>
+            <label class="form-label">Perdita bollitura (%/h)</label>
+            <input class="form-input" name="perdita_bollitura_pct" type="number" step="0.5" value="7">
+          </div>
+          <div>
+            <label class="form-label">Efficienza default (%)</label>
+            <input class="form-input" name="efficienza_default" type="number" step="0.5" value="72">
+          </div>
+        </div>
+        <label class="form-label">Durata bollitura (min)</label>
+        <input class="form-input" name="durata_bollitura_min" type="number" value="60">
+        <label class="form-label">Note</label>
+        <textarea class="form-input" name="note" rows="2" placeholder="Note sull'impianto…"></textarea>
+        <button type="submit" class="btn-submit">Aggiungi</button>
+      </form>
+    </div>
+
+    <!-- Calcolatore volumi -->
+    <div class="imp-card">
+      <h3>🧮 Calcolatore Volumi</h3>
+      {% if profili %}
+      <label class="form-label">Impianto di riferimento</label>
+      <select class="form-input" id="calc-profilo" onchange="aggiornaCalc()">
+        {% for p in profili %}
+        <option value="{{ p.id }}" data-b="{{ p.vol_batch_litri }}" data-pb="{{ p.vol_preboil_litri }}" data-m="{{ p.vol_mash_litri }}" data-ds="{{ p.dead_space_litri }}" data-pb2="{{ p.perdita_bollitura_pct }}" data-eff="{{ p.efficienza_default }}">{{ p.nome }}</option>
+        {% endfor %}
+      </select>
+      <label class="form-label">Volume batch desiderato (L)</label>
+      <input class="form-input" id="calc-vol" type="number" step="0.5" value="20" oninput="aggiornaCalc()">
+      <div class="calc-box" id="calc-risultati">
+        <div class="calc-row"><span>Volume pre-boil</span><span id="cr-pb">—</span></div>
+        <div class="calc-row"><span>Volume mash</span><span id="cr-mash">—</span></div>
+        <div class="calc-row"><span>Dead space</span><span id="cr-ds">—</span></div>
+        <div class="calc-row"><span>Efficienza default</span><span id="cr-eff">—</span></div>
+        <div class="calc-row"><span>Perdita bollitura/h</span><span id="cr-perd">—</span></div>
+      </div>
+      {% else %}
+      <p style="color:var(--muted);font-size:.83rem">Aggiungi un profilo impianto per usare il calcolatore.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RIGHT: Lista profili -->
+  <div>
+    {% if profili %}
+    {% for p in profili %}
+    <div class="profilo-box {% if p.is_principale %}principale{% endif %}">
+      <div class="profilo-nome">
+        {{ p.nome }}
+        {% if p.marca or p.modello %}<span style="font-size:.8rem;color:var(--muted);font-weight:400">{{ p.marca or '' }} {{ p.modello or '' }}</span>{% endif %}
+        {% if p.is_principale %}<span class="profilo-badge">⭐ Principale</span>{% endif %}
+      </div>
+      <div class="spec-grid">
+        <div class="spec-item"><div class="spec-val">{{ p.vol_batch_litri }}L</div><div class="spec-lbl">Batch</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.vol_preboil_litri }}L</div><div class="spec-lbl">Pre-boil</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.vol_mash_litri }}L</div><div class="spec-lbl">Mash</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.dead_space_litri }}L</div><div class="spec-lbl">Dead space</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.perdita_bollitura_pct }}%/h</div><div class="spec-lbl">Perdiamo/h</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.efficienza_default }}%</div><div class="spec-lbl">Efficienza</div></div>
+      </div>
+      {% if p.note %}<p style="font-size:.78rem;color:var(--muted);margin:.8rem 0 0;line-height:1.5">{{ p.note }}</p>{% endif %}
+      <div style="display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap">
+        {% if not p.is_principale %}
+        <form method="post" action="/impianto/{{ p.id }}/imposta-principale" style="margin:0">
+          <button type="submit" class="btn-amber">⭐ Imposta principale</button>
+        </form>
+        {% endif %}
+        <a href="/ricette/html" class="btn-ghost">Vai alle ricette →</a>
+        <form method="post" action="/impianto/{{ p.id }}/elimina" style="margin:0" onsubmit="return confirm('Eliminare?')">
+          <button type="submit" class="btn-ghost" style="border-color:#f87171;color:#f87171">🗑</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--muted)">
+      <div style="font-size:3rem;margin-bottom:.8rem">⚙️</div>
+      <p>Nessun profilo impianto configurato.</p>
+      <p>Usa il pulsante <strong>BrewMonk B50</strong> per iniziare.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function aggiornaCalc() {
+  const sel = document.getElementById('calc-profilo');
+  const opt = sel.options[sel.selectedIndex];
+  const volBatch = parseFloat(opt.dataset.b) || 50;
+  const volBatchTarget = parseFloat(document.getElementById('calc-vol').value) || 20;
+  const ratio = volBatchTarget / volBatch;
+  document.getElementById('cr-pb').textContent = (parseFloat(opt.dataset.pb) * ratio).toFixed(1) + ' L';
+  document.getElementById('cr-mash').textContent = (parseFloat(opt.dataset.m) * ratio).toFixed(1) + ' L';
+  document.getElementById('cr-ds').textContent = parseFloat(opt.dataset.ds).toFixed(1) + ' L';
+  document.getElementById('cr-eff').textContent = parseFloat(opt.dataset.eff).toFixed(1) + ' %';
+  document.getElementById('cr-perd').textContent = parseFloat(opt.dataset.pb2).toFixed(1) + ' %/h';
+}
+{% if profili %}aggiornaCalc();{% endif %}
+</script>
+{% endblock %}

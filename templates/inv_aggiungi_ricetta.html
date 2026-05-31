@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Aggiungi {{ item.nome }} a Ricetta{% endblock %}
+{% block content %}
+<style>
+.ar-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.5rem; max-width:540px; margin:2rem auto; }
+.ar-card h2 { color:var(--text); font-size:1.1rem; font-weight:700; margin:0 0 .4rem; }
+.ar-card p { color:var(--muted); font-size:.83rem; margin:0 0 1.3rem; }
+.form-label { font-size:.75rem; color:var(--muted); display:block; margin-bottom:.2rem; }
+.form-input { width:100%; background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.5rem .8rem; color:var(--text); font-size:.88rem; margin-bottom:.8rem; box-sizing:border-box; }
+.form-input:focus { border-color:var(--amber); outline:none; }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.55rem 1.4rem; font-weight:700; cursor:pointer; font-size:.9rem; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.5rem 1rem; font-size:.83rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.item-badge { display:inline-block; background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.3); color:var(--amber); border-radius:6px; padding:.35rem .9rem; font-size:.85rem; font-weight:600; margin-bottom:1rem; }
+</style>
+
+<div class="ar-card">
+  <a href="/inventario" style="font-size:.8rem;color:var(--muted);text-decoration:none;display:block;margin-bottom:1rem">← Inventario</a>
+  <h2>📝 Aggiungi a Ricetta</h2>
+  <p>Seleziona la ricetta e la quantità da aggiungere come ingrediente.</p>
+
+  <div class="item-badge">📦 {{ item.nome }}</div>
+  <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.2rem">
+    Disponibile: {{ item.quantita }} {{ item.unita }}
+    {% if item.prezzo_unitario %} · €{{ '%.3f'|format(item.prezzo_unitario) }}/{{ item.unita }}{% endif %}
+  </div>
+
+  {% if ricette %}
+  <form method="post" action="/inventario/{{ item.id }}/aggiungi-a-ricetta">
+    <label class="form-label">Ricetta *</label>
+    <select class="form-input" name="ricetta_id" required>
+      <option value="">— Seleziona ricetta —</option>
+      {% for r in ricette %}
+      <option value="{{ r.id }}">{{ r.nome }} ({{ r.volume_target_litri }}L)</option>
+      {% endfor %}
+    </select>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+      <div>
+        <label class="form-label">Quantità *</label>
+        <input class="form-input" type="number" name="quantita" step="0.001" min="0.001"
+          value="{{ item.quantita or 1 }}" required>
+      </div>
+      <div>
+        <label class="form-label">Unità</label>
+        <select class="form-input" name="unita">
+          {% for u in ['kg','g','L','mL','pz','busta','flacone','altro'] %}
+          <option {% if u == item.unita %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.7rem;margin-top:.5rem">
+      <button type="submit" class="btn-amber">Aggiungi alla ricetta →</button>
+      <a href="/inventario" class="btn-ghost">Annulla</a>
+    </div>
+  </form>
+  {% else %}
+  <div style="color:var(--muted);font-size:.85rem;text-align:center;padding:1rem">
+    Nessuna ricetta trovata. <a href="/ricette/html" style="color:var(--amber)">Crea una ricetta</a> prima.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

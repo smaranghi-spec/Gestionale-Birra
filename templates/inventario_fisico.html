@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Inventario Fisico{% endblock %}
+{% block content %}
+<style>
+.if-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:1rem; }
+.if-card-header { padding:.7rem 1.1rem; background:#0a0f1a; border-bottom:1px solid var(--border); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--amber); }
+.if-row { display:grid; grid-template-columns:1fr 120px 80px 100px 120px; gap:.5rem; align-items:center; padding:.5rem .9rem; border-bottom:1px solid #131922; font-size:.83rem; }
+.if-row:last-child { border:none; }
+.if-row:hover { background:rgba(245,158,11,.04); }
+.if-header-row { display:grid; grid-template-columns:1fr 120px 80px 100px 120px; gap:.5rem; padding:.3rem .9rem; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.qty-input { background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.35rem .5rem; color:var(--text); font-size:.88rem; width:85px; text-align:right; }
+.qty-input:focus { border-color:var(--amber); outline:none; }
+.qty-input.changed { border-color:#4ade80; background:rgba(74,222,128,.06); }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.5rem 1.5rem; font-weight:700; cursor:pointer; font-size:.9rem; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.5rem 1rem; font-size:.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
+.diff-pos { color:#4ade80; font-size:.75rem; }
+.diff-neg { color:#f87171; font-size:.75rem; }
+.diff-zero { color:var(--muted); font-size:.75rem; }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.7rem">
+  <div>
+    <h1 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0">📋 Inventario Fisico</h1>
+    <p style="font-size:.82rem;color:var(--muted);margin:.3rem 0 0">Inserisci le quantità contate fisicamente. Le differenze rispetto al sistema sono evidenziate.</p>
+  </div>
+  <a href="/inventario" class="btn-ghost">← Inventario</a>
+</div>
+
+<form method="post" action="/inventario/fisico/salva">
+  {% for cat in categorie %}
+  {% set cat_items = items|selectattr('categoria','equalto',cat)|list %}
+  {% if cat_items %}
+  <div class="if-card">
+    <div class="if-card-header">{{ cat|replace('_',' ')|title }} ({{ cat_items|length }})</div>
+    <div class="if-header-row">
+      <div>Articolo</div><div>Sistema (attuale)</div><div>Unità</div><div>Contato ora</div><div>Differenza</div>
+    </div>
+    {% for item in cat_items %}
+    <div class="if-row">
+      <div>
+        <div style="font-weight:500;color:var(--text)">{{ item.nome }}</div>
+        {% if item.fornitore %}<div style="font-size:.7rem;color:var(--muted)">{{ item.fornitore }}</div>{% endif %}
+      </div>
+      <div style="font-weight:600;color:var(--text)">{{ item.quantita }}</div>
+      <div style="color:var(--muted)">{{ item.unita }}</div>
+      <div>
+        <input class="qty-input" type="number" step="0.01" min="0"
+          name="qty_{{ item.id }}" value="{{ item.quantita }}"
+          data-original="{{ item.quantita }}"
+          oninput="calcolaDiff(this)">
+      </div>
+      <div class="diff-zero" id="diff_{{ item.id }}">0</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  <div style="display:flex;gap:.8rem;margin-top:.5rem;align-items:center">
+    <button type="submit" class="btn-amber">💾 Salva conteggio fisico</button>
+    <a href="/inventario" class="btn-ghost">Annulla</a>
+    <span style="font-size:.78rem;color:var(--muted)" id="n-modifiche">Nessuna modifica</span>
+  </div>
+</form>
+
+<script>
+let modifiche = 0;
+function calcolaDiff(input) {
+  const id = input.name.split('_')[1];
+  const orig = parseFloat(input.dataset.original) || 0;
+  const nuovo = parseFloat(input.value) || 0;
+  const diff = nuovo - orig;
+  const diffEl = document.getElementById('diff_' + id);
+  if (Math.abs(diff) < 0.001) {
+    diffEl.textContent = '0';
+    diffEl.className = 'diff-zero';
+    input.classList.remove('changed');
+  } else if (diff > 0) {
+    diffEl.textContent = '+' + diff.toFixed(2);
+    diffEl.className = 'diff-pos';
+    input.classList.add('changed');
+  } else {
+    diffEl.textContent = diff.toFixed(2);
+    diffEl.className = 'diff-neg';
+    input.classList.add('changed');
+  }
+  modifiche = document.querySelectorAll('.qty-input.changed').length;
+  const el = document.getElementById('n-modifiche');
+  el.textContent = modifiche > 0 ? modifiche + ' modifica/e da salvare' : 'Nessuna modifica';
+  el.style.color = modifiche > 0 ? 'var(--amber)' : 'var(--muted)';
+}
+</script>
+{% endblock %}

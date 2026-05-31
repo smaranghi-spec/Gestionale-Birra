@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Costo Ricetta — {{ ricetta.nome }}{% endblock %}
+{% block content %}
+<style>
+.cr-grid { display:grid; grid-template-columns:1fr 380px; gap:1.5rem; }
+.cr-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1rem; }
+.cr-card h3 { color:var(--amber); font-size:.88rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; }
+.ing-row { display:grid; grid-template-columns:1fr 100px 80px 100px 90px; gap:.5rem; align-items:center; padding:.5rem .7rem; background:#0a0f1a; border:1px solid var(--border); border-radius:6px; margin-bottom:.4rem; font-size:.83rem; }
+.ing-row.header { background:transparent; border:none; font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.2rem; padding:.2rem .7rem; }
+.cat-grain { color:#fbbf24; }
+.cat-hop { color:#4ade80; }
+.cat-yeast { color:#a78bfa; }
+.cat-misc { color:#60a5fa; }
+.cat-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
+.price-missing { font-size:.72rem; color:#f87171; }
+.price-from-inv { font-size:.72rem; color:#60a5fa; }
+.summary-row { display:flex; justify-content:space-between; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.88rem; }
+.summary-row:last-child { border:none; padding-top:.7rem; font-size:1rem; font-weight:700; color:var(--amber); }
+.slider-row { margin-bottom:1rem; }
+.slider-row label { font-size:.78rem; color:var(--muted); display:flex; justify-content:space-between; }
+.slider-row input[type=range] { width:100%; accent-color:var(--amber); }
+.iva-table { width:100%; border-collapse:collapse; font-size:.83rem; }
+.iva-table th { color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; padding:.4rem .6rem; border-bottom:1px solid var(--border); text-align:left; }
+.iva-table td { padding:.5rem .6rem; border-bottom:1px solid #1e2535; }
+.iva-table tr:last-child td { border:none; }
+.iva-table tr:hover td { background:rgba(245,158,11,.05); }
+.prezzo-big { font-size:2.2rem; font-weight:800; color:var(--amber); line-height:1; }
+.prezzo-sub { font-size:.75rem; color:var(--muted); margin-top:.3rem; }
+.bottiglia-grid { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-top:.5rem; }
+.bottiglia-box { background:#0a0f1a; border:1px solid var(--border); border-radius:7px; padding:.8rem; text-align:center; }
+.bottiglia-val { font-size:1.4rem; font-weight:700; color:var(--text); }
+.bottiglia-lbl { font-size:.72rem; color:var(--muted); margin-top:.2rem; }
+.alert-ok { background:rgba(74,222,128,.1); border:1px solid #4ade80; color:#4ade80; padding:.5rem .9rem; border-radius:6px; font-size:.82rem; margin-bottom:.8rem; }
+.warning-box { background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.3); border-radius:7px; padding:.7rem 1rem; font-size:.8rem; color:#fbbf24; margin-bottom:1rem; }
+</style>
+
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
+  <a href="/ricette/{{ ricetta.id }}" style="color:var(--muted);font-size:.83rem;text-decoration:none">← {{ ricetta.nome }}</a>
+  <h1 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0">💰 Costo Ricetta</h1>
+  <div style="margin-left:auto;display:flex;gap:.5rem">
+    <a href="/ricette/{{ ricetta.id }}/beerxml" style="font-size:.78rem;color:var(--amber);border:1px solid rgba(245,158,11,.3);border-radius:5px;padding:.3rem .7rem;text-decoration:none">⬇ BeerXML</a>
+    <a href="/brewmonk" style="font-size:.78rem;color:#000;background:var(--amber);border-radius:5px;padding:.3rem .7rem;text-decoration:none">🍺 BrewMonk</a>
+  </div>
+</div>
+
+{% set n_prezzi_mancanti = righe | selectattr('prezzo_unitario', 'eq', 0) | list | length %}
+{% if n_prezzi_mancanti > 0 %}
+<div class="warning-box">
+  ⚠️ {{ n_prezzi_mancanti }} ingrediente/i senza prezzo — il costo totale è sottostimato.
+  Aggiorna i prezzi nella <a href="/catalogo/ingredienti" style="color:var(--amber)">scheda ingrediente</a> o nel <a href="/inventario" style="color:var(--amber)">magazzino</a>.
+</div>
+{% endif %}
+
+<!-- Sliders overhead + markup -->
+<div class="cr-card" style="margin-bottom:1.2rem">
+  <h3>⚙️ Parametri Calcolo</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 2rem">
+    <div class="slider-row">
+      <label>Overhead (energia, acqua, consumabili) <span id="ovh-val">{{ overhead_pct|int }}%</span></label>
+      <input type="range" min="0" max="100" value="{{ overhead_pct|int }}" id="slider-ovh" oninput="aggiornaCalcolo()">
+    </div>
+    <div class="slider-row">
+      <label>Markup (margine di guadagno) <span id="mkp-val">{{ markup_pct|int }}%</span></label>
+      <input type="range" min="0" max="300" value="{{ markup_pct|int }}" id="slider-mkp" oninput="aggiornaCalcolo()">
+    </div>
+  </div>
+  <div style="font-size:.75rem;color:var(--muted)">Modifica i parametri per ricalcolare il prezzo suggerito in tempo reale.</div>
+</div>
+
+<div class="cr-grid">
+  <!-- LEFT: ingredienti + riepilogo -->
+  <div>
+    <div class="cr-card">
+      <h3>🧪 Ingredienti ({{ vol }}L batch)</h3>
+      <div class="ing-row header">
+        <div>Ingrediente</div><div>Qtà</div><div>€/u</div><div>Costo</div><div>Fonte</div>
+      </div>
+      {% for r in righe %}
+      <div class="ing-row">
+        <div>
+          <span class="cat-dot" style="background:{% if r.categoria=='grain' %}#fbbf24{% elif r.categoria=='hop' %}#4ade80{% elif r.categoria=='yeast' %}#a78bfa{% else %}#60a5fa{% endif %}"></span>
+          <span class="cat-{{ r.categoria }}">{{ r.nome }}</span>
+        </div>
+        <div style="color:var(--muted)">{{ r.quantita }} {{ r.unita }}</div>
+        <div>
+          {% if r.prezzo_unitario > 0 %}€{{ '%.3f'|format(r.prezzo_unitario) }}
+          {% else %}<span class="price-missing">—</span>{% endif %}
+        </div>
+        <div style="font-weight:{% if r.costo > 0 %}600{% else %}400{% endif %}">
+          {% if r.costo > 0 %}€{{ '%.2f'|format(r.costo) }}
+          {% else %}<span class="price-missing">—</span>{% endif %}
+        </div>
+        <div>
+          {% if r.da_magazzino %}<span class="price-from-inv">📦 mag.</span>
+          {% elif r.prezzo_unitario > 0 %}<span style="font-size:.72rem;color:#4ade80">✓ ricetta</span>
+          {% else %}<a href="/prezzi/cerca?q={{ r.nome }}" target="_blank" style="font-size:.7rem;color:var(--amber)">cerca →</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="cr-card">
+      <h3>📊 Riepilogo Costi</h3>
+      <div class="summary-row"><span>Materie prime</span><span>€{{ '%.2f'|format(costo_materie) }}</span></div>
+      <div class="summary-row"><span>Overhead (<span id="sum-ovh-pct">{{ overhead_pct|int }}</span>%)</span><span>€<span id="sum-ovh">{{ '%.2f'|format(costo_overhead) }}</span></span></div>
+      <div class="summary-row"><span>Totale costo produzione</span><span>€<span id="sum-tot">{{ '%.2f'|format(costo_totale) }}</span></span></div>
+      <div class="summary-row"><span>Costo per litro</span><span>€<span id="sum-litro">{{ '%.3f'|format(costo_per_litro) }}</span>/L</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: prezzo vendita + IVA -->
+  <div>
+    <div class="cr-card">
+      <h3>💶 Prezzo di Vendita Suggerito</h3>
+      <div style="text-align:center;padding:.5rem 0 1rem">
+        <div class="prezzo-sub">Prezzo totale batch ({{ vol }}L) con markup <span id="mkp-show">{{ markup_pct|int }}</span>%</div>
+        <div class="prezzo-big">€<span id="pv-totale">{{ '%.2f'|format(prezzo_con_markup) }}</span></div>
+        <div class="prezzo-sub" style="margin-top:.4rem">€<span id="pv-litro">{{ '%.3f'|format(prezzo_per_litro) }}</span>/L</div>
+      </div>
+
+      <div class="bottiglia-grid">
+        <div class="bottiglia-box">
+          <div class="bottiglia-val">€<span id="pv-075">{{ '%.2f'|format(prezzo_bottiglia_075) }}</span></div>
+          <div class="bottiglia-lbl">🍺 Bottiglia 75cl</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">~{{ n_bottiglie_075 }} bottiglie</div>
+        </div>
+        <div class="bottiglia-box">
+          <div class="bottiglia-val">€<span id="pv-033">{{ '%.2f'|format(prezzo_bottiglia_033) }}</span></div>
+          <div class="bottiglia-lbl">🍺 Bottiglia 33cl</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">~{{ n_bottiglie_033 }} bottiglie</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cr-card">
+      <h3>📋 Ipotesi IVA</h3>
+      <p style="font-size:.75rem;color:var(--muted);margin:0 0 .8rem">Prezzi con IVA inclusa (base: €<span id="iva-base">{{ '%.2f'|format(prezzo_con_markup) }}</span>)</p>
+      <table class="iva-table">
+        <thead><tr><th>Aliquota</th><th>Totale</th><th>Per litro</th><th>75cl</th><th>33cl</th></tr></thead>
+        <tbody id="iva-tbody">
+          {% for sc in iva_scenari %}
+          <tr>
+            <td><strong>{{ sc.aliquota }}%</strong>{% if sc.aliquota == 0 %} <span style="font-size:.68rem;color:var(--muted)">(esente)</span>{% elif sc.aliquota == 10 %} <span style="font-size:.68rem;color:var(--amber)">(ridotta)</span>{% elif sc.aliquota == 22 %} <span style="font-size:.68rem;color:#f87171">(ordinaria)</span>{% endif %}</td>
+            <td class="iva-tot">€{{ '%.2f'|format(sc.totale) }}</td>
+            <td class="iva-litro">€{{ '%.3f'|format(sc.per_litro) }}</td>
+            <td class="iva-075">€{{ '%.2f'|format(sc.bottiglia_075) }}</td>
+            <td class="iva-033">€{{ '%.2f'|format(sc.bottiglia_033) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if cotte %}
+    <div class="cr-card">
+      <h3>🍺 Ultime cotte collegate</h3>
+      {% for c in cotte %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.82rem">
+        <span>{{ c.nome }}</span>
+        <a href="/cotte/{{ c.id }}" style="color:var(--amber);font-size:.75rem">Dettaglio →</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+const costoMaterie = {{ costo_materie }};
+const vol = {{ vol }};
+const nBot075 = {{ n_bottiglie_075 }};
+const nBot033 = {{ n_bottiglie_033 }};
+const IVA_ALIQUOTE = [0, 4, 10, 22];
+
+function aggiornaCalcolo() {
+  const ovh = parseInt(document.getElementById('slider-ovh').value);
+  const mkp = parseInt(document.getElementById('slider-mkp').value);
+  document.getElementById('ovh-val').textContent = ovh + '%';
+  document.getElementById('mkp-val').textContent = mkp + '%';
+  document.getElementById('mkp-show').textContent = mkp;
+
+  const overhead = costoMaterie * ovh / 100;
+  const totale = costoMaterie + overhead;
+  const conMarkup = totale * (1 + mkp / 100);
+  const perLitro = vol ? conMarkup / vol : 0;
+  const b075 = nBot075 ? conMarkup / nBot075 : 0;
+  const b033 = nBot033 ? conMarkup / nBot033 : 0;
+
+  document.getElementById('sum-ovh-pct').textContent = ovh;
+  document.getElementById('sum-ovh').textContent = overhead.toFixed(2);
+  document.getElementById('sum-tot').textContent = totale.toFixed(2);
+  document.getElementById('sum-litro').textContent = perLitro.toFixed(3);
+  document.getElementById('pv-totale').textContent = conMarkup.toFixed(2);
+  document.getElementById('pv-litro').textContent = perLitro.toFixed(3);
+  document.getElementById('pv-075').textContent = b075.toFixed(2);
+  document.getElementById('pv-033').textContent = b033.toFixed(2);
+  document.getElementById('iva-base').textContent = conMarkup.toFixed(2);
+
+  const rows = document.querySelectorAll('#iva-tbody tr');
+  IVA_ALIQUOTE.forEach((aliq, i) => {
+    const f = 1 + aliq / 100;
+    rows[i].querySelector('.iva-tot').textContent = '€' + (conMarkup * f).toFixed(2);
+    rows[i].querySelector('.iva-litro').textContent = '€' + (perLitro * f).toFixed(3);
+    rows[i].querySelector('.iva-075').textContent = '€' + (b075 * f).toFixed(2);
+    rows[i].querySelector('.iva-033').textContent = '€' + (b033 * f).toFixed(2);
+  });
+}
+</script>
+{% endblock %}

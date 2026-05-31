@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Tracciabilità Ingredienti{% endblock %}
+{% block content %}
+<style>
+.tr-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.3rem; flex-wrap:wrap; gap:.7rem; }
+.tr-search { display:flex; gap:.6rem; flex-wrap:wrap; }
+.tr-input { background:#0a0f1a; border:1px solid var(--border); border-radius:7px; padding:.5rem 1rem; color:var(--text); font-size:.9rem; min-width:220px; }
+.tr-input:focus { border-color:var(--amber); outline:none; }
+.btn-cerca { background:var(--amber); color:#000; border:none; border-radius:7px; padding:.5rem 1.2rem; font-weight:700; cursor:pointer; }
+.ing-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:.8rem; overflow:hidden; }
+.ing-header { display:flex; align-items:center; gap:1rem; padding:.75rem 1.1rem; background:#0a0f1a; cursor:pointer; flex-wrap:wrap; }
+.ing-header:hover { background:#131922; }
+.ing-nome { font-weight:700; color:var(--text); font-size:.95rem; flex:1; }
+.ing-badges { display:flex; gap:.4rem; flex-wrap:wrap; }
+.badge-blue { background:rgba(96,165,250,.15); color:#60a5fa; border:1px solid rgba(96,165,250,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
+.badge-amber { background:rgba(245,158,11,.15); color:var(--amber); border:1px solid rgba(245,158,11,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
+.badge-green { background:rgba(74,222,128,.15); color:#4ade80; border:1px solid rgba(74,222,128,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
+.badge-red { background:rgba(248,113,113,.15); color:#f87171; border:1px solid rgba(248,113,113,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
+.ing-body { padding:.9rem 1.1rem; display:none; }
+.ing-body.open { display:block; }
+.sub-section { margin-bottom:.9rem; }
+.sub-title { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin:0 0 .5rem; font-weight:600; }
+.pill-list { display:flex; flex-wrap:wrap; gap:.4rem; }
+.pill { font-size:.78rem; background:#131922; border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; color:var(--text); text-decoration:none; }
+.pill:hover { border-color:var(--amber); color:var(--amber); }
+.inv-row { background:#0a0f1a; border-radius:6px; padding:.55rem .8rem; font-size:.82rem; display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; }
+.inv-label { color:var(--muted); font-size:.7rem; text-transform:uppercase; }
+.inv-val { font-weight:600; color:var(--text); }
+.info-top { background:#131922; border:1px solid var(--border); border-radius:8px; padding:.7rem 1rem; margin-bottom:1rem; font-size:.82rem; color:var(--muted); display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+</style>
+
+<div class="tr-header">
+  <div>
+    <h1 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0">🔍 Tracciabilità Ingredienti</h1>
+    <p style="font-size:.82rem;color:var(--muted);margin:.3rem 0 0">{{ n_ingredienti }} ingredient{% if n_ingredienti != 1 %}i{% else %}e{% endif %} trovati nelle ricette</p>
+  </div>
+  <form method="get" action="/tracciabilita" class="tr-search">
+    <input class="tr-input" type="text" name="cerca" value="{{ cerca }}" placeholder="Cerca ingrediente…">
+    <button type="submit" class="btn-cerca">🔍</button>
+    {% if cerca %}<a href="/tracciabilita" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:.5rem .9rem;font-size:.82rem;text-decoration:none">✕</a>{% endif %}
+  </form>
+</div>
+
+<div class="info-top">
+  <span>💡 Clicca su un ingrediente per vedere in quali ricette e cotte è stato usato.</span>
+  <span>Usa questo report per verificare l'impatto di un lotto difettoso.</span>
+</div>
+
+{% if report %}
+{% for r in report %}
+<div class="ing-box">
+  <div class="ing-header" onclick="toggle(this)">
+    <span class="ing-nome">{{ r.nome }}</span>
+    <div class="ing-badges">
+      <span class="badge-blue">{{ r.ricette|length }} ricett{% if r.ricette|length != 1 %}e{% else %}a{% endif %}</span>
+      <span class="badge-amber">{{ r.cotte|length }} cott{% if r.cotte|length != 1 %}e{% else %}a{% endif %}</span>
+      {% if r.inventario %}
+        {% if r.inventario.quantita > 0 %}
+        <span class="badge-green">📦 {{ r.inventario.quantita }} {{ r.inventario.unita }} in magazzino</span>
+        {% else %}
+        <span class="badge-red">📦 esaurito</span>
+        {% endif %}
+      {% else %}
+      <span style="font-size:.68rem;color:var(--muted)">non in magazzino</span>
+      {% endif %}
+    </div>
+    <span style="color:var(--muted);font-size:.75rem">▾</span>
+  </div>
+  <div class="ing-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;flex-wrap:wrap">
+
+      <div class="sub-section">
+        <div class="sub-title">📖 Ricette che lo usano</div>
+        {% if r.ricette %}
+        <div class="pill-list">
+          {% for ricetta in r.ricette %}
+          <a href="/ricette/{{ ricetta.id }}" class="pill">{{ ricetta.nome }}</a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <span style="font-size:.8rem;color:var(--muted)">Nessuna ricetta</span>
+        {% endif %}
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">🍺 Cotte collegate</div>
+        {% if r.cotte %}
+        <div class="pill-list">
+          {% for cotta in r.cotte %}
+          <a href="/cotte/{{ cotta.id }}" class="pill" style="{% if cotta.stato == 'pronta' %}border-color:#4ade80;color:#4ade80{% elif cotta.stato == 'archiviata' %}color:var(--muted){% endif %}">
+            {{ cotta.nome }} <span style="font-size:.65rem;opacity:.6">({{ cotta.stato }})</span>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <span style="font-size:.8rem;color:var(--muted)">Nessuna cotta</span>
+        {% endif %}
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">📦 Stato magazzino</div>
+        {% if r.inventario %}
+        <div class="inv-row">
+          <div><div class="inv-label">Disponibile</div><div class="inv-val">{{ r.inventario.quantita }} {{ r.inventario.unita }}</div></div>
+          {% if r.inventario.prezzo_unitario %}<div><div class="inv-label">Prezzo/u</div><div class="inv-val">€{{ '%.3f'|format(r.inventario.prezzo_unitario) }}</div></div>{% endif %}
+          {% if r.inventario.fornitore %}<div><div class="inv-label">Fornitore</div><div class="inv-val">{{ r.inventario.fornitore }}</div></div>{% endif %}
+        </div>
+        <a href="/inventario" style="font-size:.75rem;color:var(--amber);text-decoration:none">→ Vai al magazzino</a>
+        {% else %}
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.4rem">Non presente in magazzino</div>
+        <a href="/prezzi/cerca?q={{ r.nome }}" style="font-size:.75rem;color:var(--amber);text-decoration:none">🔍 Cerca prezzi →</a>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div style="text-align:center;padding:4rem;color:var(--muted)">
+  <div style="font-size:3rem;margin-bottom:.7rem">🔍</div>
+  <p>Nessun ingrediente trovato nelle ricette.</p>
+</div>
+{% endif %}
+
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+</script>
+{% endblock %}

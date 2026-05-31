@@ -296,6 +296,78 @@ class RegistroPulizie(Base):
     timestamp = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
 
 
+class ProfiloBirrificio(Base):
+    """Profilo impianto (es. BrewMonk B50) usato per calcolare volumi/efficienza."""
+    __tablename__ = "profilo_birrificio"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False, default="Impianto principale")
+    marca = Column(String, nullable=True)
+    modello = Column(String, nullable=True)
+    vol_batch_litri = Column(Float, default=50.0)
+    vol_preboil_litri = Column(Float, default=57.0)
+    vol_mash_litri = Column(Float, default=67.0)
+    dead_space_litri = Column(Float, default=3.5)
+    perdita_bollitura_pct = Column(Float, default=7.0)
+    efficienza_default = Column(Float, default=72.0)
+    durata_bollitura_min = Column(Integer, default=60)
+    note = Column(Text, nullable=True)
+    is_principale = Column(Boolean, default=False)
+
+
+class ProfiloAcquaPreset(Base):
+    """Profili acqua di riferimento per stile (Plzeň, Burton, Dublin…)."""
+    __tablename__ = "profilo_acqua_preset"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    citta = Column(String, nullable=True)
+    stili_consigliati = Column(String, nullable=True)
+    ca = Column(Float, default=0.0)
+    mg = Column(Float, default=0.0)
+    na = Column(Float, default=0.0)
+    cl = Column(Float, default=0.0)
+    so4 = Column(Float, default=0.0)
+    hco3 = Column(Float, default=0.0)
+    note = Column(Text, nullable=True)
+
+
+class PrezzoCache(Base):
+    """Cache dei prezzi scraped dai fornitori."""
+    __tablename__ = "prezzi_cache"
+    id = Column(Integer, primary_key=True, index=True)
+    query = Column(String, nullable=False, index=True)
+    fornitore = Column(String, nullable=False)
+    nome_prodotto = Column(String, nullable=False)
+    prezzo = Column(Float, nullable=True)
+    url = Column(String, nullable=True)
+    aggiornato_il = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class OrdineAcquisto(Base):
+    """Ordine di acquisto da confermare prima di aggiungere a magazzino."""
+    __tablename__ = "ordini_acquisto"
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(String, nullable=False, default=lambda: datetime.now().strftime("%Y-%m-%d"))
+    fornitore = Column(String, nullable=True)
+    stato = Column(String, default="bozza")   # bozza / confermato / ricevuto
+    note = Column(Text, nullable=True)
+    totale = Column(Float, nullable=True)
+    created_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    righe = relationship("RigaOrdine", back_populates="ordine", cascade="all, delete-orphan")
+
+
+class RigaOrdine(Base):
+    __tablename__ = "righe_ordine"
+    id = Column(Integer, primary_key=True, index=True)
+    ordine_id = Column(Integer, ForeignKey("ordini_acquisto.id"), nullable=False)
+    nome = Column(String, nullable=False)
+    categoria = Column(String, default="ingrediente")
+    quantita = Column(Float, default=1.0)
+    unita = Column(String, default="kg")
+    prezzo_unitario = Column(Float, nullable=True)
+    note = Column(String, nullable=True)
+    ordine = relationship("OrdineAcquisto", back_populates="righe")
+
+
 class ProfiloSocio(Base):
     __tablename__ = "profili_soci"
     id = Column(Integer, primary_key=True, index=True)

@@ -13,6 +13,7 @@ from .routers import (
 )
 from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 from .routers import prezzi, fattura, brewmonk, soci
+from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 
 Base.metadata.create_all(bind=engine)
 
@@ -80,6 +81,10 @@ app.include_router(prezzi.router)
 app.include_router(fattura.router)
 app.include_router(brewmonk.router)
 app.include_router(soci.router)
+app.include_router(impianto.router)
+app.include_router(profili_acqua.router)
+app.include_router(costo_ricetta.router)
+app.include_router(tracciabilita.router)
 
 
 @app.get("/", response_class=HTMLResponse)

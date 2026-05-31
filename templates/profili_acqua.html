@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Profili Acqua{% endblock %}
+{% block content %}
+<style>
+.pa-grid { display:grid; grid-template-columns:300px 1fr; gap:1.5rem; }
+.pa-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.2rem; }
+.pa-card h3 { color:var(--amber); font-size:.88rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; }
+.preset-box { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:.7rem; cursor:pointer; transition:border-color .15s; }
+.preset-box:hover { border-color:rgba(245,158,11,.4); }
+.preset-nome { font-weight:600; color:var(--text); font-size:.92rem; }
+.preset-citta { font-size:.74rem; color:var(--muted); margin-top:.1rem; }
+.preset-stili { font-size:.74rem; color:var(--amber); margin-top:.2rem; font-style:italic; }
+.minerali-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:.3rem; margin-top:.7rem; }
+.min-box { background:#131922; border-radius:4px; padding:.3rem .2rem; text-align:center; }
+.min-val { font-size:.85rem; font-weight:700; color:var(--amber); }
+.min-lbl { font-size:.62rem; color:var(--muted); text-transform:uppercase; }
+.chart-bar { height:6px; background:var(--amber); border-radius:3px; margin-top:.2rem; opacity:.6; }
+.form-label { font-size:.75rem; color:var(--muted); display:block; margin-bottom:.2rem; }
+.form-input { width:100%; background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.4rem .65rem; color:var(--text); font-size:.82rem; margin-bottom:.5rem; box-sizing:border-box; }
+.form-input:focus { border-color:var(--amber); outline:none; }
+.btn-submit { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.5rem 1.2rem; font-weight:700; cursor:pointer; font-size:.85rem; }
+.alert-ok { background:rgba(74,222,128,.1); border:1px solid #4ade80; color:#4ade80; padding:.5rem .9rem; border-radius:6px; font-size:.82rem; margin-bottom:1rem; }
+.section-title { font-size:1.3rem; font-weight:700; color:var(--text); margin:0 0 1.2rem; }
+.ratio-box { display:flex; align-items:center; gap:.5rem; margin-top:.5rem; padding:.4rem .7rem; background:#131922; border-radius:5px; font-size:.78rem; }
+.ratio-label { color:var(--muted); }
+.ratio-val { font-weight:700; }
+.ratio-val.hoppy { color:#4ade80; }
+.ratio-val.malty { color:var(--amber); }
+.ratio-val.balanced { color:#60a5fa; }
+</style>
+
+<div class="section-title">💧 Profili Acqua di Riferimento</div>
+{% if msg %}<div class="alert-ok">{{ msg }}</div>{% endif %}
+
+<div class="pa-grid">
+  <!-- LEFT: form nuovo + info -->
+  <div>
+    <div class="pa-card">
+      <h3>➕ Nuovo Profilo</h3>
+      <form method="post" action="/profili-acqua/nuovo">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" name="nome" required placeholder="es. Acqua locale trattata">
+        <label class="form-label">Città di riferimento</label>
+        <input class="form-input" name="citta" placeholder="es. Milano, IT">
+        <label class="form-label">Stili consigliati</label>
+        <input class="form-input" name="stili_consigliati" placeholder="es. IPA, Pale Ale">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 .7rem">
+          <div><label class="form-label">Ca²⁺ (mg/L)</label><input class="form-input" name="ca" type="number" step="0.1" value="0"></div>
+          <div><label class="form-label">Mg²⁺ (mg/L)</label><input class="form-input" name="mg" type="number" step="0.1" value="0"></div>
+          <div><label class="form-label">Na⁺ (mg/L)</label><input class="form-input" name="na" type="number" step="0.1" value="0"></div>
+          <div><label class="form-label">Cl⁻ (mg/L)</label><input class="form-input" name="cl" type="number" step="0.1" value="0"></div>
+          <div><label class="form-label">SO₄²⁻ (mg/L)</label><input class="form-input" name="so4" type="number" step="0.1" value="0"></div>
+          <div><label class="form-label">HCO₃⁻ (mg/L)</label><input class="form-input" name="hco3" type="number" step="0.1" value="0"></div>
+        </div>
+        <label class="form-label">Note</label>
+        <textarea class="form-input" name="note" rows="2"></textarea>
+        <button type="submit" class="btn-submit">Aggiungi</button>
+      </form>
+    </div>
+
+    <div class="pa-card" style="margin-top:1rem">
+      <h3>📖 Guida Rapida</h3>
+      <div style="font-size:.78rem;color:var(--muted);line-height:1.7">
+        <p><strong style="color:var(--amber)">Cl/SO₄ &gt; 1.5</strong> → profilo maltato, corpo pieno</p>
+        <p><strong style="color:var(--amber)">SO₄/Cl &gt; 2</strong> → profilo luppolato, secco, amaro</p>
+        <p><strong style="color:var(--amber)">Ca²⁺</strong> → abbassa pH, favorisce fermentazione</p>
+        <p><strong style="color:var(--amber)">HCO₃⁻</strong> → tampona acidità, alto = pH mash più alto</p>
+        <p><strong style="color:var(--amber)">Mg²⁺</strong> → nutriente lievito, amaro metallico se alto</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: lista preset -->
+  <div>
+    {% for p in presets %}
+    <div class="preset-box">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="preset-nome">{{ p.nome }}</div>
+          {% if p.citta %}<div class="preset-citta">📍 {{ p.citta }}</div>{% endif %}
+          {% if p.stili_consigliati %}<div class="preset-stili">🍺 {{ p.stili_consigliati }}</div>{% endif %}
+        </div>
+        <div style="display:flex;gap:.4rem">
+          <a href="/ricette/html" style="font-size:.73rem;color:var(--amber);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:.2rem .5rem;text-decoration:none" title="Usa nelle ricette">Usa →</a>
+          <form method="post" action="/profili-acqua/{{ p.id }}/elimina" style="margin:0">
+            <button type="submit" style="background:transparent;border:none;color:#6b7280;cursor:pointer;font-size:.82rem;padding:.2rem .4rem" onclick="return confirm('Eliminare?')">🗑</button>
+          </form>
+        </div>
+      </div>
+      <div class="minerali-grid">
+        {% set max_val = [p.ca, p.mg, p.na, p.cl, p.so4, p.hco3] | max %}
+        {% for lbl, val in [('Ca²⁺',p.ca),('Mg²⁺',p.mg),('Na⁺',p.na),('Cl⁻',p.cl),('SO₄²⁻',p.so4),('HCO₃⁻',p.hco3)] %}
+        <div class="min-box">
+          <div class="min-val">{{ val|int }}</div>
+          <div class="min-lbl">{{ lbl }}</div>
+          <div class="chart-bar" style="width:{{ ((val / (max_val or 1)) * 100)|int }}%"></div>
+        </div>
+        {% endfor %}
+      </div>
+      {% if p.so4 and p.cl %}
+      {% set ratio = p.so4 / p.cl %}
+      <div class="ratio-box">
+        <span class="ratio-label">SO₄/Cl:</span>
+        <span class="ratio-val {% if ratio > 2 %}hoppy{% elif ratio < 0.7 %}malty{% else %}balanced{% endif %}">
+          {{ '%.1f' | format(ratio) }}
+          {% if ratio > 2 %}→ Luppolato{% elif ratio < 0.7 %}→ Maltato{% else %}→ Bilanciato{% endif %}
+        </span>
+      </div>
+      {% endif %}
+      {% if p.note %}<p style="font-size:.73rem;color:var(--muted);margin:.5rem 0 0;line-height:1.5">{{ p.note }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

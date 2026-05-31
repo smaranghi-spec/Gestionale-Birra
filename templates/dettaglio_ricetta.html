@@ -209,6 +209,7 @@
             <a href="/ricette/{{ ricetta.id }}/modifica" class="btn">✏ Modifica ricetta</a>
             <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
             <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
+            <a href="/ricette/{{ ricetta.id }}/costo" class="btn" style="background:#d97706;">💰 Calcola costo</a>
             <button type="button" onclick="aggiornaStats()">Ricalcola statistiche</button>
             <a href="#avvia-cotta" class="btn" style="background:#198754;" onclick="document.getElementById('avvia-cotta').scrollIntoView({behavior:'smooth'});document.getElementById('avvia-form').style.display='block';this.style.display='none';">🚀 Avvia Cotta</a>
         </div>

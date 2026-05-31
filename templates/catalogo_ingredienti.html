@@ -217,7 +217,8 @@
             <td></td>
             {% endif %}
             <td>
-              <div style="display:flex;gap:4px;">
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <a href="/inventario/da-catalogo/{{ i.id }}" title="Aggiungi al magazzino" class="btn btn-ghost btn-xs" style="color:#4ade80;border-color:#4ade80" onclick="return confirm('Aggiungere {{ i.nome }} al magazzino?')">📦+</a>
                 <a href="/catalogo/ingredienti/{{ i.id }}/duplica" class="btn btn-ghost btn-xs">Duplica</a>
                 <form method="post" action="/catalogo/ingredienti/{{ i.id }}/elimina" style="margin:0;"
                   onsubmit="return confirm('Eliminare questo ingrediente?')">

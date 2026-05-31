@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime
 from ..db import SessionLocal
-from ..models import InventarioItem
+from ..models import InventarioItem, CatalogoIngrediente, Ricetta, IngredienteRicetta
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -82,6 +82,98 @@ def elimina(iid: int, db: Session = Depends(get_db)):
         db.delete(item)
         db.commit()
     return RedirectResponse("/inventario", status_code=303)
+
+
+@router.get("/inventario/{iid}/aggiungi-a-ricetta", response_class=HTMLResponse)
+def aggiungi_a_ricetta_form(iid: int, request: Request, db: Session = Depends(get_db)):
+    item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
+    if not item:
+        return RedirectResponse("/inventario", status_code=303)
+    ricette = db.query(Ricetta).order_by(Ricetta.nome).all()
+    return templates.TemplateResponse(request, "inv_aggiungi_ricetta.html", {
+        "item": item,
+        "ricette": ricette,
+        "session": request.session,
+    })
+
+
+@router.post("/inventario/{iid}/aggiungi-a-ricetta")
+def aggiungi_a_ricetta(
+    iid: int,
+    ricetta_id: int = Form(...),
+    quantita: float = Form(...),
+    unita: str = Form("kg"),
+    db: Session = Depends(get_db),
+):
+    item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
+    if not item:
+        return RedirectResponse("/inventario", status_code=303)
+
+    cat_map = {"ingrediente": "misc", "consumabile": "misc", "packaging": "misc", "chimico": "misc"}
+    db.add(IngredienteRicetta(
+        ricetta_id=ricetta_id,
+        nome=item.nome,
+        categoria=cat_map.get(item.categoria, "misc"),
+        quantita=quantita,
+        unita=unita,
+        prezzo_unitario=item.prezzo_unitario,
+    ))
+    db.commit()
+    return RedirectResponse(f"/ricette/{ricetta_id}?msg=Ingrediente+aggiunto", status_code=303)
+
+
+@router.get("/inventario/da-catalogo/{ing_id}")
+def da_catalogo(ing_id: int, db: Session = Depends(get_db)):
+    """Aggiunge un ingrediente dal catalogo all'inventario (0 quantità da definire)."""
+    ing = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == ing_id).first()
+    if not ing:
+        return RedirectResponse("/inventario?msg=Ingrediente+non+trovato", status_code=303)
+    existing = db.query(InventarioItem).filter(InventarioItem.nome.ilike(ing.nome)).first()
+    if existing:
+        return RedirectResponse(f"/inventario?msg={ing.nome.replace(' ','+')}+già+in+magazzino", status_code=303)
+    cat_map = {"grain": "ingrediente", "hop": "ingrediente", "yeast": "ingrediente", "misc": "ingrediente"}
+    db.add(InventarioItem(
+        nome=ing.nome,
+        categoria=cat_map.get(ing.categoria, "consumabile"),
+        unita="kg" if ing.categoria in ("grain", "hop") else "pz" if ing.categoria == "yeast" else "g",
+        quantita=0.0,
+        quantita_minima=0.0,
+        ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),
+    ))
+    db.commit()
+    return RedirectResponse(f"/inventario?msg={ing.nome.replace(' ','+')}+aggiunto+al+magazzino", status_code=303)
+
+
+@router.get("/inventario/fisico", response_class=HTMLResponse)
+def inventario_fisico(request: Request, db: Session = Depends(get_db)):
+    """Pagina per conteggio fisico: mostra tutto l'inventario con input quantità."""
+    items = db.query(InventarioItem).order_by(InventarioItem.categoria, InventarioItem.nome).all()
+    return templates.TemplateResponse(request, "inventario_fisico.html", {
+        "items": items,
+        "categorie": CATEGORIE,
+        "session": request.session,
+    })
+
+
+@router.post("/inventario/fisico/salva")
+async def salva_fisico(request: Request, db: Session = Depends(get_db)):
+    """Salva le quantità dal conteggio fisico."""
+    form_data = await request.form()
+    aggiornati = 0
+    for key, val in form_data.items():
+        if key.startswith("qty_"):
+            try:
+                iid = int(key.split("_")[1])
+                nuova_qty = float(val)
+            except (ValueError, IndexError):
+                continue
+            item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
+            if item and abs(nuova_qty - (item.quantita or 0)) > 0.001:
+                item.quantita = max(0.0, nuova_qty)
+                item.ultimo_aggiornamento = datetime.now().strftime("%Y-%m-%d %H:%M")
+                aggiornati += 1
+    db.commit()
+    return RedirectResponse(f"/inventario?msg=Inventario+fisico+aggiornato+({aggiornati}+voci)", status_code=303)
 
 
 @router.post("/inventario/da-fattura")

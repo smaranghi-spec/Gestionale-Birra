@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Ordine #{{ ordine.id }} — {{ ordine.fornitore or 'Senza fornitore' }}{% endblock %}
+{% block content %}
+<style>
+.stato-badge { display:inline-block; padding:.25rem .7rem; border-radius:12px; font-size:.78rem; font-weight:600; text-transform:uppercase; }
+.stato-bozza { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+.stato-ricevuto { background:rgba(74,222,128,.15); color:#4ade80; border:1px solid rgba(74,222,128,.3); }
+.ad-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1rem; }
+.ad-card h3 { color:var(--amber); font-size:.88rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; }
+.riga-row { display:grid; grid-template-columns:1fr 110px 70px 70px 100px 90px; gap:.5rem; align-items:center; background:#0a0f1a; border:1px solid var(--border); border-radius:6px; padding:.55rem .8rem; margin-bottom:.45rem; font-size:.83rem; }
+.riga-header { display:grid; grid-template-columns:1fr 110px 70px 70px 100px 90px; gap:.5rem; padding:.2rem .8rem; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.2rem; }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.45rem 1rem; font-weight:700; cursor:pointer; font-size:.85rem; text-decoration:none; display:inline-block; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.4rem .9rem; font-size:.8rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
+.btn-green { background:#4ade80; color:#000; border:none; border-radius:8px; padding:.6rem 1.5rem; font-weight:700; cursor:pointer; font-size:.95rem; }
+.alert-ok { background:rgba(74,222,128,.1); border:1px solid #4ade80; color:#4ade80; padding:.5rem .9rem; border-radius:6px; font-size:.82rem; margin-bottom:.8rem; }
+.form-mini { background:transparent; border:none; color:var(--text); font-size:.82rem; padding:.15rem; width:100%; }
+.form-mini:focus { outline:1px solid var(--amber); border-radius:3px; }
+select.form-mini { background:#0a0f1a; border:1px solid var(--border); border-radius:3px; padding:.15rem; }
+.totale-big { font-size:2rem; font-weight:800; color:var(--amber); }
+.info-box { background:#0a0f1a; border-radius:7px; padding:.9rem 1rem; display:grid; grid-template-columns:1fr 1fr 1fr; gap:.5rem; margin-bottom:.3rem; }
+.info-item .lbl { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.info-item .val { font-size:.9rem; font-weight:600; color:var(--text); margin-top:.2rem; }
+</style>
+
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
+  <a href="/acquisti" style="color:var(--muted);font-size:.83rem;text-decoration:none">← Ordini</a>
+  <h1 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0">
+    Ordine #{{ ordine.id }}
+    <span class="stato-badge stato-{{ ordine.stato }}" style="margin-left:.5rem">{{ ordine.stato }}</span>
+  </h1>
+</div>
+
+{% if msg %}<div class="alert-ok">{{ msg }}</div>{% endif %}
+
+<div class="info-box">
+  <div class="info-item"><div class="lbl">Fornitore</div><div class="val">{{ ordine.fornitore or '—' }}</div></div>
+  <div class="info-item"><div class="lbl">Data</div><div class="val">{{ ordine.data }}</div></div>
+  <div class="info-item"><div class="lbl">Totale</div><div class="totale-big">€{{ '%.2f'|format(totale) }}</div></div>
+</div>
+{% if ordine.note %}<div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;padding:.5rem .8rem;background:#0a0f1a;border-radius:6px">📝 {{ ordine.note }}</div>{% endif %}
+
+{% if ordine.stato == 'ricevuto' %}
+<div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;color:#4ade80">
+  ✅ Questo ordine è stato ricevuto. Gli articoli sono stati aggiunti automaticamente al magazzino.
+</div>
+{% endif %}
+
+<!-- Lista righe -->
+<div class="ad-card">
+  <h3>📦 Articoli Ordinati</h3>
+  <div class="riga-header">
+    <div>Descrizione</div><div>Categoria</div><div>Qtà</div><div>Unità</div><div>€/u</div><div>Subtotale</div>
+  </div>
+
+  {% for r in ordine.righe %}
+  {% if ordine.stato == 'bozza' %}
+  <details style="margin-bottom:.4rem">
+    <summary style="list-style:none;cursor:pointer">
+      <div class="riga-row">
+        <div style="font-weight:500">{{ r.nome }}</div>
+        <div style="color:var(--muted)">{{ r.categoria }}</div>
+        <div>{{ r.quantita }}</div>
+        <div style="color:var(--muted)">{{ r.unita }}</div>
+        <div>{% if r.prezzo_unitario %}€{{ '%.3f'|format(r.prezzo_unitario) }}{% else %}—{% endif %}</div>
+        <div style="font-weight:600;color:var(--amber)">€{{ '%.2f'|format((r.quantita or 0)*(r.prezzo_unitario or 0)) }}</div>
+      </div>
+    </summary>
+    <div style="background:#131922;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:.5rem">
+      <form method="post" action="/acquisti/{{ ordine.id }}/aggiorna-riga/{{ r.id }}" style="display:grid;grid-template-columns:1fr 110px 80px 80px 110px 1fr;gap:.5rem;align-items:end">
+        <div><label style="font-size:.7rem;color:var(--muted);display:block">Nome</label><input class="form-mini" style="border:1px solid var(--border);border-radius:4px;padding:.3rem .5rem;width:100%;background:#0a0f1a;color:var(--text)" name="nome" value="{{ r.nome }}"></div>
+        <div><label style="font-size:.7rem;color:var(--muted);display:block">Categoria</label>
+          <select class="form-mini" name="categoria" style="border:1px solid var(--border);border-radius:4px;padding:.3rem;width:100%;background:#0a0f1a;color:var(--text)">
+            {% for c in categorie %}<option value="{{ c }}" {% if r.categoria==c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><label style="font-size:.7rem;color:var(--muted);display:block">Qtà</label><input class="form-mini" style="border:1px solid var(--border);border-radius:4px;padding:.3rem .5rem;width:100%;background:#0a0f1a;color:var(--text)" name="quantita" type="number" step="0.01" value="{{ r.quantita }}"></div>
+        <div><label style="font-size:.7rem;color:var(--muted);display:block">Unità</label>
+          <select class="form-mini" name="unita" style="border:1px solid var(--border);border-radius:4px;padding:.3rem;width:100%;background:#0a0f1a;color:var(--text)">
+            {% for u in unita %}<option value="{{ u }}" {% if r.unita==u %}selected{% endif %}>{{ u }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><label style="font-size:.7rem;color:var(--muted);display:block">€/u</label><input class="form-mini" style="border:1px solid var(--border);border-radius:4px;padding:.3rem .5rem;width:100%;background:#0a0f1a;color:var(--text)" name="prezzo_unitario" type="number" step="0.001" value="{{ r.prezzo_unitario or '' }}" placeholder="0.000"></div>
+        <div style="display:flex;gap:.4rem">
+          <button type="submit" class="btn-amber" style="padding:.3rem .8rem;font-size:.78rem">✓ Salva</button>
+          <a href="/acquisti/{{ ordine.id }}/elimina-riga/{{ r.id }}" onclick="return confirm('Rimuovere?')" style="background:transparent;border:1px solid #f87171;color:#f87171;border-radius:5px;padding:.3rem .7rem;font-size:.75rem;text-decoration:none;cursor:pointer">✕</a>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% else %}
+  <div class="riga-row">
+    <div>{{ r.nome }}</div>
+    <div style="color:var(--muted)">{{ r.categoria }}</div>
+    <div>{{ r.quantita }}</div>
+    <div style="color:var(--muted)">{{ r.unita }}</div>
+    <div>{% if r.prezzo_unitario %}€{{ '%.3f'|format(r.prezzo_unitario) }}{% else %}—{% endif %}</div>
+    <div style="font-weight:600;color:var(--amber)">€{{ '%.2f'|format((r.quantita or 0)*(r.prezzo_unitario or 0)) }}</div>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  {% if ordine.stato == 'bozza' %}
+  <!-- Aggiungi riga -->
+  <details style="margin-top:.8rem">
+    <summary class="btn-ghost" style="cursor:pointer;display:inline-block;margin-bottom:.5rem">+ Aggiungi articolo</summary>
+    <form method="post" action="/acquisti/{{ ordine.id }}/aggiungi-riga" style="background:#0a0f1a;border:1px solid var(--border);border-radius:6px;padding:.8rem;display:grid;grid-template-columns:1fr 110px 80px 80px 110px auto;gap:.5rem;align-items:end;margin-top:.5rem">
+      <div><label style="font-size:.7rem;color:var(--muted);display:block">Nome *</label><input style="border:1px solid var(--border);border-radius:4px;padding:.4rem .6rem;width:100%;background:#131922;color:var(--text);font-size:.83rem;box-sizing:border-box" name="nome" required placeholder="Articolo…"></div>
+      <div><label style="font-size:.7rem;color:var(--muted);display:block">Categoria</label>
+        <select style="border:1px solid var(--border);border-radius:4px;padding:.4rem;width:100%;background:#131922;color:var(--text);font-size:.82rem" name="categoria">
+          {% for c in categorie %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label style="font-size:.7rem;color:var(--muted);display:block">Qtà</label><input style="border:1px solid var(--border);border-radius:4px;padding:.4rem .5rem;width:100%;background:#131922;color:var(--text);font-size:.83rem;box-sizing:border-box" name="quantita" type="number" step="0.01" value="1"></div>
+      <div><label style="font-size:.7rem;color:var(--muted);display:block">Unità</label>
+        <select style="border:1px solid var(--border);border-radius:4px;padding:.4rem;width:100%;background:#131922;color:var(--text);font-size:.82rem" name="unita">
+          {% for u in unita %}<option value="{{ u }}">{{ u }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label style="font-size:.7rem;color:var(--muted);display:block">€/u</label><input style="border:1px solid var(--border);border-radius:4px;padding:.4rem .5rem;width:100%;background:#131922;color:var(--text);font-size:.83rem;box-sizing:border-box" name="prezzo_unitario" type="number" step="0.001" placeholder="0.000"></div>
+      <button type="submit" class="btn-amber" style="padding:.45rem .9rem">Aggiungi</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+{% if ordine.stato == 'bozza' %}
+<div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);border-radius:10px;padding:1.2rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+  <div>
+    <div style="font-weight:600;color:var(--text);margin-bottom:.3rem">✅ Conferma ricezione ordine</div>
+    <div style="font-size:.8rem;color:var(--muted)">Segna l'ordine come ricevuto. Tutti gli articoli verranno aggiunti automaticamente al magazzino.</div>
+  </div>
+  <form method="post" action="/acquisti/{{ ordine.id }}/conferma" onsubmit="return confirm('Confermare la ricezione? Gli articoli saranno aggiunti al magazzino.')">
+    <button type="submit" class="btn-green">📦 Conferma e aggiungi al magazzino</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

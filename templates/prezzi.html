@@ -1,132 +1,128 @@
 {% extends "base.html" %}
 {% block title %}Comparatore Prezzi{% endblock %}
 {% block content %}
+<style>
+.pz-search { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
+.pz-search h2 { color:var(--text); font-size:1.1rem; font-weight:700; margin:0 0 1rem; }
+.search-row { display:flex; gap:.7rem; flex-wrap:wrap; align-items:flex-end; }
+.pz-input { background:#0a0f1a; border:1px solid var(--border); border-radius:7px; padding:.6rem 1rem; color:var(--text); font-size:.95rem; flex:1; min-width:200px; }
+.pz-input:focus { border-color:var(--amber); outline:none; }
+select.pz-input { appearance:none; max-width:180px; flex:0 0 180px; }
+.btn-cerca { background:var(--amber); color:#000; border:none; border-radius:7px; padding:.6rem 1.5rem; font-weight:700; font-size:.95rem; cursor:pointer; white-space:nowrap; }
+.btn-aggiorna { background:transparent; border:1px solid var(--amber); color:var(--amber); border-radius:7px; padding:.6rem 1rem; font-size:.85rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.fornitori-list { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.8rem; }
+.forn-pill { font-size:.72rem; background:#131922; border:1px solid var(--border); border-radius:12px; padding:.2rem .6rem; color:var(--muted); }
+.cache-notice { font-size:.75rem; color:var(--muted); background:#0a0f1a; border:1px solid var(--border); border-radius:6px; padding:.4rem .8rem; margin-bottom:1rem; display:flex; align-items:center; gap:.6rem; }
+.cache-notice a { color:var(--amber); }
+.fornitori-risultati { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1rem; }
+.fornitore-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.fornitore-header { background:#0a0f1a; padding:.7rem 1rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+.fornitore-nome { font-weight:700; color:var(--text); font-size:.9rem; }
+.fornitore-link { font-size:.72rem; color:var(--amber); text-decoration:none; }
+.prodotto-row { display:flex; align-items:center; justify-content:space-between; padding:.55rem 1rem; border-bottom:1px solid #131922; gap:.5rem; }
+.prodotto-row:last-child { border:none; }
+.prodotto-row:hover { background:rgba(245,158,11,.04); }
+.prodotto-nome { font-size:.83rem; color:var(--text); flex:1; }
+.prodotto-prezzo { font-size:.9rem; font-weight:700; color:var(--amber); white-space:nowrap; }
+.prodotto-link { font-size:.72rem; color:var(--muted); text-decoration:none; white-space:nowrap; }
+.prodotto-link:hover { color:var(--amber); }
+.errore-box { padding:.8rem 1rem; font-size:.8rem; color:#f87171; background:rgba(248,113,113,.08); }
+.nessun-risultato { padding:1rem; font-size:.83rem; color:var(--muted); text-align:center; }
+.tag-min { font-size:.62rem; background:rgba(74,222,128,.15); color:#4ade80; border-radius:8px; padding:.1rem .4rem; margin-left:.4rem; }
+.sug-pill { font-size:.75rem; background:#0a0f1a; border:1px solid var(--border); border-radius:12px; padding:.25rem .7rem; color:var(--muted); cursor:pointer; text-decoration:none; transition:all .15s; }
+.sug-pill:hover { border-color:var(--amber); color:var(--amber); }
+</style>
 
-<div style="margin-bottom:20px;">
-  <h1 style="font-size:22px;margin-bottom:4px;">🛒 Comparatore Prezzi</h1>
-  <p>Cerca un ingrediente e confronta i prezzi su MrMalt, Polsinelli, Beer&Wine e AEB Group in tempo reale.</p>
-</div>
+<div class="pz-search">
+  <h2>💹 Comparatore Prezzi Fornitori</h2>
+  <p style="font-size:.82rem;color:var(--muted);margin:-.5rem 0 1rem">Cerca un ingrediente o accessorio e confronta i prezzi su 5 fornitori in tempo reale. I risultati vengono salvati in cache.</p>
+  <form method="get" action="/prezzi/cerca">
+    <div class="search-row">
+      <select class="pz-input" name="categoria" style="flex:0 0 160px">
+        <option value="">Tutte le categorie</option>
+        {% for c in categorie %}
+        <option value="{{ c }}" {% if categoria == c %}selected{% endif %}>{{ c | capitalize }}</option>
+        {% endfor %}
+      </select>
+      <input class="pz-input" type="text" name="q" value="{{ query }}" placeholder="es. Citra, Pilsner Malt, US-05, chiller…" required>
+      <button type="submit" class="btn-cerca">🔍 Cerca</button>
+      {% if risultati is not none and query %}
+      <a href="/prezzi/cerca?q={{ query }}&categoria={{ categoria }}&aggiorna=true" class="btn-aggiorna">↻ Aggiorna</a>
+      {% endif %}
+    </div>
+  </form>
 
-<!-- Search bar -->
-<form method="get" action="/prezzi/cerca" style="margin-bottom:28px;">
-  <div style="display:flex;gap:10px;max-width:640px;">
-    <input type="text" name="q" value="{{ query }}" placeholder="es. Citra, Pilsner Malt, US-05…"
-      style="flex:1;font-size:15px;" autocomplete="off" autofocus>
-    <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:14px;">
-      🔍 Cerca
-    </button>
-  </div>
-  <p style="margin-top:8px;font-size:12px;">Suggerimenti: usa nomi in inglese per risultati migliori (es. "Citra" non "Luppolo Citra")</p>
-</form>
-
-{% if risultati is none %}
-<!-- Stato iniziale -->
-<div class="card" style="text-align:center;padding:48px;">
-  <div style="font-size:48px;margin-bottom:16px;">🔍</div>
-  <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">Cerca un ingrediente</div>
-  <p>Inserisci il nome di un malto, luppolo, lievito o additivo.<br>
-  I prezzi vengono cercati in tempo reale sui siti dei fornitori.</p>
-  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
-    {% for tag in ["Citra", "Pilsner Malt", "US-05", "Saaz", "Munich Malt", "Cascade"] %}
-    <a href="/prezzi/cerca?q={{ tag }}" class="btn btn-ghost" style="font-size:12px;">{{ tag }}</a>
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem">
+    <span style="font-size:.72rem;color:var(--muted);line-height:2">Ricerche rapide:</span>
+    {% for sug in ['Citra', 'Cascade', 'Mosaic', 'Pilsner Malt', 'Munich Malt', 'Safale US-05', 'Wyeast 1056', 'Irish Moss', 'chiller', 'densimetro'] %}
+    <a href="/prezzi/cerca?q={{ sug }}" class="sug-pill">{{ sug }}</a>
     {% endfor %}
   </div>
+
+  <div class="fornitori-list" style="margin-top:.8rem">
+    {% for f in fornitori_disponibili %}<span class="forn-pill">{{ f }}</span>{% endfor %}
+  </div>
+
+  {% if ultime_query %}
+  <div style="margin-top:.8rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+    <span style="font-size:.72rem;color:var(--muted)">Recenti:</span>
+    {% for uq in ultime_query[:8] %}
+    <a href="/prezzi/cerca?q={{ uq }}" class="sug-pill" style="background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.25)">{{ uq }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 
-{% elif risultati|length == 0 %}
-<div class="card empty">
-  <div class="empty-icon">😕</div>
-  <p>Nessun risultato. Prova con un altro termine.</p>
+{% if risultati is not none %}
+
+{% if da_cache %}
+<div class="cache-notice">
+  📦 Risultati dalla cache.
+  <a href="/prezzi/cerca?q={{ query }}&categoria={{ categoria }}&aggiorna=true">↻ Aggiorna</a>
+</div>
+{% endif %}
+
+<div style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">
+  Risultati per: <strong style="color:var(--text)">{{ query_full or query }}</strong> — {{ risultati|length }} fornitori
+</div>
+
+{% set all_prezzi = [] %}
+{% for fd in risultati %}{% for r in fd.risultati %}{% if r.prezzo %}{% set _ = all_prezzi.append(r.prezzo) %}{% endif %}{% endfor %}{% endfor %}
+{% set min_prezzo = all_prezzi | min if all_prezzi else None %}
+
+<div class="fornitori-risultati">
+{% for fd in risultati %}
+<div class="fornitore-card">
+  <div class="fornitore-header">
+    <span class="fornitore-nome">{{ fd.fornitore }}</span>
+    <a href="{{ fd.url_ricerca }}" target="_blank" class="fornitore-link">Apri ↗</a>
+  </div>
+  {% if fd.errore %}
+    <div class="errore-box">⚠️ {{ fd.errore }}</div>
+  {% elif fd.risultati %}
+    {% for r in fd.risultati[:6] %}
+    <div class="prodotto-row">
+      <div class="prodotto-nome">
+        {{ r.nome[:55] }}{% if r.nome|length > 55 %}…{% endif %}
+        {% if r.prezzo and min_prezzo and r.prezzo == min_prezzo %}<span class="tag-min">💰 min</span>{% endif %}
+      </div>
+      {% if r.prezzo %}<span class="prodotto-prezzo">€{{ '%.2f'|format(r.prezzo) }}</span>
+      {% else %}<span style="font-size:.78rem;color:var(--muted)">—</span>{% endif %}
+      <a href="{{ r.url }}" target="_blank" class="prodotto-link">Vai →</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="nessun-risultato">Nessun risultato trovato</div>
+  {% endif %}
+</div>
+{% endfor %}
 </div>
 
 {% else %}
-
-<!-- Riepilogo per fornitore -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:24px;">
-  {% for f in risultati %}
-  <div class="card card-sm" style="margin-bottom:0;border-top:3px solid
-    {% if loop.index == 1 %}#f59e0b{% elif loop.index == 2 %}#3b82f6{% elif loop.index == 3 %}#10b981{% else %}#8b5cf6{% endif %};">
-    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">
-      {{ f.fornitore }}
-    </div>
-    {% if f.errore %}
-    <div style="font-size:11px;color:var(--red);">⚠ {{ f.errore }}</div>
-    {% else %}
-    <div style="font-size:12px;color:var(--muted);">
-      {{ f.risultati|length }} risultat{% if f.risultati|length == 1 %}o{% else %}i{% endif %}
-    </div>
-    {% endif %}
-    <a href="{{ f.url_ricerca }}" target="_blank" rel="noopener"
-      style="font-size:11px;color:var(--amber);">Apri sito →</a>
-  </div>
-  {% endfor %}
-</div>
-
-<!-- Tabella comparativa -->
-{% for f in risultati %}
-{% if f.risultati %}
-<div class="card" style="margin-bottom:16px;">
-  <div class="card-header">
-    <div>
-      <span class="card-title">{{ f.fornitore }}</span>
-      {% if f.errore %}
-      <span class="badge badge-red" style="margin-left:8px;">Errore</span>
-      {% endif %}
-    </div>
-    <a href="{{ f.url_ricerca }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">
-      Apri su sito →
-    </a>
-  </div>
-
-  <table class="tbl">
-    <thead>
-      <tr>
-        <th>Prodotto</th>
-        <th style="width:120px;text-align:right;">Prezzo</th>
-        <th style="width:80px;"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in f.risultati %}
-      <tr>
-        <td>
-          <span style="color:var(--text);font-weight:500;">{{ r.nome[:80] }}{% if r.nome|length > 80 %}…{% endif %}</span>
-          {% if r.get('nota') %}<br><span style="font-size:11px;color:var(--muted);">{{ r.nota }}</span>{% endif %}
-        </td>
-        <td style="text-align:right;font-weight:700;">
-          {% if r.prezzo %}
-          <span style="color:var(--green);">€ {{ "%.2f"|format(r.prezzo) }}</span>
-          {% else %}
-          <span style="color:var(--muted);">N/D</span>
-          {% endif %}
-        </td>
-        <td>
-          <a href="{{ r.url }}" target="_blank" rel="noopener"
-            class="btn btn-ghost btn-xs">Vedi →</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% elif not f.errore %}
-<div class="card card-sm" style="margin-bottom:12px;">
-  <span style="color:var(--muted);font-size:13px;">
-    <strong>{{ f.fornitore }}</strong> — Nessun risultato trovato per "{{ query }}".
-    <a href="{{ f.url_ricerca }}" target="_blank">Cerca manualmente →</a>
-  </span>
+<div style="text-align:center;padding:4rem 2rem;color:var(--muted)">
+  <div style="font-size:3.5rem;margin-bottom:.8rem">💹</div>
+  <p>Inserisci un termine di ricerca per confrontare i prezzi.<br>
+  <span style="font-size:.82rem">MrMalt · Polsinelli · Beer&amp;Wine · AEB Group · Pinta</span></p>
 </div>
 {% endif %}
-{% endfor %}
-
-<div class="card" style="background:var(--amber-dim);border-color:var(--amber);margin-top:8px;">
-  <p style="color:var(--amber);font-size:12px;margin:0;">
-    ℹ️ <strong>Nota:</strong> I prezzi vengono estratti in tempo reale dai siti dei fornitori.
-    Alcuni siti usano JavaScript per caricare i prezzi e potrebbero non essere disponibili.
-    Verifica sempre il prezzo definitivo sul sito del fornitore prima dell'acquisto.
-  </p>
-</div>
-
-{% endif %}
-
 {% endblock %}

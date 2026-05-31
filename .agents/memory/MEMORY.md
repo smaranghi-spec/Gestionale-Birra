@@ -1,0 +1,6 @@
+- [Auth middleware](auth-middleware.md) — all routes except /login /register /birre /debug /static require session; 303s without session = correct behavior.
+- [SQLite migrations](sqlite-migrations.md) — create_all only creates new tables; existing table column additions require run_migrations() ALTER TABLE pattern in main.py.
+- [New routers wiring](new-routers.md) — impianto, profili_acqua, costo_ricetta, tracciabilita added to main.py; always import + include_router.
+- [Recipe cost page](recipe-cost.md) — /ricette/{id}/costo; pulls prezzo_unitario from IngredienteRicetta, falls back to InventarioItem fuzzy match; IVA 0/4/10/22%; JS real-time sliders for overhead+markup.
+- [Purchase flow](purchase-flow.md) — OrdineAcquisto bozza→ricevuto; /acquisti/{id}/conferma auto-adds all RigaOrdine to InventarioItem (upsert by name).
+- [Water presets seed](water-presets.md) — ProfiloAcquaPreset seeded on first /profili-acqua GET; 11 classic city profiles; SO4/Cl ratio shown for hop/malt character.

@@ -141,15 +141,53 @@ async def scrape_aeb(query: str, client: httpx.AsyncClient) -> Dict:
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
 
 
+# ── Pinta ─────────────────────────────────────────────────────────────────────
+
+async def scrape_pinta(query: str, client: httpx.AsyncClient) -> Dict:
+    fornitore = "Pinta"
+    url_search = f"https://www.pinta.it/search?q={query.replace(' ', '+')}"
+    try:
+        r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
+        soup = BeautifulSoup(r.text, "html.parser")
+        results = []
+        for art in soup.select(".product-item, .grid__item, .product-card, article, .product")[:8]:
+            nome_el = art.select_one(".product-item__title, .product__title, .product-name, h2 a, h3 a, .card__heading a")
+            prezzo_el = art.select_one(".price, .product-price, .price__regular, .price-item, .product__price")
+            link_el = art.select_one("a[href]")
+            if nome_el:
+                href = link_el["href"] if link_el else url_search
+                if href.startswith("/"):
+                    href = "https://www.pinta.it" + href
+                results.append({
+                    "nome": nome_el.get_text(strip=True),
+                    "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
+                    "url": href,
+                })
+        if not results:
+            results.append({
+                "nome": f"Cerca '{query}' su Pinta",
+                "prezzo": None,
+                "url": url_search,
+            })
+        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
+    except Exception as e:
+        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
-async def cerca_prezzi(query: str) -> List[Dict]:
+async def cerca_prezzi(query: str, fornitori: list[str] | None = None) -> List[Dict]:
     """Cerca prezzi su tutti i fornitori in parallelo."""
     async with httpx.AsyncClient() as client:
-        tasks = [
-            scrape_mrmalt(query, client),
-            scrape_polsinelli(query, client),
-            scrape_beerandwine(query, client),
-            scrape_aeb(query, client),
-        ]
+        tutti = {
+            "MrMalt": scrape_mrmalt(query, client),
+            "Polsinelli": scrape_polsinelli(query, client),
+            "Beer and Wine": scrape_beerandwine(query, client),
+            "AEB Group": scrape_aeb(query, client),
+            "Pinta": scrape_pinta(query, client),
+        }
+        if fornitori:
+            tasks = [v for k, v in tutti.items() if k in fornitori]
+        else:
+            tasks = list(tutti.values())
         return await asyncio.gather(*tasks)
