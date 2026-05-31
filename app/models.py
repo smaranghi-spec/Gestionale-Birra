@@ -7,7 +7,6 @@ from .db import Base
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -17,7 +16,6 @@ class User(Base):
 
 class Attrezzatura(Base):
     __tablename__ = "attrezzature"
-
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False)
     tipo = Column(String, nullable=False, default="generico")
@@ -30,7 +28,6 @@ class Attrezzatura(Base):
 
 class Ricetta(Base):
     __tablename__ = "ricette"
-
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False, unique=True)
     stile = Column(String)
