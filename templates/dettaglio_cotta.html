@@ -135,7 +135,26 @@
     <a href="/cotte">← Tracker</a>
     <h1>{{ cotta.nome }}{% if cotta.codice %} <span style="font-size:13px;opacity:0.7;">({{ cotta.codice }})</span>{% endif %}</h1>
     <span class="badge badge-{{ cotta.stato }}">{{ fasi_label[cotta.stato] }}</span>
+    <a href="/brewmonk" title="Controlla produzione su BrewMonk" style="margin-left:auto;display:flex;align-items:center;gap:5px;background:#f59e0b;color:#000;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;text-decoration:none;">🍺 BrewMonk</a>
+    {% if cotta.ricetta_id %}
+    <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" title="Invia ricetta su BrewMonk" style="background:transparent;border:1px solid #f59e0b;color:#f59e0b;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">Push ricetta →</button>
+    {% endif %}
 </div>
+<div id="bm-push-msg" style="display:none;padding:6px 16px;font-size:12px;"></div>
+<script>
+async function pushBrewMonk(rid, btn) {
+    btn.disabled = true; btn.textContent = '…';
+    const el = document.getElementById('bm-push-msg');
+    try {
+        const r = await fetch('/brewmonk/push/' + rid, {method:'POST'});
+        const d = await r.json();
+        el.textContent = d.msg;
+        el.style.color = d.ok ? '#4ade80' : '#f87171';
+        el.style.display = 'block';
+        btn.textContent = d.ok ? '✓ Inviata' : '✗ Errore';
+    } catch(e) { btn.textContent = '✗'; el.textContent = 'Errore di rete'; el.style.display='block'; }
+}
+</script>
 
 <div class="container">
 <div class="main">

@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Registro Soci{% endblock %}
+
+{% block content %}
+<style>
+.soci-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; }
+.soci-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
+.stat-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1.2rem; flex: 1; min-width: 100px; }
+.stat-box .n { font-size: 2rem; font-weight: 700; color: var(--amber); line-height: 1; }
+.stat-box .l { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: .2rem; }
+.socio-row { display: grid; grid-template-columns: 36px 1fr 160px 130px 110px 90px; align-items: center; gap: .6rem; padding: .65rem .8rem; background: #0a0f1a; border: 1px solid var(--border); border-radius: 7px; margin-bottom: .45rem; transition: border-color .15s; }
+.socio-row:hover { border-color: rgba(245,158,11,.35); }
+.socio-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,var(--amber),#f97316); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; color: #000; flex-shrink: 0; }
+.socio-nome { font-weight: 600; color: var(--text); font-size: .9rem; }
+.socio-sub { font-size: .73rem; color: var(--muted); margin-top: .1rem; }
+.stato-badge { display: inline-block; padding: .2rem .55rem; border-radius: 20px; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.stato-attivo { background: rgba(74,222,128,.15); color: #4ade80; border: 1px solid rgba(74,222,128,.3); }
+.stato-sospeso { background: rgba(251,191,36,.15); color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+.stato-uscito { background: rgba(156,163,175,.1); color: #9ca3af; border: 1px solid rgba(156,163,175,.2); }
+.quota-ok { color: #4ade80; font-size: .78rem; font-weight: 600; }
+.quota-no { color: #f87171; font-size: .78rem; font-weight: 600; }
+.btn-sm-amber { background: var(--amber); color: #000; border: none; border-radius: 5px; padding: .28rem .7rem; font-size: .75rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn-sm-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 5px; padding: .28rem .7rem; font-size: .75rem; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn-sm-ghost:hover { border-color: var(--amber); color: var(--amber); }
+.filter-tabs { display: flex; gap: .4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.filter-tab { background: transparent; border: 1px solid var(--border); border-radius: 20px; color: var(--muted); padding: .3rem .9rem; font-size: .78rem; cursor: pointer; text-decoration: none; transition: all .15s; }
+.filter-tab:hover, .filter-tab.active { background: var(--amber); color: #000; border-color: var(--amber); font-weight: 600; }
+.form-label { font-size: .75rem; color: var(--muted); display: block; margin-bottom: .2rem; }
+.form-input { width: 100%; background: #0a0f1a; border: 1px solid var(--border); border-radius: 5px; padding: .45rem .7rem; color: var(--text); font-size: .85rem; margin-bottom: .65rem; box-sizing: border-box; }
+.form-input:focus { border-color: var(--amber); outline: none; }
+select.form-input { appearance: none; }
+.btn-submit { background: var(--amber); color: #000; border: none; border-radius: 6px; padding: .55rem 1.4rem; font-weight: 700; cursor: pointer; font-size: .88rem; width: 100%; margin-top: .3rem; }
+.alert-ok { background: rgba(74,222,128,.1); border: 1px solid #4ade80; color: #4ade80; padding: .6rem 1rem; border-radius: 6px; font-size: .83rem; margin-bottom: 1rem; }
+.alert-warn { background: rgba(251,191,36,.1); border: 1px solid #fbbf24; color: #fbbf24; padding: .6rem 1rem; border-radius: 6px; font-size: .83rem; margin-bottom: 1rem; }
+.section-title { font-size: 1.3rem; font-weight: 700; color: var(--text); margin: 0 0 1.2rem; display: flex; align-items: center; gap: .6rem; }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+</style>
+
+<div class="section-title">👥 Registro Soci</div>
+
+{% if msg %}
+<div class="alert-ok">{{ msg }}</div>
+{% endif %}
+
+{% if quota_mancante > 0 %}
+<div class="alert-warn">⚠️ {{ quota_mancante }} socio/i attivo/i con quota non versata per {{ anno_corrente }}</div>
+{% endif %}
+
+<!-- Statistiche -->
+<div class="stat-row">
+  <div class="stat-box"><div class="n">{{ totale }}</div><div class="l">Soci totali</div></div>
+  <div class="stat-box"><div class="n" style="color:#4ade80">{{ per_stato.get('attivo',0) }}</div><div class="l">Attivi</div></div>
+  <div class="stat-box"><div class="n" style="color:#fbbf24">{{ per_stato.get('sospeso',0) }}</div><div class="l">Sospesi</div></div>
+  <div class="stat-box"><div class="n" style="color:#9ca3af">{{ per_stato.get('uscito',0) }}</div><div class="l">Usciti</div></div>
+  <div class="stat-box"><div class="n" style="color:#4ade80">{{ quota_ok }}</div><div class="l">Quote versate</div></div>
+  <div class="stat-box"><div class="n" style="color:#f87171">{{ quota_mancante }}</div><div class="l">Quote mancanti</div></div>
+</div>
+
+<div class="soci-grid">
+
+  <!-- LEFT: Form nuovo socio -->
+  <div>
+    <div class="soci-card">
+      <h3 style="color:var(--amber);font-size:.9rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:0 0 1rem">➕ Nuovo Socio</h3>
+      <form method="post" action="/soci/nuovo">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" name="nome" required placeholder="Mario">
+        <label class="form-label">Cognome</label>
+        <input class="form-input" name="cognome" placeholder="Rossi">
+        <label class="form-label">Email</label>
+        <input class="form-input" name="email" type="email" placeholder="mario@email.com">
+        <label class="form-label">Telefono</label>
+        <input class="form-input" name="telefono" placeholder="+39 333 123456">
+        <label class="form-label">Data di nascita</label>
+        <input class="form-input" name="data_nascita" type="date">
+        <label class="form-label">Codice Fiscale</label>
+        <input class="form-input" name="codice_fiscale" placeholder="RSSMRA80A01H501Z">
+        <label class="form-label">Anno iscrizione</label>
+        <input class="form-input" name="anno_iscrizione" type="number" value="{{ anno_corrente }}" min="2000" max="{{ anno_corrente + 10 }}">
+        <label class="form-label">Quota annuale (€)</label>
+        <input class="form-input" name="quota_annuale" type="number" step="0.01" placeholder="50.00">
+        <label class="form-label">Ruolo interno</label>
+        <select class="form-input" name="ruolo_interno">
+          {% for r in ruoli_interni %}
+          <option value="{{ r }}">{{ r or '— Nessuno —' }}</option>
+          {% endfor %}
+        </select>
+        <label class="form-label">Account gestionale (opzionale)</label>
+        <select class="form-input" name="user_id">
+          <option value="">— Nessun account —</option>
+          {% for u in utenti_liberi %}
+          <option value="{{ u.id }}">{{ u.nome }} ({{ u.username }})</option>
+          {% endfor %}
+        </select>
+        <label class="form-label">Note</label>
+        <textarea class="form-input" name="note" rows="2" placeholder="Note aggiuntive…"></textarea>
+        <button type="submit" class="btn-submit">Aggiungi Socio</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- RIGHT: Lista soci -->
+  <div>
+    <!-- Filtri -->
+    <div class="filter-tabs">
+      <a href="/soci" class="filter-tab {% if not stato_filtro %}active{% endif %}">Tutti ({{ totale }})</a>
+      {% for st in stati %}
+      <a href="/soci?stato={{ st }}" class="filter-tab {% if stato_filtro == st %}active{% endif %}">
+        {{ st.capitalize() }} ({{ per_stato.get(st, 0) }})
+      </a>
+      {% endfor %}
+    </div>
+
+    {% if soci %}
+    <!-- Header colonne -->
+    <div style="display:grid;grid-template-columns:36px 1fr 160px 130px 110px 90px;gap:.6rem;padding:.3rem .8rem;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">
+      <div></div><div>Socio</div><div>Contatti</div><div>Ruolo</div><div>Quota {{ anno_corrente }}</div><div>Azioni</div>
+    </div>
+
+    {% for s in soci %}
+    <div class="socio-row">
+      <!-- Avatar -->
+      <div class="socio-avatar">{{ (s.cognome or s.nome)[0].upper() }}</div>
+      <!-- Nome + stato -->
+      <div>
+        <div class="socio-nome">{{ s.nome }} {{ s.cognome or '' }}</div>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.2rem">
+          <span class="stato-badge stato-{{ s.stato_socio }}">{{ s.stato_socio }}</span>
+          {% if s.anno_iscrizione %}<span style="font-size:.7rem;color:var(--muted)">dal {{ s.anno_iscrizione }}</span>{% endif %}
+        </div>
+      </div>
+      <!-- Contatti -->
+      <div>
+        {% if s.email %}<div style="font-size:.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.email }}</div>{% endif %}
+        {% if s.telefono %}<div style="font-size:.75rem;color:var(--muted)">{{ s.telefono }}</div>{% endif %}
+      </div>
+      <!-- Ruolo -->
+      <div style="font-size:.78rem;color:var(--muted)">{{ s.ruolo_interno or '—' }}</div>
+      <!-- Quota -->
+      <div>
+        {% if s.stato_socio == 'attivo' %}
+          {% if s.quota_versata %}
+          <span class="quota-ok">✓ Versata</span>
+          {% else %}
+          <span class="quota-no">✗ Mancante</span>
+          {% endif %}
+          {% if s.quota_annuale %}<div style="font-size:.7rem;color:var(--muted)">€ {{ '%.2f'|format(s.quota_annuale) }}</div>{% endif %}
+        {% else %}
+          <span style="font-size:.75rem;color:var(--muted)">—</span>
+        {% endif %}
+      </div>
+      <!-- Azioni -->
+      <div style="display:flex;gap:.3rem;flex-direction:column">
+        <a href="/soci/{{ s.id }}" class="btn-sm-amber">Dettaglio</a>
+        {% if s.stato_socio == 'attivo' and not s.quota_versata %}
+        <form method="post" action="/soci/{{ s.id }}/quota" style="margin:0">
+          <button type="submit" class="btn-sm-ghost" style="width:100%;text-align:center">✓ Quota</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="empty-state">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">👥</div>
+      <p>Nessun socio trovato.</p>
+      {% if stato_filtro %}<a href="/soci" style="color:var(--amber)">Mostra tutti</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

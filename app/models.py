@@ -296,6 +296,27 @@ class RegistroPulizie(Base):
     timestamp = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
 
 
+class ProfiloSocio(Base):
+    __tablename__ = "profili_soci"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True)
+    nome = Column(String, nullable=False)
+    cognome = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    telefono = Column(String, nullable=True)
+    data_nascita = Column(String, nullable=True)
+    codice_fiscale = Column(String, nullable=True)
+    anno_iscrizione = Column(Integer, nullable=True)
+    quota_annuale = Column(Float, nullable=True)
+    quota_versata = Column(Boolean, default=False)
+    stato_socio = Column(String, default="attivo")   # attivo / sospeso / uscito
+    ruolo_interno = Column(String, nullable=True)    # mastro birraio, tesoriere, ecc.
+    note = Column(Text, nullable=True)
+    created_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+    user = relationship("User", backref="profilo_socio", foreign_keys=[user_id])
+
+
 class BrewMonkConfig(Base):
     __tablename__ = "brewmonk_config"
     id = Column(Integer, primary_key=True, index=True)
