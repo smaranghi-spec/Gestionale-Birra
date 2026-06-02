@@ -29,6 +29,7 @@ from ..stats import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["srm_to_hex"] = srm_to_hex
 
 
 def get_db():
@@ -388,12 +389,20 @@ def catalogo_per_ricetta(
         query = query.filter(CatalogoIngrediente.categoria == categoria)
     items = query.all()
 
+    all_items = db.query(CatalogoIngrediente).all()
+    per_cat = {}
+    for i in all_items:
+        per_cat[i.categoria] = per_cat.get(i.categoria, 0) + 1
+    items_sorted = sorted(items, key=lambda i: i.nome)
+
     return templates.TemplateResponse(
         "catalogo_ingredienti.html",
         {
             "request": request,
-            "items": items,
-            "totale": len(items),
+            "items": items_sorted,
+            "totale": len(all_items),
+            "per_cat": per_cat,
+            "msg": None,
             "ricetta_id": ricetta_id,
             "categoria_attiva": categoria,
         },

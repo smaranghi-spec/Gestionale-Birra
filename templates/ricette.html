@@ -2,135 +2,272 @@
 {% block title %}Ricette{% endblock %}
 {% block content %}
 
+<style>
+.ricette-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .ricette-layout { grid-template-columns: 1fr; }
+}
+.form-section {
+  border-top: 2px solid var(--amber);
+  padding-top: 14px;
+  margin-top: 18px;
+}
+.form-section:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.form-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--amber);
+  margin-bottom: 12px;
+}
+.field-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.field-group .full { grid-column: 1 / -1; }
+.field-wrap label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.field-wrap label .req { color: var(--amber); }
+.field-wrap input,
+.field-wrap select,
+.field-wrap textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  transition: border-color .15s;
+}
+.field-wrap input:focus,
+.field-wrap select:focus,
+.field-wrap textarea:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+.field-wrap select option { background: var(--bg); }
+.field-wrap textarea { resize: vertical; min-height: 56px; }
+.preset-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(245,158,11,.15); color: var(--amber);
+  border: 1px solid rgba(245,158,11,.3);
+  margin-top: 4px;
+}
+.ricetta-card-link { text-decoration: none; }
+.ricetta-card-link .card {
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+  border: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.ricetta-card-link .card:hover {
+  border-color: var(--amber);
+  transform: translateY(-1px);
+}
+.r-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.r-stat { font-size: 12px; color: var(--muted); }
+</style>
+
 <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
   <div>
     <h1 style="font-size:22px;margin-bottom:4px;">🧪 Ricette</h1>
-    <p>{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %} create</p>
+    <p style="color:var(--muted);font-size:13px;">{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %} · <a href="/catalogo/ingredienti" style="color:var(--amber);">📦 Catalogo ingredienti</a> · <a href="/importa/beerxml" style="color:var(--amber);">📥 Importa BeerXML</a></p>
   </div>
-  <button class="btn btn-primary" onclick="document.getElementById('form-nuova').style.display=document.getElementById('form-nuova').style.display==='none'?'block':'none'">
-    ➕ Nuova ricetta
-  </button>
 </div>
 
-<!-- Modulo nuova ricetta -->
-<div id="form-nuova" style="display:none;margin-bottom:20px;">
-<div class="card">
-  <h3 style="font-size:15px;margin-bottom:16px;">➕ Crea Nuova Ricetta</h3>
-  <form method="post" action="/ricette/html">
-    <input type="hidden" name="versione" value="1">
-    <div class="form-grid">
-      <div class="form-row" style="grid-column:span 2;">
-        <label>Nome ricetta *</label>
-        <input type="text" name="nome" placeholder="es. Weizen Estiva" required>
-      </div>
-      <div class="form-row">
-        <label>Tipo</label>
-        <select name="tipo">
-          <option>All Grain</option><option>BIAB</option><option>Partial Mash</option><option>Extract</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label>Stile BJCP</label>
-        <select name="stile_id">
-          <option value="">— Nessuno —</option>
-          {% for s in stili %}
-          <option value="{{ s.id }}">{{ s.nome }} {% if s.linea_guida %}({{ s.linea_guida }}){% endif %}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-row">
-        <label>Volume target (L)</label>
-        <input type="number" name="volume_target_litri" step="0.1" value="20" min="1">
-      </div>
-      <div class="form-row">
-        <label>Efficienza (%)</label>
-        <input type="number" name="efficienza" step="0.1" value="75" min="1" max="100">
-      </div>
-      <div class="form-row">
-        <label>💧 Profilo acqua</label>
-        <select name="profilo_acqua_preset_id">
-          <option value="0">— Nessuno (imposta dopo) —</option>
-          {% for p in profili_preset %}
-          <option value="{{ p.id }}">{{ p.nome }}{% if p.citta %} — {{ p.citta }}{% endif %}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-row">
-        <label>🌡️ Profilo ammostamento</label>
-        <select name="tipo_mash">
-          <option value="">— Nessuno (imposta dopo) —</option>
-          <option value="Singolo Infuso">Singolo Infuso (67°C × 60 min)</option>
-          <option value="BIAB">BIAB (67°C × 60 min + mash out)</option>
-          <option value="Step Mash">Step Mash (protein rest 52°C → sacca 67°C)</option>
-          <option value="Decozione">Decozione (62°C → 72°C)</option>
-          <option value="No-Sparge">No-Sparge / Batch Sparge (67°C × 75 min)</option>
-        </select>
-      </div>
-      <div class="form-row" style="grid-column:span 2;">
-        <label>Note</label>
-        <textarea name="note" rows="2" placeholder="Descrizione, note…"></textarea>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button type="submit" class="btn btn-primary">✓ Crea Ricetta</button>
-      <button type="button" class="btn btn-ghost" onclick="document.getElementById('form-nuova').style.display='none'">Annulla</button>
-    </div>
-  </form>
-</div>
-</div>
+<div class="ricette-layout">
 
-{% if ricette %}
-<!-- Filtro -->
-<div style="margin-bottom:14px;">
-  <input type="text" id="search-ricette" placeholder="🔍 Cerca per nome o stile…"
-    style="max-width:360px;" oninput="filterRicette(this.value)">
-</div>
+  <!-- ── PANNELLO CREA ───────────────────────────────────────── -->
+  <div>
+    <div class="card" style="position:sticky;top:16px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span style="font-size:18px;">➕</span>
+        <span style="font-size:15px;font-weight:700;color:var(--text);">Nuova ricetta</span>
+      </div>
 
-<div id="ricette-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
-{% for r in ricette %}
-<a href="/ricette/{{ r.id }}" style="text-decoration:none;" class="ricetta-card"
-   data-search="{{ (r.nome ~ ' ' ~ (r.stile.nome if r.stile else ''))|lower }}">
-<div class="card" style="padding:18px 20px;cursor:pointer;transition:border-color .15s;border:1px solid var(--border);margin-bottom:0;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-    <div style="font-size:16px;font-weight:700;color:var(--text);">{{ r.nome }}</div>
-    <div style="display:flex;gap:6px;flex-shrink:0;">
-      {% if r.stile %}
-      <span class="badge badge-amber" style="font-size:10px;">{{ r.tipo or 'AG' }}</span>
-      {% endif %}
-      {% set n_cotte = cotte_count.get(r.id, 0) %}
-      {% if n_cotte > 0 %}
-      <span class="badge badge-green" style="font-size:10px;">{{ n_cotte }} cott{% if n_cotte == 1 %}a{% else %}e{% endif %}</span>
-      {% endif %}
+      <form method="post" action="/ricette/html" id="form-nuova">
+        <input type="hidden" name="versione" value="1">
+
+        <!-- SEZIONE: BASE -->
+        <div class="form-section">
+          <div class="form-section-title">Informazioni base</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="field-wrap full">
+              <label>Nome ricetta <span class="req">*</span></label>
+              <input type="text" name="nome" placeholder="es. Weizen Estiva 2025" required autofocus>
+            </div>
+            <div class="field-group">
+              <div class="field-wrap">
+                <label>Tipo</label>
+                <select name="tipo">
+                  <option value="All Grain">All Grain</option>
+                  <option value="BIAB">BIAB</option>
+                  <option value="Partial Mash">Partial Mash</option>
+                  <option value="Extract">Extract</option>
+                </select>
+              </div>
+              <div class="field-wrap">
+                <label>Stile BJCP</label>
+                <select name="stile_id">
+                  <option value="0">— Nessuno —</option>
+                  {% for s in stili %}
+                  <option value="{{ s.id }}">{{ s.nome }}{% if s.linea_guida %} ({{ s.linea_guida }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEZIONE: VOLUMI -->
+        <div class="form-section">
+          <div class="form-section-title">Volumi & Efficienza</div>
+          <div class="field-group">
+            <div class="field-wrap">
+              <label>Volume target (L)</label>
+              <input type="number" name="volume_target_litri" step="0.5" value="20" min="1" max="1000">
+            </div>
+            <div class="field-wrap">
+              <label>Efficienza (%)</label>
+              <input type="number" name="efficienza" step="0.5" value="75" min="1" max="100">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEZIONE: PROFILI OPZIONALI -->
+        <div class="form-section">
+          <div class="form-section-title">Profili opzionali</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="field-wrap">
+              <label>💧 Profilo acqua</label>
+              <select name="profilo_acqua_preset_id" id="sel-acqua" onchange="showAcquaPill(this)">
+                <option value="0">— Nessuno (imposta dopo) —</option>
+                {% for p in profili_preset %}
+                <option value="{{ p.id }}" data-citta="{{ p.citta or '' }}">{{ p.nome }}{% if p.citta %} — {{ p.citta }}{% endif %}</option>
+                {% endfor %}
+              </select>
+              <div id="acqua-pill" style="display:none;" class="preset-pill">💧 <span id="acqua-pill-text"></span></div>
+            </div>
+            <div class="field-wrap">
+              <label>🌡️ Profilo ammostamento</label>
+              <select name="tipo_mash" id="sel-mash" onchange="showMashPill(this)">
+                <option value="">— Nessuno (imposta dopo) —</option>
+                <option value="Singolo Infuso">Singolo Infuso · 67°C × 60 min</option>
+                <option value="BIAB">BIAB · 67°C × 60 min + mash out 77°C</option>
+                <option value="Step Mash">Step Mash · Protein 52°C → Sacca 67°C → Out 77°C</option>
+                <option value="Decozione">Decozione · 62°C → 72°C</option>
+                <option value="No-Sparge">No-Sparge / Batch Sparge · 67°C × 75 min</option>
+              </select>
+              <div id="mash-pill" style="display:none;" class="preset-pill">🌡️ <span id="mash-pill-text"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEZIONE: NOTE -->
+        <div class="form-section">
+          <div class="form-section-title">Note</div>
+          <div class="field-wrap">
+            <label>Descrizione / note libere</label>
+            <textarea name="note" rows="2" placeholder="Stile, obiettivi, varianti da provare…"></textarea>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:18px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;">✓ Crea Ricetta</button>
+          <a href="/catalogo/ingredienti" class="btn btn-ghost" target="_blank" title="Sfoglia il catalogo ingredienti in un'altra scheda">📦</a>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">
+          Dopo la creazione potrai aggiungere ingredienti e avviare le cotte.
+        </p>
+      </form>
     </div>
   </div>
-  {% if r.stile %}
-  <div style="font-size:12px;color:var(--amber);margin-bottom:6px;">{{ r.stile.nome }}</div>
-  {% endif %}
-  <div style="font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;">
-    <span>🧴 {{ r.volume_target_litri or 20 }} L</span>
-    <span>⚡ {{ r.efficienza or 75 }}%</span>
-    {% if r.ingredienti %}
-    <span>🌾 {{ r.ingredienti|length }} ingr.</span>
+
+  <!-- ── LISTA RICETTE ──────────────────────────────────────── -->
+  <div>
+    {% if ricette %}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <input type="text" id="search-ricette" placeholder="🔍 Cerca per nome o stile…"
+        style="flex:1;max-width:360px;" oninput="filterRicette(this.value)">
+      <span style="font-size:12px;color:var(--muted);" id="count-label">{{ ricette|length }} ricette</span>
+    </div>
+
+    <div id="ricette-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+    {% for r in ricette %}
+    <a href="/ricette/{{ r.id }}" class="ricetta-card-link"
+       data-search="{{ (r.nome ~ ' ' ~ (r.stile.nome if r.stile else '') ~ ' ' ~ (r.tipo or ''))|lower }}">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3;">{{ r.nome }}</div>
+          <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+            <span class="badge badge-amber" style="font-size:10px;">{{ r.tipo or 'AG' }}</span>
+            {% set n_cotte = cotte_count.get(r.id, 0) %}
+            {% if n_cotte > 0 %}
+            <span class="badge badge-green" style="font-size:10px;">{{ n_cotte }} cott{% if n_cotte == 1 %}a{% else %}e{% endif %}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if r.stile %}
+        <div style="font-size:11px;color:var(--amber);margin-bottom:6px;font-weight:600;">{{ r.stile.nome }}</div>
+        {% endif %}
+        <div class="r-stats">
+          <span class="r-stat">🧴 {{ r.volume_target_litri or 20 }} L</span>
+          <span class="r-stat">⚡ {{ r.efficienza or 75 }}%</span>
+          {% if r.ingredienti %}
+          <span class="r-stat">🌾 {{ r.ingredienti|length }} ingr.</span>
+          {% endif %}
+          <span class="r-stat">v{{ r.versione or 1 }}</span>
+        </div>
+        {% if r.note %}
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4;border-top:1px solid var(--border);padding-top:6px;">
+          {{ r.note[:100] }}{% if r.note|length > 100 %}…{% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+    </div>
+
+    <div id="no-results" style="display:none;" class="card empty">
+      <div class="empty-icon">🔍</div>
+      <p>Nessuna ricetta trovata con questo filtro.</p>
+    </div>
+
+    {% else %}
+    <div class="card empty" style="text-align:center;padding:40px 24px;">
+      <div class="empty-icon" style="font-size:40px;margin-bottom:12px;">🧪</div>
+      <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Nessuna ricetta ancora</div>
+      <p style="color:var(--muted);">Compila il form a sinistra per creare la prima ricetta, oppure importa un file BeerXML.</p>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+        <a href="/importa/beerxml" class="btn btn-ghost">📥 Importa BeerXML</a>
+        <a href="/catalogo/ingredienti" class="btn btn-ghost">📦 Sfoglia catalogo</a>
+      </div>
+    </div>
     {% endif %}
   </div>
-  {% if r.note %}
-  <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
-    {{ r.note[:80] }}{% if r.note|length > 80 %}…{% endif %}
-  </div>
-  {% endif %}
-</div>
-</a>
-{% endfor %}
-</div>
 
-<div id="no-results" style="display:none;" class="card empty">
-  <div class="empty-icon">🔍</div>
-  <p>Nessuna ricetta trovata con questo filtro.</p>
-</div>
+</div><!-- /ricette-layout -->
 
 <script>
 function filterRicette(q) {
-  const cards = document.querySelectorAll('.ricetta-card');
+  const cards = document.querySelectorAll('.ricetta-card-link');
   let visible = 0;
   q = q.toLowerCase();
   cards.forEach(c => {
@@ -139,23 +276,31 @@ function filterRicette(q) {
     if (match) visible++;
   });
   document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+  const lbl = document.getElementById('count-label');
+  if (lbl) lbl.textContent = visible + ' ricett' + (visible === 1 ? 'a' : 'e');
 }
-document.querySelectorAll('.ricetta-card .card').forEach(c => {
-  c.addEventListener('mouseenter', () => c.style.borderColor = 'var(--amber)');
-  c.addEventListener('mouseleave', () => c.style.borderColor = 'var(--border)');
-});
-</script>
 
-{% else %}
-<div class="card empty">
-  <div class="empty-icon">🧪</div>
-  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:10px;">Nessuna ricetta</div>
-  <p>Crea la tua prima ricetta o importa un file BeerXML.</p>
-  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-    <button class="btn btn-primary" onclick="document.getElementById('form-nuova').style.display='block';this.scrollIntoView();">➕ Crea Ricetta</button>
-    <a href="/importa/beerxml" class="btn btn-ghost">📥 Importa BeerXML</a>
-  </div>
-</div>
-{% endif %}
+function showAcquaPill(sel) {
+  const pill = document.getElementById('acqua-pill');
+  const txt = document.getElementById('acqua-pill-text');
+  if (sel.value && sel.value !== '0') {
+    txt.textContent = sel.options[sel.selectedIndex].text;
+    pill.style.display = 'inline-flex';
+  } else {
+    pill.style.display = 'none';
+  }
+}
+
+function showMashPill(sel) {
+  const pill = document.getElementById('mash-pill');
+  const txt = document.getElementById('mash-pill-text');
+  if (sel.value) {
+    txt.textContent = sel.options[sel.selectedIndex].text;
+    pill.style.display = 'inline-flex';
+  } else {
+    pill.style.display = 'none';
+  }
+}
+</script>
 
 {% endblock %}
