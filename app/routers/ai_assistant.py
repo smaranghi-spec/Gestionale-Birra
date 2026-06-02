@@ -1,4 +1,4 @@
-"""Assistente AI per il gestionale birrificio usando Replit AI (OpenAI-compatible)."""
+"""Assistente AI per il gestionale birrificio — supporta Gemini e OpenAI."""
 import os
 import json
 from fastapi import APIRouter, Request
@@ -19,25 +19,41 @@ Rispondi in italiano, in modo conciso e pratico. Se fai calcoli, mostra il proce
 async def _call_ai(messages: list) -> str:
     try:
         import httpx
-        api_key = os.environ.get("REPLIT_AI_KEY") or os.environ.get("OPENAI_API_KEY", "")
-        if not api_key:
-            return "⚠️ Chiave AI non configurata. Contatta l'amministratore."
 
-        base_url = "https://api.openai.com/v1"
-        model = "gpt-4o-mini"
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        openai_key = os.environ.get("OPENAI_API_KEY", "")
+
+        if gemini_key:
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+            model = "gemini-2.0-flash"
+            api_key = gemini_key
+        elif openai_key:
+            base_url = "https://api.openai.com/v1"
+            model = "gpt-4o-mini"
+            api_key = openai_key
+        else:
+            return "⚠️ Chiave AI non configurata. Imposta GEMINI_API_KEY o OPENAI_API_KEY nei Secrets."
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": messages, "max_tokens": 800, "temperature": 0.7},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "max_tokens": 800,
+                    "temperature": 0.7,
+                },
             )
             data = resp.json()
             if "choices" in data:
                 return data["choices"][0]["message"]["content"]
             return f"Errore API: {data.get('error', {}).get('message', 'Risposta non valida')}"
     except Exception as e:
-        return f"❌ Errore connessione AI: {str(e)[:100]}"
+        return f"❌ Errore connessione AI: {str(e)[:120]}"
 
 
 @router.post("/api/ai/chat")

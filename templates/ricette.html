@@ -46,6 +46,26 @@
         <label>Efficienza (%)</label>
         <input type="number" name="efficienza" step="0.1" value="75" min="1" max="100">
       </div>
+      <div class="form-row">
+        <label>💧 Profilo acqua</label>
+        <select name="profilo_acqua_preset_id">
+          <option value="0">— Nessuno (imposta dopo) —</option>
+          {% for p in profili_preset %}
+          <option value="{{ p.id }}">{{ p.nome }}{% if p.citta %} — {{ p.citta }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>🌡️ Profilo ammostamento</label>
+        <select name="tipo_mash">
+          <option value="">— Nessuno (imposta dopo) —</option>
+          <option value="Singolo Infuso">Singolo Infuso (67°C × 60 min)</option>
+          <option value="BIAB">BIAB (67°C × 60 min + mash out)</option>
+          <option value="Step Mash">Step Mash (protein rest 52°C → sacca 67°C)</option>
+          <option value="Decozione">Decozione (62°C → 72°C)</option>
+          <option value="No-Sparge">No-Sparge / Batch Sparge (67°C × 75 min)</option>
+        </select>
+      </div>
       <div class="form-row" style="grid-column:span 2;">
         <label>Note</label>
         <textarea name="note" rows="2" placeholder="Descrizione, note…"></textarea>

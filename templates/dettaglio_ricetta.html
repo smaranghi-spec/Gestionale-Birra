@@ -321,6 +321,95 @@
         {% endif %}
     </div>
 
+    <div class="card">
+        <h2>Ingredienti attuali</h2>
+
+        {% if ingredienti %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Cat.</th>
+                    <th style="text-align:right;">%&nbsp;cat.</th>
+                    <th>Modifica rapida</th>
+                    <th>Dati</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in ingredienti %}
+                {% set p = percentuali.get(i.id, {}) %}
+                <tr>
+                    <td>
+                        <strong>{{ i.nome }}</strong><br>
+                        <span class="small-note">ID {{ i.id }}</span>
+                    </td>
+                    <td>{{ i.categoria }}</td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        {% if p %}
+                        <span style="font-weight:bold;color:
+                            {% if i.categoria=='grain' %}#c8873e
+                            {% elif i.categoria=='hop' %}#4a9a3f
+                            {% elif i.categoria=='yeast' %}#d47b2a
+                            {% else %}#7a6b9a{% endif %};">
+                            {{ p.perc }}%
+                        </span>
+                        <div style="width:60px;height:5px;background:#f0e8de;border-radius:3px;margin-top:3px;display:inline-block;vertical-align:middle;">
+                            <div style="width:{{ [p.perc,1]|max }}%;height:100%;border-radius:3px;background:
+                                {% if i.categoria=='grain' %}#c8873e
+                                {% elif i.categoria=='hop' %}#4a9a3f
+                                {% elif i.categoria=='yeast' %}#d47b2a
+                                {% else %}#7a6b9a{% endif %};"></div>
+                        </div>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <input class="inline-input" type="number" step="0.001" id="qty-{{ i.id }}" value="{{ i.quantita }}">
+                        <select class="inline-select" id="unit-{{ i.id }}">
+                            <option value="kg" {% if i.unita == 'kg' %}selected{% endif %}>kg</option>
+                            <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
+                            <option value="l" {% if i.unita == 'l' %}selected{% endif %}>l</option>
+                            <option value="ml" {% if i.unita == 'ml' %}selected{% endif %}>ml</option>
+                            <option value="pz" {% if i.unita == 'pz' %}selected{% endif %}>pz</option>
+                            <option value="oz" {% if i.unita == 'oz' %}selected{% endif %}>oz</option>
+                            <option value="lb" {% if i.unita == 'lb' %}selected{% endif %}>lb</option>
+                        </select>
+                        {% if i.categoria == 'hop' or i.categoria == 'misc' %}
+                        <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min or '' }}" placeholder="Minuti">
+                        {% endif %}
+
+                        <input class="inline-note" type="text" id="note-{{ i.id }}" value="{{ i.note or '' }}" placeholder="Note">
+                        <button type="button" onclick="salvaRapido({{ i.id }})">Salva rapido</button>
+                        <div class="small-note" id="save-status-{{ i.id }}"></div>
+                    </td>
+                    <td>
+                        {% if i.categoria == 'grain' %}
+                            tipo={{ i.fermentable_type or '-' }}, yield={{ i.yield_percent or '-' }}%, color={{ i.color_srm or '-' }} SRM
+                        {% elif i.categoria == 'hop' %}
+                            alpha={{ i.alpha_acid or '-' }}%, use={{ i.hop_use or '-' }}, time={{ i.time_min or '-' }} min, form={{ i.hop_form or '-' }}
+                        {% elif i.categoria == 'yeast' %}
+                            atten={{ i.attenuation or '-' }}%, type={{ i.yeast_type or '-' }}, form={{ i.yeast_form or '-' }}
+                        {% elif i.categoria == 'misc' %}
+                            type={{ i.misc_type or '-' }}, use={{ i.misc_use or '-' }}, time={{ i.time_min or '-' }} min
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/ingredienti/{{ i.id }}/modifica">Modifica completa</a>
+                        <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
+                            <button type="submit" onclick="return confirm('Eliminare ingrediente?')">Elimina</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>Nessun ingrediente presente.</p>
+        {% endif %}
+    </div>
+
     {% if ingredienti %}
     <div class="card" style="max-width:1200px;">
         <h2>📊 Composizione ricetta</h2>
@@ -602,95 +691,6 @@
                 </div>
             </form>
         </details>
-    </div>
-
-    <div class="card">
-        <h2>Ingredienti attuali</h2>
-
-        {% if ingredienti %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Cat.</th>
-                    <th style="text-align:right;">%&nbsp;cat.</th>
-                    <th>Modifica rapida</th>
-                    <th>Dati</th>
-                    <th>Azioni</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for i in ingredienti %}
-                {% set p = percentuali.get(i.id, {}) %}
-                <tr>
-                    <td>
-                        <strong>{{ i.nome }}</strong><br>
-                        <span class="small-note">ID {{ i.id }}</span>
-                    </td>
-                    <td>{{ i.categoria }}</td>
-                    <td style="text-align:right;white-space:nowrap;">
-                        {% if p %}
-                        <span style="font-weight:bold;color:
-                            {% if i.categoria=='grain' %}#c8873e
-                            {% elif i.categoria=='hop' %}#4a9a3f
-                            {% elif i.categoria=='yeast' %}#d47b2a
-                            {% else %}#7a6b9a{% endif %};">
-                            {{ p.perc }}%
-                        </span>
-                        <div style="width:60px;height:5px;background:#f0e8de;border-radius:3px;margin-top:3px;display:inline-block;vertical-align:middle;">
-                            <div style="width:{{ [p.perc,1]|max }}%;height:100%;border-radius:3px;background:
-                                {% if i.categoria=='grain' %}#c8873e
-                                {% elif i.categoria=='hop' %}#4a9a3f
-                                {% elif i.categoria=='yeast' %}#d47b2a
-                                {% else %}#7a6b9a{% endif %};"></div>
-                        </div>
-                        {% else %}—{% endif %}
-                    </td>
-                    <td>
-                        <input class="inline-input" type="number" step="0.001" id="qty-{{ i.id }}" value="{{ i.quantita }}">
-                        <select class="inline-select" id="unit-{{ i.id }}">
-                            <option value="kg" {% if i.unita == 'kg' %}selected{% endif %}>kg</option>
-                            <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
-                            <option value="l" {% if i.unita == 'l' %}selected{% endif %}>l</option>
-                            <option value="ml" {% if i.unita == 'ml' %}selected{% endif %}>ml</option>
-                            <option value="pz" {% if i.unita == 'pz' %}selected{% endif %}>pz</option>
-                            <option value="oz" {% if i.unita == 'oz' %}selected{% endif %}>oz</option>
-                            <option value="lb" {% if i.unita == 'lb' %}selected{% endif %}>lb</option>
-                        </select>
-                        {% if i.categoria == 'hop' or i.categoria == 'misc' %}
-                        <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min or '' }}" placeholder="Minuti">
-                        {% endif %}
-
-                        <input class="inline-note" type="text" id="note-{{ i.id }}" value="{{ i.note or '' }}" placeholder="Note">
-                        <button type="button" onclick="salvaRapido({{ i.id }})">Salva rapido</button>
-                        <div class="small-note" id="save-status-{{ i.id }}"></div>
-                    </td>
-                    <td>
-                        {% if i.categoria == 'grain' %}
-                            tipo={{ i.fermentable_type or '-' }}, yield={{ i.yield_percent or '-' }}%, color={{ i.color_srm or '-' }} SRM
-                        {% elif i.categoria == 'hop' %}
-                            alpha={{ i.alpha_acid or '-' }}%, use={{ i.hop_use or '-' }}, time={{ i.time_min or '-' }} min, form={{ i.hop_form or '-' }}
-                        {% elif i.categoria == 'yeast' %}
-                            atten={{ i.attenuation or '-' }}%, type={{ i.yeast_type or '-' }}, form={{ i.yeast_form or '-' }}
-                        {% elif i.categoria == 'misc' %}
-                            type={{ i.misc_type or '-' }}, use={{ i.misc_use or '-' }}, time={{ i.time_min or '-' }} min
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="/ingredienti/{{ i.id }}/modifica">Modifica completa</a>
-                        <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
-                            <button type="submit" onclick="return confirm('Eliminare ingrediente?')">Elimina</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>Nessun ingrediente presente.</p>
-        {% endif %}
     </div>
 
     <div class="card avvia-panel" id="avvia-cotta">

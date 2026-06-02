@@ -17,6 +17,7 @@ from ..models import (
     LogCotta,
     ProfiloAcqua,
     ProfiloAmmostamento,
+    ProfiloAcquaPreset,
 )
 from ..stats import (
     calcola_stats,
@@ -42,6 +43,7 @@ def get_db():
 def lista_ricette(request: Request, db: Session = Depends(get_db)):
     ricette = db.query(Ricetta).all()
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
+    profili_preset = db.query(ProfiloAcquaPreset).order_by(ProfiloAcquaPreset.nome).all()
 
     counts_q = (
         db.query(Cotta.ricetta_id, func.count(Cotta.id))
@@ -56,6 +58,7 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "ricette": ricette,
             "stili": stili,
+            "profili_preset": profili_preset,
             "cotte_count": cotte_count,
         },
     )
@@ -70,8 +73,11 @@ def crea_ricetta(
     versione: int = Form(...),
     stile_id: int = Form(0),
     note: str = Form(""),
+    profilo_acqua_preset_id: int = Form(0),
+    tipo_mash: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    import json as _json
     r = Ricetta(
         nome=nome,
         tipo=tipo,
@@ -82,8 +88,46 @@ def crea_ricetta(
         note=note or None,
     )
     db.add(r)
+    db.flush()
+
+    if profilo_acqua_preset_id:
+        preset = db.query(ProfiloAcquaPreset).filter(ProfiloAcquaPreset.id == profilo_acqua_preset_id).first()
+        if preset:
+            pa = ProfiloAcqua(
+                ricetta_id=r.id,
+                nome=preset.nome,
+                ca=preset.ca, mg=preset.mg, na=preset.na,
+                cl=preset.cl, so4=preset.so4, hco3=preset.hco3,
+            )
+            db.add(pa)
+
+    MASH_TEMPLATES = {
+        "Singolo Infuso": [{"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 60}],
+        "BIAB": [
+            {"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 60},
+            {"nome": "Mash Out", "temp_gradi": 77, "durata_min": 10},
+        ],
+        "Step Mash": [
+            {"nome": "Protein Rest", "temp_gradi": 52, "durata_min": 15},
+            {"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 45},
+            {"nome": "Mash Out", "temp_gradi": 77, "durata_min": 10},
+        ],
+        "Decozione": [
+            {"nome": "Ammostamento 1", "temp_gradi": 62, "durata_min": 30},
+            {"nome": "Decozione", "temp_gradi": 72, "durata_min": 30},
+        ],
+        "No-Sparge": [{"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 75}],
+    }
+    if tipo_mash and tipo_mash in MASH_TEMPLATES:
+        pm = ProfiloAmmostamento(
+            ricetta_id=r.id,
+            nome=tipo_mash,
+            steps_json=_json.dumps(MASH_TEMPLATES[tipo_mash], ensure_ascii=False),
+        )
+        db.add(pm)
+
     db.commit()
-    return RedirectResponse("/ricette/html", status_code=303)
+    return RedirectResponse(f"/ricette/{r.id}", status_code=303)
 
 
 @router.get("/ricette/{ricetta_id}", response_class=HTMLResponse)
@@ -349,6 +393,7 @@ def catalogo_per_ricetta(
         {
             "request": request,
             "items": items,
+            "totale": len(items),
             "ricetta_id": ricetta_id,
             "categoria_attiva": categoria,
         },
