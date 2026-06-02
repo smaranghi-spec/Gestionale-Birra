@@ -14,6 +14,7 @@ from .routers import (
 from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 from .routers import prezzi, fattura, brewmonk, soci
 from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
+from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
 
 Base.metadata.create_all(bind=engine)
 
@@ -30,6 +31,12 @@ def run_migrations():
         "ALTER TABLE ricette ADD COLUMN pubblica INTEGER DEFAULT 0",
         "ALTER TABLE users ADD COLUMN nome TEXT DEFAULT ''",
         "ALTER TABLE users ADD COLUMN ruolo TEXT DEFAULT 'birraio'",
+        "ALTER TABLE cotte ADD COLUMN temp_ambiente REAL",
+        "ALTER TABLE cotte ADD COLUMN acqua_totale_litri REAL",
+        "ALTER TABLE cotte ADD COLUMN pressione_bar REAL",
+        "ALTER TABLE cotte ADD COLUMN note_ferm TEXT",
+        "ALTER TABLE cotte ADD COLUMN note_cond TEXT",
+        "ALTER TABLE cotte ADD COLUMN note_imbott TEXT",
     ]:
         try:
             conn.execute(sql)
@@ -44,6 +51,11 @@ run_migrations()
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
 EXEMPT = ("/login", "/register", "/birre", "/debug", "/static")
+READ_ONLY_PATHS = ("/", "/ricette/html", "/cotte", "/stili", "/catalogo",
+                   "/strumenti", "/profili-acqua", "/prezzi", "/impianto",
+                   "/tracciabilita", "/inventario")
+
+WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -52,8 +64,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(e) for e in EXEMPT):
             return await call_next(request)
         user_id = request.session.get("user_id")
-        if not user_id:
+        if not user_id and user_id != 0:
             return RedirectResponse("/login", status_code=303)
+        # Ospite: blocca azioni di scrittura
+        if request.session.get("ruolo") == "ospite" and request.method in WRITE_METHODS:
+            return HTMLResponse(
+                '<html><body style="background:#0d1117;color:#e6edf3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;">'
+                '<div><div style="font-size:48px;">🔒</div><h2>Accesso negato</h2>'
+                '<p style="color:#8b949e;">Sei in modalità ospite (sola lettura).<br>Esegui il login per modificare i dati.</p>'
+                '<a href="/login" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#f59e0b;color:#000;border-radius:8px;text-decoration:none;font-weight:700;">Accedi</a></div></body></html>',
+                status_code=403
+            )
         return await call_next(request)
 
 
@@ -85,6 +106,11 @@ app.include_router(impianto.router)
 app.include_router(profili_acqua.router)
 app.include_router(costo_ricetta.router)
 app.include_router(tracciabilita.router)
+app.include_router(strumenti.router)
+app.include_router(lista_acquisti.router)
+app.include_router(ai_assistant.router)
+app.include_router(aggiunte_cotta.router)
+app.include_router(importa_foto.router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -115,14 +141,35 @@ def seed_admin():
 @app.get("/api/stats-home")
 def stats_home():
     from .db import SessionLocal
-    from .models import Ricetta, Cotta, CatalogoIngrediente, Stile
+    from .models import Ricetta, Cotta, CatalogoIngrediente, Stile, Degustazione
     db = SessionLocal()
     try:
+        cotte_attive = db.query(Cotta).filter(
+            Cotta.stato.notin_(["archiviata", "pronta"])
+        ).order_by(Cotta.id.desc()).limit(5).all()
+
+        degs = db.query(Degustazione).order_by(Degustazione.id.desc()).limit(6).all()
+        degu_out = []
+        for d in degs:
+            cotta = db.query(Cotta).filter(Cotta.id == d.cotta_id).first()
+            punteggio = None
+            if any([d.aroma, d.gusto, d.aspetto, d.sensazione]):
+                vals = [v for v in [d.aroma, d.gusto, d.aspetto, d.sensazione] if v]
+                punteggio = round(sum(vals) / len(vals), 1) if vals else None
+            degu_out.append({
+                "cotta": cotta.nome if cotta else "—",
+                "degustatore": d.degustatore,
+                "data": d.data,
+                "voto": f"{punteggio}/10" if punteggio else None,
+            })
+
         return {
             "n_ricette": db.query(Ricetta).count(),
             "n_cotte": db.query(Cotta).filter(Cotta.stato != "archiviata").count(),
             "n_catalogo": db.query(CatalogoIngrediente).count(),
             "n_stili": db.query(Stile).count(),
+            "cotte_attive": [{"id": c.id, "nome": c.nome, "stato": c.stato, "ricetta": c.ricetta.nome if c.ricetta else ""} for c in cotte_attive],
+            "degustazioni": degu_out,
         }
     finally:
         db.close()

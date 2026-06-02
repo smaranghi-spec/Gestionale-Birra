@@ -172,6 +172,12 @@ class Cotta(Base):
     colore_visivo = Column(String, nullable=True)
     limpidezza = Column(String, nullable=True)
     note = Column(Text, nullable=True)
+    temp_ambiente = Column(Float, nullable=True)
+    acqua_totale_litri = Column(Float, nullable=True)
+    pressione_bar = Column(Float, nullable=True)
+    note_ferm = Column(Text, nullable=True)
+    note_cond = Column(Text, nullable=True)
+    note_imbott = Column(Text, nullable=True)
     ricetta = relationship("Ricetta", back_populates="cotte")
     log = relationship("LogCotta", back_populates="cotta", cascade="all, delete-orphan", order_by="LogCotta.timestamp")
     degustazioni = relationship("Degustazione", back_populates="cotta", cascade="all, delete-orphan")
@@ -197,10 +203,10 @@ class Degustazione(Base):
     cotta_id = Column(Integer, ForeignKey("cotte.id"), nullable=False)
     data = Column(String, nullable=False)
     degustatore = Column(String, nullable=True)
-    aspetto = Column(Text, nullable=True)
-    aroma = Column(Text, nullable=True)
-    gusto = Column(Text, nullable=True)
-    sensazione = Column(Text, nullable=True)
+    aspetto = Column(Float, nullable=True)
+    aroma = Column(Float, nullable=True)
+    gusto = Column(Float, nullable=True)
+    sensazione = Column(Float, nullable=True)
     voto = Column(Float, nullable=True)
     note = Column(Text, nullable=True)
     cotta = relationship("Cotta", back_populates="degustazioni")
@@ -398,3 +404,44 @@ class BrewMonkConfig(Base):
     attivo = Column(Boolean, default=False)
     ultimo_sync = Column(String, nullable=True)
     note = Column(Text, nullable=True)
+
+
+class ListaAcquisti(Base):
+    """Lista della spesa / acquisti pianificati."""
+    __tablename__ = "lista_acquisti"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    categoria = Column(String, default="ingrediente")
+    quantita = Column(Float, default=1.0)
+    unita = Column(String, default="kg")
+    fornitore = Column(String, nullable=True)
+    priorita = Column(Integer, default=2)  # 1=alta 2=media 3=bassa
+    note = Column(Text, nullable=True)
+    completato = Column(Boolean, default=False)
+    created_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+
+class AggiuntaCotta(Base):
+    """Aggiunte fuori ricetta durante la cotta (infusi, puree, spezie…)."""
+    __tablename__ = "aggiunte_cotta"
+    id = Column(Integer, primary_key=True, index=True)
+    cotta_id = Column(Integer, ForeignKey("cotte.id"), nullable=False)
+    nome = Column(String, nullable=False)
+    tipo = Column(String, default="infuso")  # infuso / purea / spezia / frutta / altro
+    quantita = Column(Float, nullable=True)
+    unita = Column(String, default="g")
+    fase = Column(String, default="fermentazione")
+    timestamp = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    note = Column(Text, nullable=True)
+    cotta = relationship("Cotta", backref="aggiunte")
+
+
+class RicettaModalita(Base):
+    """Modalità di una ricetta: 'catalogo' (da elenco) o 'magazzino'."""
+    __tablename__ = "ricetta_modalita"
+    id = Column(Integer, primary_key=True, index=True)
+    ricetta_id = Column(Integer, ForeignKey("ricette.id"), unique=True, nullable=False)
+    modalita = Column(String, default="catalogo")  # catalogo / magazzino
+    convertita_il = Column(String, nullable=True)
+    ricetta = relationship("Ricetta", backref="modalita_info", uselist=False)

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Importa Acquisto da Foto/PDF{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="/acquisti" class="btn btn-ghost btn-sm" style="margin-bottom:12px;">← Ordini</a>
+  <h1 style="font-size:22px;margin-bottom:4px;">📷 Importa da Foto / PDF</h1>
+  <p>Scatta una foto allo scontrino, alla fattura o carica un PDF. Il sistema estrarrà automaticamente i prodotti.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;flex-wrap:wrap;">
+
+  <!-- Upload -->
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:16px;">📤 Carica immagine o PDF</h3>
+    <form method="post" action="/acquisti/importa-foto" enctype="multipart/form-data">
+      <div id="drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px;"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--amber)'"
+           ondragleave="this.style.borderColor='var(--border)'"
+           ondrop="handleDrop(event)">
+        <div style="font-size:40px;margin-bottom:8px;" id="drop-icon">📷</div>
+        <div style="color:var(--muted);font-size:14px;" id="drop-text">
+          Clicca o trascina qui<br>
+          <span style="font-size:12px;">JPG, PNG, WEBP, PDF · max 10MB</span>
+        </div>
+        <input type="file" id="file-input" name="file" accept="image/*,.pdf" style="display:none" onchange="showFileName(this)">
+      </div>
+
+      <div id="preview-wrap" style="display:none;margin-bottom:12px;text-align:center;">
+        <img id="preview-img" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);" src="">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;">
+        🔍 Estrai testo con OCR
+      </button>
+    </form>
+
+    <div style="margin-top:16px;padding:12px;background:var(--panel);border-radius:8px;font-size:12px;color:var(--muted);">
+      <strong style="color:var(--text);">💡 Suggerimenti per migliori risultati:</strong>
+      <ul style="margin:6px 0 0 16px;padding:0;line-height:1.8;">
+        <li>Illumina bene il documento</li>
+        <li>Evita riflessi e ombre</li>
+        <li>Mantieni il foglio piatto</li>
+        <li>Testo grande e nitido</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Risultato OCR -->
+  {% if testo_ocr is defined %}
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <details>
+        <summary style="cursor:pointer;color:var(--muted);font-size:13px;">📄 Testo estratto dall'OCR ({{ testo_ocr|length }} caratteri)</summary>
+        <pre style="margin-top:12px;font-size:11px;color:var(--muted);white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--bg);padding:10px;border-radius:6px;">{{ testo_ocr }}</pre>
+      </details>
+    </div>
+
+    {% if righe %}
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:4px;">✏️ Verifica e correggi gli articoli</h3>
+      <p>Modifica i dati prima di salvare l'ordine. Rimuovi le righe non corrette.</p>
+
+      <form method="post" action="/acquisti/importa-foto/salva">
+        <div class="form-row" style="margin-bottom:16px;">
+          <label>Fornitore</label>
+          <input type="text" name="fornitore" placeholder="es. MrMalt, Polsinelli…">
+        </div>
+
+        <div id="righe-list">
+          {% for r in righe %}
+          <div class="riga-import" style="background:var(--panel);border-radius:8px;padding:12px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 36px;gap:8px;align-items:end;">
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Prodotto</label>
+              <input type="text" name="nome[]" value="{{ r.nome }}" required>
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Qtà</label>
+              <input type="number" name="quantita[]" value="{{ r.quantita }}" step="0.1" min="0.01">
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Unità</label>
+              <select name="unita[]">
+                {% for u in ['kg','g','L','mL','pz','busta','flacone','altro'] %}
+                <option {% if u == r.unita %}selected{% endif %}>{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">€/unità</label>
+              <input type="number" name="prezzo_unitario[]" value="{{ '%.2f'|format(r.prezzo_unitario) if r.prezzo_unitario else '' }}" step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Categoria</label>
+              <select name="categoria[]">
+                {% for c in ['ingrediente','consumabile','packaging','chimico','accessorio','altro'] %}
+                <option>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="button" onclick="this.closest('.riga-import').remove()" class="btn btn-danger btn-xs" style="margin-bottom:2px;">✕</button>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button type="submit" class="btn btn-primary">💾 Salva come ordine</button>
+          <a href="/acquisti/importa-foto" class="btn btn-ghost">↺ Ricarica</a>
+        </div>
+      </form>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <p>Nessun prodotto riconosciuto automaticamente.<br>
+        Verifica il testo OCR e prova con un'immagine più nitida.</p>
+        <a href="/acquisti/importa-foto" class="btn btn-ghost btn-sm" style="margin-top:8px;">↺ Riprova</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:200px;">
+    <div style="text-align:center;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">👈</div>
+      <p>Carica un file per iniziare l'estrazione</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function showFileName(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    document.getElementById('drop-text').innerHTML = `<strong style="color:var(--text)">${file.name}</strong><br><span style="font-size:11px;">${(file.size/1024).toFixed(0)} KB</span>`;
+    document.getElementById('drop-icon').textContent = file.type.includes('pdf') ? '📄' : '🖼️';
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('preview-img').src = e.target.result;
+        document.getElementById('preview-wrap').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+}
+function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'var(--border)';
+  const input = document.getElementById('file-input');
+  input.files = e.dataTransfer.files;
+  showFileName(input);
+}
+</script>
+{% endblock %}

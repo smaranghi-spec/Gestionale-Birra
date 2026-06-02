@@ -1,6 +1,8 @@
-- [Auth middleware](auth-middleware.md) — all routes except /login /register /birre /debug /static require session; 303s without session = correct behavior.
+- [Auth middleware](auth-middleware.md) — all routes except /login /register /birre /debug /static require session; guest uses user_id=0, check with `user_id != 0` not just `not user_id`; guests blocked on WRITE methods.
 - [SQLite migrations](sqlite-migrations.md) — create_all only creates new tables; existing table column additions require run_migrations() ALTER TABLE pattern in main.py.
-- [New routers wiring](new-routers.md) — impianto, profili_acqua, costo_ricetta, tracciabilita added to main.py; always import + include_router.
-- [Recipe cost page](recipe-cost.md) — /ricette/{id}/costo; pulls prezzo_unitario from IngredienteRicetta, falls back to InventarioItem fuzzy match; IVA 0/4/10/22%; JS real-time sliders for overhead+markup.
+- [New routers wiring](new-routers.md) — strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto added; always import from routers + app.include_router.
+- [Recipe cost page](recipe-cost.md) — /ricette/{id}/costo; pulls prezzo_unitario from IngredienteRicetta, falls back to InventarioItem fuzzy match; IVA 0/4/10/22%.
 - [Purchase flow](purchase-flow.md) — OrdineAcquisto bozza→ricevuto; /acquisti/{id}/conferma auto-adds all RigaOrdine to InventarioItem (upsert by name).
 - [Water presets seed](water-presets.md) — ProfiloAcquaPreset seeded on first /profili-acqua GET; 11 classic city profiles; SO4/Cl ratio shown for hop/malt character.
+- [Cotta model extensions](cotta-model-ext.md) — colonne industriali temp_ambiente/acqua_totale_litri/pressione_bar/note_ferm/note_cond/note_imbott aggiunte in models.py E in run_migrations(); AggiuntaCotta/ListaAcquisti/RicettaModalita sono nuove tabelle.
+- [Scrapers refactor](scrapers-refactor.md) — _extract_products() generico per tutti i fornitori; FORNITORE_INFO con URL esatti; aggiunto Forniture Birra e Enosystem; rimosso AEB (B2B).

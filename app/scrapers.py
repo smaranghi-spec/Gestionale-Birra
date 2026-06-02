@@ -10,11 +10,22 @@ from bs4 import BeautifulSoup
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate",
 }
-TIMEOUT = 10.0
+TIMEOUT = 12.0
+
+# URL di ricerca precisi per ogni fornitore
+FORNITORE_INFO = {
+    "MrMalt":          {"url_base": "https://www.mr-malt.it",      "search_tpl": "https://www.mr-malt.it/ricerca?controller=search&s={q}"},
+    "Pinta":           {"url_base": "https://www.pinta.it",         "search_tpl": "https://www.pinta.it/search?type=product&q={q}"},
+    "Beer and Wine":   {"url_base": "https://www.beerandwine.it",   "search_tpl": "https://www.beerandwine.it/search?type=product&q={q}"},
+    "Polsinelli":      {"url_base": "https://www.polsinelli.it",    "search_tpl": "https://www.polsinelli.it/cerca?q={q}"},
+    "Forniture Birra": {"url_base": "https://forniturebirra.com",   "search_tpl": "https://forniturebirra.com/?s={q}&post_type=product"},
+    "Enosystem":       {"url_base": "https://www.enosystem.it",     "search_tpl": "https://www.enosystem.it/recherche?s={q}&controller=search"},
+}
 
 
 def _clean_price(txt: str) -> float | None:
@@ -28,27 +39,62 @@ def _clean_price(txt: str) -> float | None:
     return float(m.group()) if m else None
 
 
+def _abs_url(href: str, base: str) -> str:
+    if not href:
+        return base
+    if href.startswith("http"):
+        return href
+    if href.startswith("//"):
+        return "https:" + href
+    return base.rstrip("/") + "/" + href.lstrip("/")
+
+
+def _extract_products(soup: BeautifulSoup, url_search: str, base: str, limit=8) -> list:
+    """Estrae prodotti da pagine PrestaShop, Shopify, WooCommerce generiche."""
+    results = []
+    selectors = [
+        ".product-miniature", "article.product-miniature",
+        ".product-item", ".grid__item", ".product-card",
+        "li.product", ".ajax_block_product", ".product_list li",
+        "article.product", ".woocommerce-loop-product__link",
+    ]
+    for sel in selectors:
+        items = soup.select(sel)
+        if items:
+            for art in items[:limit]:
+                nome_el = art.select_one(
+                    ".product-title a, h2.product-title a, h3.product-title a, "
+                    ".product-item__title, .product-card__name, .card__heading a, "
+                    ".product-name a, h2 a, h3 a, h4 a, .woocommerce-loop-product__link"
+                )
+                prezzo_el = art.select_one(
+                    ".price, .product-price, span[itemprop='price'], "
+                    ".price__regular, .price-item--regular, .our_price_display, "
+                    "ins .amount, .price bdi"
+                )
+                link_el = art.select_one("a[href]")
+                if nome_el and nome_el.get_text(strip=True):
+                    href = link_el.get("href", "") if link_el else ""
+                    results.append({
+                        "nome": nome_el.get_text(strip=True)[:120],
+                        "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
+                        "url": _abs_url(href, base),
+                    })
+            if results:
+                return results
+    return results
+
+
 # ── MrMalt ────────────────────────────────────────────────────────────────────
 
 async def scrape_mrmalt(query: str, client: httpx.AsyncClient) -> Dict:
     fornitore = "MrMalt"
-    url_base = "https://www.mrmalt.com"
-    url_search = f"{url_base}/it/ricerca?controller=search&s={query.replace(' ', '+')}"
+    info = FORNITORE_INFO[fornitore]
+    url_search = info["search_tpl"].format(q=query.replace(" ", "+"))
     try:
         r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
         soup = BeautifulSoup(r.text, "html.parser")
-        results = []
-        # Schede prodotto standard PrestaShop
-        for art in soup.select(".product-miniature, article.product-miniature")[:8]:
-            nome_el = art.select_one(".product-title a, h2.product-title a, h3 a")
-            prezzo_el = art.select_one(".price, .product-price, span[itemprop='price']")
-            link_el = art.select_one("a[href]")
-            if nome_el:
-                results.append({
-                    "nome": nome_el.get_text(strip=True),
-                    "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
-                    "url": link_el["href"] if link_el else url_search,
-                })
+        results = _extract_products(soup, url_search, info["url_base"])
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
     except Exception as e:
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
@@ -58,21 +104,12 @@ async def scrape_mrmalt(query: str, client: httpx.AsyncClient) -> Dict:
 
 async def scrape_polsinelli(query: str, client: httpx.AsyncClient) -> Dict:
     fornitore = "Polsinelli"
-    url_search = f"https://www.polsinelli.it/cerca?q={query.replace(' ', '+')}"
+    info = FORNITORE_INFO[fornitore]
+    url_search = info["search_tpl"].format(q=query.replace(" ", "+"))
     try:
         r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
         soup = BeautifulSoup(r.text, "html.parser")
-        results = []
-        for art in soup.select(".product-item, .product_list li, .ajax_block_product")[:8]:
-            nome_el = art.select_one(".product-name a, .product_name a, h3 a, h2 a")
-            prezzo_el = art.select_one(".price, .product-price, .our_price_display")
-            link_el = art.select_one("a[href]")
-            if nome_el:
-                results.append({
-                    "nome": nome_el.get_text(strip=True),
-                    "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
-                    "url": link_el["href"] if link_el else url_search,
-                })
+        results = _extract_products(soup, url_search, info["url_base"])
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
     except Exception as e:
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
@@ -82,60 +119,12 @@ async def scrape_polsinelli(query: str, client: httpx.AsyncClient) -> Dict:
 
 async def scrape_beerandwine(query: str, client: httpx.AsyncClient) -> Dict:
     fornitore = "Beer and Wine"
-    url_search = f"https://www.beerandwine.it/search?q={query.replace(' ', '+')}"
+    info = FORNITORE_INFO[fornitore]
+    url_search = info["search_tpl"].format(q=query.replace(" ", "+"))
     try:
         r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
         soup = BeautifulSoup(r.text, "html.parser")
-        results = []
-        # Shopify-style themes
-        for art in soup.select(".product-item, .grid__item, .product-card, article")[:8]:
-            nome_el = art.select_one(".product-item__title, .product-card__name, h2 a, h3 a, .card__heading a")
-            prezzo_el = art.select_one(".price, .product-price, .price__regular, .price-item")
-            link_el = art.select_one("a[href]")
-            if nome_el:
-                href = link_el["href"] if link_el else url_search
-                if href.startswith("/"):
-                    href = "https://www.beerandwine.it" + href
-                results.append({
-                    "nome": nome_el.get_text(strip=True),
-                    "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
-                    "url": href,
-                })
-        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
-    except Exception as e:
-        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
-
-
-# ── AEB Group ─────────────────────────────────────────────────────────────────
-
-async def scrape_aeb(query: str, client: httpx.AsyncClient) -> Dict:
-    fornitore = "AEB Group"
-    url_search = f"https://www.aeb-group.com/it/cerca?search={query.replace(' ', '+')}"
-    try:
-        r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
-        soup = BeautifulSoup(r.text, "html.parser")
-        results = []
-        for art in soup.select(".product-item, .search-result-item, article, .card")[:8]:
-            nome_el = art.select_one("h2 a, h3 a, .product-name a, .title a")
-            prezzo_el = art.select_one(".price, .product-price")
-            link_el = art.select_one("a[href]")
-            if nome_el:
-                href = link_el["href"] if link_el else url_search
-                if href.startswith("/"):
-                    href = "https://www.aeb-group.com" + href
-                results.append({
-                    "nome": nome_el.get_text(strip=True),
-                    "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
-                    "url": href,
-                })
-        # AEB is B2B and may not show prices — provide direct link
-        if not results:
-            results.append({
-                "nome": f"Cerca '{query}' su AEB Group",
-                "prezzo": None,
-                "url": url_search,
-                "nota": "Sito B2B — prezzi su richiesta",
-            })
+        results = _extract_products(soup, url_search, info["url_base"])
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
     except Exception as e:
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
@@ -145,30 +134,48 @@ async def scrape_aeb(query: str, client: httpx.AsyncClient) -> Dict:
 
 async def scrape_pinta(query: str, client: httpx.AsyncClient) -> Dict:
     fornitore = "Pinta"
-    url_search = f"https://www.pinta.it/search?q={query.replace(' ', '+')}"
+    info = FORNITORE_INFO[fornitore]
+    url_search = info["search_tpl"].format(q=query.replace(" ", "+"))
     try:
         r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
         soup = BeautifulSoup(r.text, "html.parser")
-        results = []
-        for art in soup.select(".product-item, .grid__item, .product-card, article, .product")[:8]:
-            nome_el = art.select_one(".product-item__title, .product__title, .product-name, h2 a, h3 a, .card__heading a")
-            prezzo_el = art.select_one(".price, .product-price, .price__regular, .price-item, .product__price")
-            link_el = art.select_one("a[href]")
-            if nome_el:
-                href = link_el["href"] if link_el else url_search
-                if href.startswith("/"):
-                    href = "https://www.pinta.it" + href
-                results.append({
-                    "nome": nome_el.get_text(strip=True),
-                    "prezzo": _clean_price(prezzo_el.get_text() if prezzo_el else ""),
-                    "url": href,
-                })
+        results = _extract_products(soup, url_search, info["url_base"])
         if not results:
-            results.append({
-                "nome": f"Cerca '{query}' su Pinta",
-                "prezzo": None,
-                "url": url_search,
-            })
+            results.append({"nome": f"Cerca '{query}' su Pinta", "prezzo": None, "url": url_search})
+        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
+    except Exception as e:
+        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
+
+
+# ── Forniture Birra ───────────────────────────────────────────────────────────
+
+async def scrape_forniture_birra(query: str, client: httpx.AsyncClient) -> Dict:
+    fornitore = "Forniture Birra"
+    info = FORNITORE_INFO[fornitore]
+    url_search = info["search_tpl"].format(q=query.replace(" ", "+"))
+    try:
+        r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
+        soup = BeautifulSoup(r.text, "html.parser")
+        results = _extract_products(soup, url_search, info["url_base"])
+        if not results:
+            results.append({"nome": f"Cerca '{query}' su Forniture Birra", "prezzo": None, "url": url_search})
+        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
+    except Exception as e:
+        return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
+
+
+# ── Enosystem ─────────────────────────────────────────────────────────────────
+
+async def scrape_enosystem(query: str, client: httpx.AsyncClient) -> Dict:
+    fornitore = "Enosystem"
+    info = FORNITORE_INFO[fornitore]
+    url_search = info["search_tpl"].format(q=query.replace(" ", "+"))
+    try:
+        r = await client.get(url_search, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
+        soup = BeautifulSoup(r.text, "html.parser")
+        results = _extract_products(soup, url_search, info["url_base"])
+        if not results:
+            results.append({"nome": f"Cerca '{query}' su Enosystem", "prezzo": None, "url": url_search})
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": results, "errore": None}
     except Exception as e:
         return {"fornitore": fornitore, "url_ricerca": url_search, "risultati": [], "errore": str(e)[:80]}
@@ -183,8 +190,9 @@ async def cerca_prezzi(query: str, fornitori: list[str] | None = None) -> List[D
             "MrMalt": scrape_mrmalt(query, client),
             "Polsinelli": scrape_polsinelli(query, client),
             "Beer and Wine": scrape_beerandwine(query, client),
-            "AEB Group": scrape_aeb(query, client),
             "Pinta": scrape_pinta(query, client),
+            "Forniture Birra": scrape_forniture_birra(query, client),
+            "Enosystem": scrape_enosystem(query, client),
         }
         if fornitori:
             tasks = [v for k, v in tutti.items() if k in fornitori]

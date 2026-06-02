@@ -1,707 +1,655 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ cotta.nome }}</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; background: #f7f3ee; color: #222; }
-
-        .topbar { background: #5a381e; color: white; padding: 12px 32px; display: flex; align-items: center; gap: 12px; }
-        .topbar a { color: #f5deb3; text-decoration: none; font-size: 14px; }
-        .topbar h1 { margin: 0; font-size: 18px; flex: 1; }
-
-        .container { max-width: 1050px; margin: 24px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
-        .main { min-width: 0; }
-        .sidebar { min-width: 0; }
-
-        .card { background: white; border-radius: 10px; padding: 22px 26px; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
-        h2 { color: #5a381e; margin: 0 0 16px 0; font-size: 16px; border-bottom: 2px solid #f0e6d3; padding-bottom: 8px; }
-        h3 { color: #5a381e; margin: 16px 0 10px 0; font-size: 14px; }
-
-        .pipeline { display: flex; align-items: center; gap: 0; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
-        .step {
-            flex: 1; min-width: 80px; text-align: center;
-            padding: 10px 4px 8px;
-            background: #f0e6d3; color: #8a7060;
-            font-size: 11px; font-weight: bold;
-            position: relative; cursor: default;
-            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%);
-            margin-right: 2px;
-        }
-        .step:first-child { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); }
-        .step:last-child { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%); margin-right: 0; }
-        .step.done { background: #c8e6c9; color: #2e7d32; }
-        .step.active { background: #8b5a2b; color: white; }
-        .step .step-icon { font-size: 16px; display: block; }
-
-        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
-        .kpi { background: #fdf8f3; border: 1px solid #e8ddd0; border-radius: 8px; padding: 12px 10px; text-align: center; }
-        .kpi .val { font-size: 22px; font-weight: bold; color: #5a381e; }
-        .kpi .lbl { font-size: 11px; color: #888; margin-top: 2px; }
-        .kpi .sub { font-size: 11px; color: #aaa; }
-
-        .section { margin-bottom: 20px; }
-
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
-        .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 12px; }
-        label { display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }
-        input, select, textarea { width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; background: #fdfaf7; }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: #8b5a2b; }
-        textarea { min-height: 60px; resize: vertical; }
-
-        .btn { background: #8b5a2b; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
-        .btn:hover { background: #6f451f; }
-        .btn-success { background: #198754; }
-        .btn-success:hover { background: #146c43; }
-        .btn-outline { background: white; color: #8b5a2b; border: 2px solid #8b5a2b; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
-        .btn-outline:hover { background: #f5eee6; }
-        .btn-danger { background: #c0392b; color: white; border: none; padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-        .btn-danger:hover { background: #a93226; }
-        .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
-
-        .avanza-banner {
-            background: linear-gradient(135deg, #5a381e, #8b5a2b);
-            color: white; border-radius: 10px;
-            padding: 16px 20px; margin-bottom: 18px;
-            display: flex; justify-content: space-between; align-items: center;
-            gap: 12px;
-        }
-        .avanza-banner .txt { font-size: 14px; }
-        .avanza-banner strong { font-size: 16px; }
-        .btn-avanza { background: white; color: #5a381e; border: none; padding: 10px 22px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
-        .btn-avanza:hover { background: #f5deb3; }
-
-        .log-entry { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0e8de; }
-        .log-entry:last-child { border-bottom: none; }
-        .log-dot { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: 2px; }
-        .log-body { flex: 1; }
-        .log-desc { font-size: 14px; font-weight: bold; color: #333; }
-        .log-meta { font-size: 12px; color: #888; margin-top: 2px; }
-        .log-val { font-size: 13px; color: #5a381e; font-weight: bold; }
-        .log-note { font-size: 12px; color: #666; font-style: italic; margin-top: 3px; }
-
-        .tipo-misura .log-dot { background: #d1ecf1; }
-        .tipo-nota .log-dot { background: #fff3cd; }
-        .tipo-evento .log-dot { background: #f0e6d3; }
-        .tipo-avanzamento .log-dot { background: #d4edda; }
-
-        .fase-badge { display: inline-block; background: #f0e6d3; color: #5a381e; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 6px; }
-
-        details summary { cursor: pointer; color: #8b5a2b; font-weight: bold; font-size: 13px; }
-        details[open] { margin-bottom: 12px; }
-        details .inner { margin-top: 12px; }
-
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .badge-pianificata { background: #e9ecef; color: #495057; }
-        .badge-brewday { background: #fff3cd; color: #856404; }
-        .badge-fermentazione { background: #d1f2eb; color: #0e6251; }
-        .badge-secondaria { background: #d0f5f5; color: #0e6655; }
-        .badge-condizionamento { background: #e8d5f5; color: #4a148c; }
-        .badge-imbottigliamento { background: #cfe2ff; color: #084298; }
-        .badge-maturazione { background: #e8daff; color: #3d1a78; }
-        .badge-pronta { background: #d1e7dd; color: #0a3622; }
-        .badge-archiviata { background: #f8f9fa; color: #6c757d; }
-
-        .chart-card { position: relative; }
-        .chart-wrapper { position: relative; height: 280px; }
-        .chart-empty { text-align: center; padding: 40px 20px; color: #bbb; font-size: 13px; }
-        .chart-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: #666; justify-content: flex-end; flex-wrap: wrap; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-
-        /* Grafico fermentazione */
-        .chart-card { position: relative; }
-        .chart-wrapper { position: relative; height: 280px; }
-        .chart-empty { text-align: center; padding: 40px 20px; color: #bbb; font-size: 13px; }
-        .chart-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: #666; justify-content: flex-end; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        .annotation-label { font-size: 11px; }
-
-        @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .topbar { padding: 12px 18px; }
-            .avanza-banner { flex-direction: column; align-items: flex-start; }
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-
-</head>
-<body>
-
-<div class="topbar">
-    <a href="/cotte">← Tracker</a>
-    <h1>{{ cotta.nome }}{% if cotta.codice %} <span style="font-size:13px;opacity:0.7;">({{ cotta.codice }})</span>{% endif %}</h1>
-    <span class="badge badge-{{ cotta.stato }}">{{ fasi_label[cotta.stato] }}</span>
-    <a href="/brewmonk" title="Controlla produzione su BrewMonk" style="margin-left:auto;display:flex;align-items:center;gap:5px;background:#f59e0b;color:#000;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;text-decoration:none;">🍺 BrewMonk</a>
-    {% if cotta.ricetta_id %}
-    <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" title="Invia ricetta su BrewMonk" style="background:transparent;border:1px solid #f59e0b;color:#f59e0b;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">Push ricetta →</button>
-    {% endif %}
-</div>
-<div id="bm-push-msg" style="display:none;padding:6px 16px;font-size:12px;"></div>
-<script>
-async function pushBrewMonk(rid, btn) {
-    btn.disabled = true; btn.textContent = '…';
-    const el = document.getElementById('bm-push-msg');
-    try {
-        const r = await fetch('/brewmonk/push/' + rid, {method:'POST'});
-        const d = await r.json();
-        el.textContent = d.msg;
-        el.style.color = d.ok ? '#4ade80' : '#f87171';
-        el.style.display = 'block';
-        btn.textContent = d.ok ? '✓ Inviata' : '✗ Errore';
-    } catch(e) { btn.textContent = '✗'; el.textContent = 'Errore di rete'; el.style.display='block'; }
-}
-</script>
-
-<div class="container">
-<div class="main">
-
-    <div class="card" style="padding: 16px 20px;">
-        <div class="pipeline">
-            {% set icons = {'pianificata':'📋','brewday':'🔥','fermentazione':'🧫','secondaria':'🔬','condizionamento':'❄️','imbottigliamento':'🍾','maturazione':'⏳','pronta':'✅','archiviata':'📦'} %}
-            {% for s in stati %}
-            {% set s_idx = loop.index0 %}
-            <div class="step {% if s_idx < idx_stato %}done{% elif s == cotta.stato %}active{% endif %}">
-                <span class="step-icon">{{ icons[s] }}</span>
-                {{ fasi_label[s] }}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    {% if prossimo_stato and cotta.stato != 'archiviata' %}
-    <div class="avanza-banner">
-        <div class="txt">Prossima fase: <strong>{{ prossimo_label }}</strong></div>
-        <form method="post" action="/cotte/{{ cotta.id }}/avanza">
-            <button type="submit" class="btn-avanza">Avanza → {{ prossimo_label }}</button>
-        </form>
-    </div>
-    {% endif %}
-
-    <div class="kpi-row">
-        <div class="kpi">
-            <div class="val">{{ cotta.og_reale or '—' }}</div>
-            <div class="lbl">OG Reale</div>
-        </div>
-        <div class="kpi">
-            <div class="val">{% if cotta.fg_reale %}{{ cotta.fg_reale }}{% elif fg_stimata %}{{ fg_stimata }}*{% else %}—{% endif %}</div>
-            <div class="lbl">{% if not cotta.fg_reale and fg_stimata %}FG stimata{% else %}FG Reale{% endif %}</div>
-        </div>
-        <div class="kpi">
-            <div class="val">{% if cotta.abv_reale %}{{ cotta.abv_reale }}%{% elif abv_calcolato %}{{ abv_calcolato }}%*{% else %}—{% endif %}</div>
-            <div class="lbl">ABV</div>
-        </div>
-        <div class="kpi">
-            <div class="val">{{ cotta.volume_imbottigliato or cotta.volume_post_bollitura or '—' }}</div>
-            <div class="lbl">Litri</div>
-            <div class="sub">{{ 'imbottigliati' if cotta.volume_imbottigliato else 'post-bollitura' }}</div>
-        </div>
-    </div>
-
-    <!-- Grafico curva fermentazione -->
-    <div class="card chart-card">
-        <h2>📈 Curva di fermentazione</h2>
-        {% if misure_sg or misure_temp %}
-        <div class="chart-wrapper">
-            <canvas id="fermentChart"></canvas>
-        </div>
-        <div class="chart-legend">
-            {% if misure_sg %}<span><span class="legend-dot" style="background:#8b5a2b;"></span>Densità (SG)</span>{% endif %}
-            {% if misure_temp %}<span><span class="legend-dot" style="background:#0d6efd;"></span>Temperatura (°C)</span>{% endif %}
-            {% if fg_stimata %}<span><span class="legend-dot" style="background:#20c997;border-radius:0;width:14px;height:2px;vertical-align:middle;"></span>FG stimata</span>{% endif %}
-        </div>
-        {% else %}
-        <div class="chart-empty">
-            <div style="font-size:36px;margin-bottom:8px;">📊</div>
-            <p>Nessuna misurazione ancora.<br>Aggiungi letture di densità (SG) o temperatura (°C) dal diario per vedere il grafico.</p>
-        </div>
-        {% endif %}
-    </div>
-
-
-    <!-- Scheda dati tecnici -->
-    <div class="card">
-        <h2>Dati di processo</h2>
-        <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
-
-            <h3>🔥 Brew Day</h3>
-            <div class="grid3">
-                <div><label>Vol. pre-bollitura (L)</label><input type="number" step="0.1" name="volume_pre_bollitura" value="{{ cotta.volume_pre_bollitura or '' }}" placeholder="es. 28"></div>
-                <div><label>Vol. post-bollitura (L)</label><input type="number" step="0.1" name="volume_post_bollitura" value="{{ cotta.volume_post_bollitura or '' }}" placeholder="es. 23"></div>
-                <div><label>Efficienza reale (%)</label><input type="number" step="0.1" name="efficienza_reale" value="{{ cotta.efficienza_reale or '' }}" placeholder="es. 74"></div>
-                <div><label>Temp. mash (°C)</label><input type="number" step="0.5" name="temp_mash_gradi" value="{{ cotta.temp_mash_gradi or '' }}" placeholder="es. 67"></div>
-                <div><label>pH mash</label><input type="number" step="0.01" name="ph_mash" value="{{ cotta.ph_mash or '' }}" placeholder="es. 5.4"></div>
-                <div><label>pH pre-bollitura</label><input type="number" step="0.01" name="ph_pre_bollitura" value="{{ cotta.ph_pre_bollitura or '' }}" placeholder="es. 5.2"></div>
-                <div><label>Durata bollitura (min)</label><input type="number" name="durata_bollitura_min" value="{{ cotta.durata_bollitura_min or '' }}" placeholder="es. 60"></div>
-            </div>
-
-            <h3>🧫 Fermentazione</h3>
-            <div class="grid3">
-                <div><label>OG reale</label><input type="number" step="0.001" name="og_reale" value="{{ cotta.og_reale or '' }}" placeholder="es. 1.056"></div>
-                <div><label>Fermentatore</label><input type="text" name="fermentatore" value="{{ cotta.fermentatore or '' }}" placeholder="es. Fermentatore A"></div>
-                <div><label>Temp. fermentazione (°C)</label><input type="number" step="0.5" name="temp_fermentazione" value="{{ cotta.temp_fermentazione or '' }}" placeholder="es. 20"></div>
-                <div><label>Data inoculo</label><input type="date" name="data_inoculo" value="{{ cotta.data_inoculo or '' }}"></div>
-                <div><label>FG reale</label><input type="number" step="0.001" name="fg_reale" value="{{ cotta.fg_reale or '' }}" placeholder="es. 1.010"></div>
-            </div>
-
-            <h3>🔬 Secondaria / Condizionamento</h3>
-            <div class="grid3">
-                <div><label>Data travasamento</label><input type="date" name="data_travasamento" value="{{ cotta.data_travasamento or '' }}"></div>
-                <div><label>Temp. secondaria (°C)</label><input type="number" step="0.5" name="temp_secondaria" value="{{ cotta.temp_secondaria or '' }}" placeholder="es. 12"></div>
-            </div>
-
-            <h3>🍾 Imbottigliamento / Infustamento</h3>
-            <div class="grid3">
-                <div><label>Data imbottigliamento</label><input type="date" name="data_imbottigliamento" value="{{ cotta.data_imbottigliamento or '' }}"></div>
-                <div>
-                    <label>Tipo packaging</label>
-                    <select name="tipo_packaging">
-                        <option value="">— scegli —</option>
-                        <option value="Bottiglia" {% if cotta.tipo_packaging == 'Bottiglia' %}selected{% endif %}>Bottiglia</option>
-                        <option value="Fusto" {% if cotta.tipo_packaging == 'Fusto' %}selected{% endif %}>Fusto (Keg)</option>
-                        <option value="Cask" {% if cotta.tipo_packaging == 'Cask' %}selected{% endif %}>Cask</option>
-                        <option value="Growler" {% if cotta.tipo_packaging == 'Growler' %}selected{% endif %}>Growler</option>
-                    </select>
-                </div>
-                <div><label>Volume imbottigliato (L)</label><input type="number" step="0.1" name="volume_imbottigliato" value="{{ cotta.volume_imbottigliato or '' }}" placeholder="es. 20"></div>
-                <div><label>Carbonatazione (vol CO₂)</label><input type="number" step="0.1" name="carbonatazione_vols" value="{{ cotta.carbonatazione_vols or '' }}" placeholder="es. 2.4"></div>
-                <div><label>Priming sugar (g totale)</label><input type="number" step="0.1" name="priming_sugar_g" value="{{ cotta.priming_sugar_g or '' }}" placeholder="es. 120"></div>
-            </div>
-
-            <h3>🎨 Qualità finale</h3>
-            <div class="grid3">
-                <div>
-                    <label>Colore visivo</label>
-                    <select name="colore_visivo">
-                        <option value="">— osservazione —</option>
-                        {% for c in ['Giallo paglierino','Giallo dorato','Ambra chiaro','Ambra','Rame','Marrone chiaro','Marrone','Bruno','Nero'] %}
-                        <option {% if cotta.colore_visivo == c %}selected{% endif %}>{{ c }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label>Limpidezza</label>
-                    <select name="limpidezza">
-                        <option value="">— osservazione —</option>
-                        {% for l in ['Cristallino','Brillante','Leggermente velato','Velato','Torbido'] %}
-                        <option {% if cotta.limpidezza == l %}selected{% endif %}>{{ l }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <div style="margin-top:16px;">
-                <label>Note generali</label>
-                <textarea name="note">{{ cotta.note or '' }}</textarea>
-            </div>
-
-            <div class="btn-row">
-                <button type="submit" class="btn btn-success">💾 Salva dati</button>
-            </div>
-        </form>
-    </div>
-
-</div>
-
-<div class="sidebar">
-
-    {% if cotta.ricetta %}
-    <div class="card">
-        <h2>📋 Ricetta base</h2>
-        <a href="/ricette/{{ cotta.ricetta.id }}" style="color:#8b5a2b;font-weight:bold;">{{ cotta.ricetta.nome }}</a>
-        <div style="font-size:13px;color:#666;margin-top:6px;">
-            {{ cotta.ricetta.tipo }} · {{ cotta.ricetta.volume_target_litri }} L · {{ cotta.ricetta.efficienza }}% eff.
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="card">
-        <h2>📝 Aggiungi al diario</h2>
-        <form method="post" action="/cotte/{{ cotta.id }}/log">
-            <div style="margin-bottom:10px;">
-                <label>Tipo</label>
-                <select name="tipo" id="tipoLog">
-                    <option value="misura">📊 Misurazione</option>
-                    <option value="nota">📝 Nota</option>
-                    <option value="evento">⚡ Evento</option>
-                </select>
-            </div>
-            <div style="margin-bottom:10px;">
-                <label>Descrizione *</label>
-                <input type="text" name="descrizione" placeholder="es. Densità dopo 3 giorni" required>
-            </div>
-            <div class="grid2" style="margin-bottom:10px;" id="valoreRow">
-                <div><label>Valore</label><input type="number" step="0.001" name="valore" placeholder="es. 1.018"></div>
-                <div>
-                    <label>Unità</label>
-                    <select name="unita">
-                        <option value="">—</option>
-                        <option value="SG">SG</option>
-                        <option value="°C">°C</option>
-                        <option value="°F">°F</option>
-                        <option value="pH">pH</option>
-                        <option value="IBU">IBU</option>
-                        <option value="EBC">EBC</option>
-                        <option value="L">L</option>
-                        <option value="bar">bar</option>
-                        <option value="vol CO₂">vol CO₂</option>
-                        <option value="%">%</option>
-                    </select>
-                </div>
-            </div>
-            <div style="margin-bottom:10px;">
-                <label>Fase</label>
-                <select name="fase">
-                    {% for s in stati %}
-                    <option value="{{ s }}" {% if s == cotta.stato %}selected{% endif %}>{{ fasi_label[s] }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="margin-bottom:12px;">
-                <label>Note aggiuntive</label>
-                <textarea name="note" style="min-height:44px;" placeholder="Opzionale"></textarea>
-            </div>
-            <button type="submit" class="btn" style="width:100%;">Aggiungi al diario</button>
-        </form>
-    </div>
-
-    <div class="card">
-        <h2>📖 Diario di cotta</h2>
-        {% if log %}
-        {% for entry in log %}
-        <div class="log-entry tipo-{{ entry.tipo }}">
-            <div class="log-dot">
-                {% if entry.tipo == 'misura' %}📊
-                {% elif entry.tipo == 'nota' %}📝
-                {% elif entry.tipo == 'avanzamento' %}✅
-                {% else %}⚡{% endif %}
-            </div>
-            <div class="log-body">
-                <div class="log-desc">
-                    {{ entry.descrizione }}
-                    {% if entry.fase %}<span class="fase-badge">{{ fasi_label.get(entry.fase, entry.fase) }}</span>{% endif %}
-                </div>
-                {% if entry.valore is not none %}
-                <div class="log-val">{{ entry.valore }} {{ entry.unita or '' }}</div>
-                {% endif %}
-                {% if entry.note %}<div class="log-note">{{ entry.note }}</div>{% endif %}
-                <div class="log-meta">
-                    {{ entry.timestamp }}
-                    <form method="post" action="/cotte/{{ cotta.id }}/log/{{ entry.id }}/elimina" style="display:inline;margin-left:8px;">
-                        <button type="submit" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:11px;padding:0;" onclick="return confirm('Eliminare questa voce?')">✕</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-        {% else %}
-        <p style="color:#aaa;font-size:13px;">Nessun evento registrato.</p>
-        {% endif %}
-    </div>
-
-    <div class="card" style="border: 1px solid #f5c6cb;">
-        <h2 style="color:#c0392b;">Azioni</h2>
-        <form method="post" action="/cotte/{{ cotta.id }}/elimina">
-            <button type="submit" class="btn-danger" onclick="return confirm('Eliminare questa cotta e tutto il suo diario?')">🗑 Elimina cotta</button>
-        </form>
-    </div>
-
-</div>
-</div>
-
-{% if misure_sg or misure_temp %}
-<script>
-(function() {
-    if (window['chartjs-plugin-annotation']) {
-        Chart.register(window['chartjs-plugin-annotation']);
-    }
-
-    const sgData = {{ misure_sg | tojson }};
-    const tempData = {{ misure_temp | tojson }};
-    const fgStimata = {{ fg_stimata if fg_stimata else 'null' }};
-    const ogReale = {{ cotta.og_reale if cotta.og_reale else 'null' }};
-
-    const allLabels = [...new Set(
-        [...sgData.map(d => d.t), ...tempData.map(d => d.t)]
-    )].sort();
-
-    function pointsForLabels(data, labels) {
-        const map = {};
-        data.forEach(d => { map[d.t] = d.v; });
-        return labels.map(l => map[l] !== undefined ? map[l] : null);
-    }
-
-    const datasets = [];
-
-    if (sgData.length) {
-        datasets.push({
-            label: 'Densità (SG)',
-            data: pointsForLabels(sgData, allLabels),
-            borderColor: '#8b5a2b',
-            backgroundColor: 'rgba(139,90,43,0.08)',
-            pointBackgroundColor: '#8b5a2b',
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            tension: 0.35,
-            fill: true,
-            yAxisID: 'ySG',
-            spanGaps: false
-        });
-    }
-
-    if (tempData.length) {
-        datasets.push({
-            label: 'Temperatura (°C)',
-            data: pointsForLabels(tempData, allLabels),
-            borderColor: '#0d6efd',
-            backgroundColor: 'rgba(13,110,253,0.06)',
-            pointBackgroundColor: '#0d6efd',
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            tension: 0.35,
-            fill: false,
-            yAxisID: 'yTemp',
-            spanGaps: false,
-
-            borderDash: [5, 3]
-        });
-    }
-    // Linee di riferimento OG e FG
-    const annotations = {};
-    if (fgStimata) {
-        annotations.fgLine = {
-            type: 'line',
-            yScaleID: 'ySG',
-            yMin: fgStimata,
-            yMax: fgStimata,
-            borderColor: '#20c997',
-            borderWidth: 2,
-            borderDash: [6, 4],
-            label: {
-                display: true,
-                content: 'FG stimata ' + fgStimata,
-                position: 'end',
-                backgroundColor: 'rgba(32,201,151,0.15)',
-                color: '#0e6251',
-                font: { size: 11 }
-            }
-        };
-    }
-
-    if (ogReale) {
-        annotations.ogLine = {
-            type: 'line',
-            yScaleID: 'ySG',
-            yMin: ogReale,
-            yMax: ogReale,
-            borderColor: '#fd7e14',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            label: {
-                display: true,
-                content: 'OG ' + ogReale,
-                position: 'start',
-                backgroundColor: 'rgba(253,126,20,0.1)',
-                color: '#7a3b00',
-                font: { size: 11 }
-            }
-        };
-    }
-    const ctx = document.getElementById('fermentChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: { labels: allLabels, datasets: datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                annotation: {
-                    annotations: annotations
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            const u = ctx.dataset.yAxisID === 'ySG' ? '' : ' °C';
-                            return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + u;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        maxTicksLimit: 8,
-                        font: { size: 11 },
-                        callback: function(val) {
-
-                            const lbl = this.getLabelForValue(val);
-                            return lbl ? lbl.slice(5) : '';
-                        }
-                    },
-                    grid: { color: 'rgba(0,0,0,0.04)' }
-                },
-                ySG: {
-                    type: 'linear',
-                    position: 'left',
-                    title: { display: true, text: 'Densità (SG)', font: { size: 11 }, color: '#8b5a2b' },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#8b5a2b',
-                        callback: function(v) { return Number(v).toFixed(3); }
-                    },
-                    grid: { color: 'rgba(139,90,43,0.08)' },
-                    display: sgData.length > 0
-
-                },
-                yTemp: {
-                    type: 'linear',
-                    position: 'right',
-                    title: { display: true, text: 'Temperatura (°C)', font: { size: 11 }, color: '#0d6efd' },
-                    ticks: { font: { size: 11 }, color: '#0d6efd' },
-                    grid: { drawOnChartArea: false },
-                    display: tempData.length > 0
-                }
-            }
-        }
-    });
-
-    const tipoLog = document.getElementById('tipoLog');
-    const valoreRow = document.getElementById('valoreRow');
-
-    function toggleValoreRow() {
-        if (!tipoLog || !valoreRow) return;
-        valoreRow.style.display = tipoLog.value === 'misura' ? 'grid' : 'none';
-    }
-
-    if (tipoLog) {
-        tipoLog.addEventListener('change', toggleValoreRow);
-        toggleValoreRow();
-    }
-})();
-</script>
-{% else %}
-<script>
-(function() {
-    const tipoLog = document.getElementById('tipoLog');
-    const valoreRow = document.getElementById('valoreRow');
-
-    function toggleValoreRow() {
-        if (!tipoLog || !valoreRow) return;
-        valoreRow.style.display = tipoLog.value === 'misura' ? 'grid' : 'none';
-    }
-
-    if (tipoLog) {
-        tipoLog.addEventListener('change', toggleValoreRow);
-        toggleValoreRow();
-    }
-})();
-</script>
-{% endif %}
-
-
-<style>
-.deg-card{background:#fff;border-radius:8px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+{% extends "base.html" %}
+{% block title %}{{ cotta.nome }} — Tracker Cotta{% endblock %}
+{% block extra_style %}
+.fase-pipeline{display:flex;gap:0;overflow-x:auto;margin-bottom:18px;padding-bottom:4px;}
+.fase-step{flex:1;min-width:72px;text-align:center;padding:9px 4px 7px;font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--panel);color:var(--muted);position:relative;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%,10px 50%);margin-right:2px;transition:.15s;}
+.fase-step:first-child{clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%);}
+.fase-step:last-child{clip-path:polygon(0 0,100% 0,100% 100%,0 100%,10px 50%);margin-right:0;}
+.fase-step.done{background:var(--green-dim);color:var(--green);}
+.fase-step.active{background:var(--amber);color:#000;}
+.fase-step .fi{font-size:14px;display:block;margin-bottom:1px;}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;}
+.kpi .kv{font-size:1.6rem;font-weight:700;color:var(--amber);line-height:1;}
+.kpi .kl{font-size:11px;color:var(--muted);margin-top:3px;}
+.section-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:10px;}
+.stab{padding:7px 14px;border-radius:7px;border:1px solid transparent;cursor:pointer;font:600 12px/1 inherit;color:var(--muted);background:transparent;transition:.15s;}
+.stab.active,.stab:hover{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+.stab-panel{display:none;} .stab-panel.active{display:block;}
+.form-section{background:var(--panel);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
+.form-section h4{font-size:12px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin:0 0 12px;}
+.log-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(48,54,61,.4);}
+.log-item:last-child{border-bottom:none;}
+.log-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.avanza-bar{background:linear-gradient(135deg,var(--amber-dark),var(--amber));border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.avanza-bar .txt{color:#000;font-size:13px;}
+.avanza-bar strong{font-size:15px;}
+.btn-avanza{background:#000;color:var(--amber);border:none;padding:9px 20px;border-radius:7px;cursor:pointer;font:700 13px/1 inherit;white-space:nowrap;}
+.deg-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:8px;}
 .deg-scores{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0;}
 .deg-score{text-align:center;min-width:56px;}
-.deg-score .sv{font-size:18px;font-weight:700;color:#5a381e;}
-.deg-score .sl{font-size:10px;color:#999;}
-.deg-score .bar{height:4px;border-radius:2px;background:#e8ddd0;margin-top:3px;}
-.deg-score .fill{height:100%;border-radius:2px;background:#8b5a2b;}
-.deg-punteggio{font-size:22px;font-weight:800;color:#5a381e;}
-.deg-meta{font-size:12px;color:#888;}
-.form-degu{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-</style>
+.deg-score .dsv{font-size:1.4rem;font-weight:700;color:var(--amber);}
+.deg-score .dsl{font-size:10px;color:var(--muted);}
+.ai-box{position:fixed;bottom:80px;right:16px;width:320px;max-height:420px;background:var(--card);border:1px solid var(--amber);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;z-index:200;overflow:hidden;transition:.2s;}
+.ai-box.hidden{display:none;}
+.ai-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:250px;}
+.ai-msg{padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.5;}
+.ai-msg.user{background:var(--amber-dim);color:var(--amber);align-self:flex-end;max-width:85%;}
+.ai-msg.bot{background:var(--panel);color:var(--text);align-self:flex-start;max-width:90%;}
+.ai-input-row{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);}
+.ai-fab{position:fixed;bottom:20px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--amber);border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,158,11,.4);z-index:201;transition:.2s;}
+.ai-fab:hover{transform:scale(1.08);}
+@media(max-width:700px){.kpi-row{grid-template-columns:repeat(2,1fr);}.ai-box{width:calc(100vw - 32px);right:16px;}}
+{% endblock %}
+{% block content %}
 
-<div class="container" style="max-width:1050px;margin:0 auto;padding:0 20px 40px;">
-<div id="degustazioni" class="card" style="border-top:3px solid #8b5a2b;">
-  <h2 style="color:#5a381e;font-size:16px;margin-bottom:16px;">🍷 Schede di Degustazione</h2>
-
-  <!-- Form nuova degustazione -->
-  <details style="margin-bottom:20px;">
-    <summary style="cursor:pointer;color:#8b5a2b;font-weight:700;font-size:13px;list-style:none;">➕ Aggiungi scheda degustazione</summary>
-    <form method="post" action="/cotte/{{ cotta.id }}/degustazioni" style="margin-top:14px;">
-      <div class="form-degu">
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Data</label>
-          <input type="date" name="data" value="{{ oggi }}" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Degustatore</label>
-          <input type="text" name="degustatore" placeholder="Nome / iniziali" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Aroma (0–10)</label>
-          <input type="number" name="aroma" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Gusto (0–10)</label>
-          <input type="number" name="gusto" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Aspetto (0–10)</label>
-          <input type="number" name="aspetto" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Sensazione (0–10)</label>
-          <input type="number" name="sensazione" min="0" max="10" step="0.5" value="7" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;">
-        </div>
-      </div>
-      <div style="margin-top:10px;">
-        <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px;">Note di degustazione</label>
-        <textarea name="note" rows="3" placeholder="Impressioni, difetti riscontrati, confronto con stile…" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fdfaf7;resize:vertical;"></textarea>
-      </div>
-      <button type="submit" style="margin-top:10px;background:#8b5a2b;color:white;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;">✓ Salva scheda</button>
-    </form>
-  </details>
-
-  <!-- Lista degustazioni -->
-  {% if degustazioni %}
-    {% for d in degustazioni %}
-    <div class="deg-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-        <div>
-          <span class="deg-meta">{{ d.data }}{% if d.degustatore %} · {{ d.degustatore }}{% endif %}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          {% if d.punteggio %}
-          <div style="text-align:right;">
-            <span class="deg-punteggio">{{ d.punteggio }}</span>
-            <span style="font-size:13px;color:#888;">/10</span>
-          </div>
-          {% endif %}
-          <form method="post" action="/cotte/{{ cotta.id }}/degustazioni/{{ d.id }}/elimina" style="margin:0;" onsubmit="return confirm('Eliminare questa scheda?')">
-            <button type="submit" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:12px;padding:4px 8px;border-radius:4px;border:1px solid #c0392b;">✕</button>
-          </form>
-        </div>
-      </div>
-      <div class="deg-scores">
-        {% for label, val in [('Aroma', d.aroma), ('Gusto', d.gusto), ('Aspetto', d.aspetto), ('Sensazione', d.sensazione)] %}
-        {% if val is not none %}
-        <div class="deg-score">
-          <div class="sv">{{ val }}</div>
-          <div class="sl">{{ label }}</div>
-          <div class="bar"><div class="fill" style="width:{{ (val/10*100)|int }}%;"></div></div>
-        </div>
-        {% endif %}
-        {% endfor %}
-      </div>
-      {% if d.note %}
-      <div style="font-size:13px;color:#555;margin-top:8px;padding-top:8px;border-top:1px solid #f0e6d3;line-height:1.5;">{{ d.note }}</div>
-      {% endif %}
-    </div>
-    {% endfor %}
-  {% else %}
-    <div style="text-align:center;padding:30px;color:#bbb;font-size:13px;">
-      🍷 Nessuna scheda di degustazione ancora. Aggiungi la prima qui sopra.
-    </div>
+<!-- Topbar breadcrumb -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+  <a href="/cotte" class="btn btn-ghost btn-sm">← Cotte</a>
+  <h1 style="font-size:20px;margin:0;flex:1;">
+    {{ cotta.nome }}
+    {% if cotta.codice %}<span style="font-size:13px;color:var(--muted);margin-left:6px;">({{ cotta.codice }})</span>{% endif %}
+  </h1>
+  <span class="badge badge-amber">{{ fasi_label[cotta.stato] }}</span>
+  {% if cotta.ricetta_id %}
+  <a href="/cotte/{{ cotta.id }}/vai-produzione" class="btn btn-success btn-sm" title="Solo ricette da magazzino">▶ Vai in Produzione</a>
+  {% endif %}
+  {% if cotta.ricetta_id %}
+  <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" style="background:transparent;border:1px solid var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">🍺 Push BrewMonk</button>
   {% endif %}
 </div>
+
+<!-- Pipeline fasi -->
+<div class="card" style="padding:14px 16px;margin-bottom:16px;">
+  <div class="fase-pipeline">
+    {% set icons = {'pianificata':'📋','brewday':'🔥','fermentazione':'🧫','secondaria':'🔬','condizionamento':'❄️','imbottigliamento':'🍾','maturazione':'⏳','pronta':'✅','archiviata':'📦'} %}
+    {% for s in stati %}
+    {% set s_idx = loop.index0 %}
+    <div class="fase-step {% if s_idx < idx_stato %}done{% elif s == cotta.stato %}active{% endif %}">
+      <span class="fi">{{ icons[s] }}</span>{{ fasi_label[s] }}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if prossimo_stato and cotta.stato != 'archiviata' %}
+  <div class="avanza-bar">
+    <div class="txt">Prossima fase: <strong>{{ prossimo_label }}</strong></div>
+    <form method="post" action="/cotte/{{ cotta.id }}/avanza">
+      <button type="submit" class="btn-avanza">Avanza → {{ prossimo_label }}</button>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
-</body>
-</html>
+<!-- KPI -->
+<div class="kpi-row" style="margin-bottom:16px;">
+  <div class="kpi">
+    <div class="kv">{{ cotta.og_reale or '—' }}</div>
+    <div class="kl">OG Reale</div>
+  </div>
+  <div class="kpi">
+    <div class="kv">{% if cotta.fg_reale %}{{ cotta.fg_reale }}{% elif fg_stimata %}{{ fg_stimata }}*{% else %}—{% endif %}</div>
+    <div class="kl">{% if not cotta.fg_reale and fg_stimata %}FG stimata{% else %}FG Reale{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="kv">{% if cotta.abv_reale %}{{ cotta.abv_reale }}%{% elif abv_calcolato %}{{ abv_calcolato }}%*{% else %}—{% endif %}</div>
+    <div class="kl">ABV</div>
+  </div>
+  <div class="kpi">
+    <div class="kv">{{ cotta.volume_imbottigliato or cotta.volume_post_bollitura or '—' }}</div>
+    <div class="kl">{{ 'L imbottigliati' if cotta.volume_imbottigliato else 'L post-bollitura' }}</div>
+  </div>
+</div>
+
+<!-- Info data -->
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;font-size:12px;color:var(--muted);">
+  {% if cotta.data_brew %}📅 Brew day: <strong style="color:var(--text)">{{ cotta.data_brew }}</strong>{% endif %}
+  {% if cotta.data_inoculo %} · 🧫 Inoculo: <strong style="color:var(--text)">{{ cotta.data_inoculo }}</strong>{% endif %}
+  {% if cotta.data_imbottigliamento %} · 🍾 Imbottigliamento: <strong style="color:var(--text)">{{ cotta.data_imbottigliamento }}</strong>{% endif %}
+  {% if cotta.ricetta %} · 🧪 <a href="/ricette/{{ cotta.ricetta.id }}">{{ cotta.ricetta.nome }}</a>{% endif %}
+</div>
+
+<!-- Sezione tabs -->
+<div class="section-tabs">
+  <button class="stab active" onclick="showStab('brewday', this)">🔥 Brew Day</button>
+  <button class="stab" onclick="showStab('ferm', this)">🧫 Fermentazione</button>
+  <button class="stab" onclick="showStab('cond', this)">❄️ Condizionamento</button>
+  <button class="stab" onclick="showStab('imbott', this)">🍾 Imbottigliamento</button>
+  <button class="stab" onclick="showStab('aggiunte', this)">🌿 Aggiunte fuori ricetta</button>
+  <button class="stab" onclick="showStab('diario', this)">📖 Diario</button>
+  <button class="stab" onclick="showStab('grafici', this)">📈 Grafici</button>
+  {% if cotta.stato in ['pronta','maturazione','imbottigliamento','condizionamento','archiviata'] %}
+  <button class="stab" onclick="showStab('deg', this)" id="tab-deg-btn">🍷 Degustazione</button>
+  {% endif %}
+</div>
+
+<!-- ── BREW DAY ──────────────────────────────────────────── -->
+<div id="stab-brewday" class="stab-panel active">
+<form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+
+  <div class="form-section">
+    <h4>🌾 Ammostamento (Mash)</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>Temp. mash (°C)</label><input type="number" step="0.5" name="temp_mash_gradi" value="{{ cotta.temp_mash_gradi or '' }}" placeholder="67"></div>
+      <div class="form-row"><label>pH mash</label><input type="number" step="0.01" name="ph_mash" value="{{ cotta.ph_mash or '' }}" placeholder="5.4"></div>
+      <div class="form-row"><label>pH pre-bollitura</label><input type="number" step="0.01" name="ph_pre_bollitura" value="{{ cotta.ph_pre_bollitura or '' }}" placeholder="5.2"></div>
+      <div class="form-row"><label>Durata bollitura (min)</label><input type="number" name="durata_bollitura_min" value="{{ cotta.durata_bollitura_min or '' }}" placeholder="60"></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h4>📊 Volumi & Efficienza</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>Vol. pre-bollitura (L)</label><input type="number" step="0.1" name="volume_pre_bollitura" value="{{ cotta.volume_pre_bollitura or '' }}" placeholder="28"></div>
+      <div class="form-row"><label>Vol. post-bollitura (L)</label><input type="number" step="0.1" name="volume_post_bollitura" value="{{ cotta.volume_post_bollitura or '' }}" placeholder="23"></div>
+      <div class="form-row"><label>Efficienza reale (%)</label><input type="number" step="0.1" name="efficienza_reale" value="{{ cotta.efficienza_reale or '' }}" placeholder="74"></div>
+      <div class="form-row"><label>Data brew</label><input type="date" name="data_brew" value="{{ cotta.data_brew or oggi }}"></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h4>🌡️ Condizioni ambientali</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>Temperatura ambiente (°C)</label><input type="number" step="0.5" name="temp_ambiente" value="{{ cotta.temp_ambiente or '' }}" placeholder="20"></div>
+      <div class="form-row"><label>Acqua di processo (L)</label><input type="number" step="0.5" name="acqua_totale_litri" value="{{ cotta.acqua_totale_litri or '' }}" placeholder="30"></div>
+      <div class="form-row"><label>Lotto / Codice</label><input type="text" name="codice" value="{{ cotta.codice or '' }}" placeholder="es. BR-2025-01"></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h4>📝 Note brew day</h4>
+    <textarea name="note" rows="3" placeholder="Osservazioni generali sul brew day, problemi riscontrati…">{{ cotta.note or '' }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">💾 Salva Brew Day</button>
+</form>
+</div>
+
+<!-- ── FERMENTAZIONE ─────────────────────────────────────── -->
+<div id="stab-ferm" class="stab-panel">
+<form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+
+  <div class="form-section">
+    <h4>🧫 Inoculo & Lievito</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>OG reale</label><input type="number" step="0.001" name="og_reale" value="{{ cotta.og_reale or '' }}" placeholder="1.056"></div>
+      <div class="form-row"><label>Data inoculo</label><input type="datetime-local" name="data_inoculo" value="{{ cotta.data_inoculo or '' }}"></div>
+      <div class="form-row"><label>Fermentatore</label><input type="text" name="fermentatore" value="{{ cotta.fermentatore or '' }}" placeholder="Fermentatore A"></div>
+      <div class="form-row"><label>Temp. fermentazione (°C)</label><input type="number" step="0.5" name="temp_fermentazione" value="{{ cotta.temp_fermentazione or '' }}" placeholder="20"></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h4>📈 Parametri industriali fermentazione</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>Pressione (bar)</label><input type="number" step="0.01" name="pressione_bar" value="{{ cotta.pressione_bar or '' }}" placeholder="0"></div>
+      <div class="form-row"><label>Torbidità visiva</label>
+        <select name="limpidezza">
+          <option value="">— osservazione —</option>
+          {% for l in ['Cristallino','Brillante','Leggermente velato','Velato','Torbido'] %}
+          <option {% if cotta.limpidezza == l %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label>FG reale</label><input type="number" step="0.001" name="fg_reale" value="{{ cotta.fg_reale or '' }}" placeholder="1.010"></div>
+      <div class="form-row"><label>Data fine fermentazione</label><input type="datetime-local" name="data_travasamento" value="{{ cotta.data_travasamento or '' }}"></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h4>📝 Note fermentazione</h4>
+    <textarea name="note_ferm" rows="3" placeholder="Attività lievito, aromi, problemi riscontrati…"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">💾 Salva Fermentazione</button>
+</form>
+
+{% if fg_stimata %}
+<div class="alert alert-amber" style="margin-top:12px;">
+  ℹ️ FG stimata: <strong>{{ fg_stimata }}</strong> (attenuazione {{ ((cotta.og_reale - 1) - (fg_stimata - 1)) / (cotta.og_reale - 1) * 100 | round(1) }}%)
+</div>
+{% endif %}
+</div>
+
+<!-- ── CONDIZIONAMENTO ───────────────────────────────────── -->
+<div id="stab-cond" class="stab-panel">
+<form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+  <div class="form-section">
+    <h4>❄️ Secondaria & Condizionamento</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>Data travasamento</label><input type="datetime-local" name="data_travasamento" value="{{ cotta.data_travasamento or '' }}"></div>
+      <div class="form-row"><label>Temp. secondaria (°C)</label><input type="number" step="0.5" name="temp_secondaria" value="{{ cotta.temp_secondaria or '' }}" placeholder="12"></div>
+      <div class="form-row"><label>Colore visivo</label>
+        <select name="colore_visivo">
+          <option value="">— osservazione —</option>
+          {% for c in ['Giallo paglierino','Giallo dorato','Ambra chiaro','Ambra','Rame','Marrone chiaro','Marrone','Bruno','Nero'] %}
+          <option {% if cotta.colore_visivo == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="form-section">
+    <h4>📝 Note condizionamento</h4>
+    <textarea name="note_cond" rows="3" placeholder="Chiarificanti aggiunti, cold crash, filtrazione…"></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">💾 Salva Condizionamento</button>
+</form>
+</div>
+
+<!-- ── IMBOTTIGLIAMENTO ──────────────────────────────────── -->
+<div id="stab-imbott" class="stab-panel">
+<form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+  <div class="form-section">
+    <h4>🍾 Packaging</h4>
+    <div class="form-grid">
+      <div class="form-row"><label>Data imbottigliamento</label><input type="datetime-local" name="data_imbottigliamento" value="{{ cotta.data_imbottigliamento or '' }}"></div>
+      <div class="form-row"><label>Tipo packaging</label>
+        <select name="tipo_packaging">
+          <option value="">— scegli —</option>
+          {% for p in ['Bottiglia 33cl','Bottiglia 50cl','Bottiglia 75cl','Fusto (Keg)','Cask','Growler'] %}
+          <option {% if cotta.tipo_packaging == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label>Volume imbottigliato (L)</label><input type="number" step="0.1" name="volume_imbottigliato" value="{{ cotta.volume_imbottigliato or '' }}" placeholder="20"></div>
+      <div class="form-row"><label>Carbonatazione (vol CO₂)</label><input type="number" step="0.1" name="carbonatazione_vols" value="{{ cotta.carbonatazione_vols or '' }}" placeholder="2.4"></div>
+      <div class="form-row"><label>Priming sugar (g totale)</label><input type="number" step="0.1" name="priming_sugar_g" value="{{ cotta.priming_sugar_g or '' }}" placeholder="120"></div>
+      <div class="form-row"><label>FG finale</label><input type="number" step="0.001" name="fg_reale" value="{{ cotta.fg_reale or '' }}" placeholder="1.010"></div>
+    </div>
+  </div>
+  <div class="form-section">
+    <h4>📝 Note imbottigliamento</h4>
+    <textarea name="note_imbott" rows="3" placeholder="Operatori presenti, problemi, numero bottiglie…"></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">💾 Salva Imbottigliamento</button>
+</form>
+
+<!-- Calcolatore priming rapido -->
+<div class="card" style="margin-top:12px;">
+  <div style="font-size:13px;font-weight:600;margin-bottom:10px;">🔧 Calcolatore priming rapido</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div class="form-row"><label>Volume (L)</label><input type="number" id="q-vol" value="{{ cotta.volume_imbottigliato or 20 }}" step="0.5" oninput="qPriming()"></div>
+    <div class="form-row"><label>CO₂ target (vol)</label><input type="number" id="q-co2" value="2.4" step="0.1" oninput="qPriming()"></div>
+    <div class="form-row"><label>Temp (°C)</label><input type="number" id="q-temp" value="20" step="1" oninput="qPriming()"></div>
+  </div>
+  <div id="q-result" style="font-size:13px;color:var(--amber);font-weight:600;"></div>
+</div>
+</div>
+
+<!-- ── AGGIUNTE FUORI RICETTA ────────────────────────────── -->
+<div id="stab-aggiunte" class="stab-panel">
+  <div class="card" style="margin-bottom:14px;">
+    <h3 style="font-size:14px;margin-bottom:14px;">➕ Aggiungi ingrediente extra (opzionale)</h3>
+    <form method="post" action="/cotte/{{ cotta.id }}/aggiunte">
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Nome *</label>
+          <input type="text" name="nome" placeholder="es. Bucce d'arancia, Purea di lamponi…" required>
+        </div>
+        <div class="form-row">
+          <label>Tipo</label>
+          <select name="tipo">
+            <option value="infuso">🍵 Infuso</option>
+            <option value="purea">🫐 Purea</option>
+            <option value="spezia">🌿 Spezia</option>
+            <option value="frutta">🍊 Frutta</option>
+            <option value="estratto">💧 Estratto</option>
+            <option value="altro">📦 Altro</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Quantità</label>
+          <input type="number" name="quantita" step="0.01" placeholder="100">
+        </div>
+        <div class="form-row">
+          <label>Unità</label>
+          <select name="unita">
+            <option value="g">g</option><option value="kg">kg</option>
+            <option value="mL">mL</option><option value="L">L</option>
+            <option value="pz">pz</option><option value="cucchiaio">cucchiaio</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Fase di aggiunta</label>
+          <select name="fase">
+            {% for s in stati %}
+            <option value="{{ s }}" {% if s == cotta.stato %}selected{% endif %}>{{ fasi_label[s] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Note</label>
+          <input type="text" name="note" placeholder="Durata infusione, temperatura…">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Aggiungi</button>
+    </form>
+  </div>
+
+  {% if cotta.aggiunte %}
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">🌿 Aggiunte registrate ({{ cotta.aggiunte|length }})</div>
+    <table class="tbl">
+      <thead><tr><th>Nome</th><th>Tipo</th><th>Qtà</th><th>Fase</th><th>Quando</th><th>Note</th><th></th></tr></thead>
+      <tbody>
+        {% for a in cotta.aggiunte %}
+        <tr>
+          <td style="font-weight:600;">{{ a.nome }}</td>
+          <td><span class="badge badge-amber">{{ a.tipo }}</span></td>
+          <td style="color:var(--muted);">{{ a.quantita or '—' }} {{ a.unita }}</td>
+          <td style="color:var(--muted);">{{ fasi_label.get(a.fase, a.fase) }}</td>
+          <td style="font-size:11px;color:var(--muted);">{{ a.timestamp }}</td>
+          <td style="font-size:12px;color:var(--muted);">{{ a.note or '' }}</td>
+          <td>
+            <form method="post" action="/cotte/{{ cotta.id }}/aggiunte/{{ a.id }}/elimina">
+              <button class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-icon">🌿</div><p>Nessuna aggiunta fuori ricetta registrata.</p></div>
+  {% endif %}
+</div>
+
+<!-- ── DIARIO ────────────────────────────────────────────── -->
+<div id="stab-diario" class="stab-panel">
+  <div style="display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start;">
+    <div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:14px;">📖 Diario eventi ({{ log|length }})</div>
+        {% if log %}
+        {% for entry in log %}
+        <div class="log-item">
+          <div class="log-dot" style="background:{% if entry.tipo=='misura' %}var(--blue-dim){% elif entry.tipo=='nota' %}var(--amber-dim){% elif entry.tipo=='avanzamento' %}var(--green-dim){% else %}var(--panel){% endif %}">
+            {% if entry.tipo == 'misura' %}📊
+            {% elif entry.tipo == 'nota' %}📝
+            {% elif entry.tipo == 'avanzamento' %}✅
+            {% else %}⚡{% endif %}
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">
+              {{ entry.descrizione }}
+              {% if entry.fase %}<span class="badge badge-gray" style="margin-left:6px;">{{ fasi_label.get(entry.fase, entry.fase) }}</span>{% endif %}
+            </div>
+            {% if entry.valore is not none %}
+            <div style="font-size:13px;color:var(--amber);font-weight:600;">{{ entry.valore }} {{ entry.unita or '' }}</div>
+            {% endif %}
+            {% if entry.note %}<div style="font-size:12px;color:var(--muted);font-style:italic;">{{ entry.note }}</div>{% endif %}
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+              🕐 {{ entry.timestamp }}
+              <form method="post" action="/cotte/{{ cotta.id }}/log/{{ entry.id }}/elimina" style="display:inline;margin-left:8px;">
+                <button type="submit" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0;" onclick="return confirm('Eliminare?')">✕</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty" style="padding:20px;"><p>Nessun evento registrato.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:14px;">📝 Aggiungi al diario</div>
+        <form method="post" action="/cotte/{{ cotta.id }}/log">
+          <div class="form-row">
+            <label>Tipo</label>
+            <select name="tipo" id="tipoLog" onchange="toggleVal()">
+              <option value="misura">📊 Misurazione</option>
+              <option value="nota">📝 Nota</option>
+              <option value="evento">⚡ Evento</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Descrizione *</label>
+            <input type="text" name="descrizione" placeholder="es. Densità dopo 3 giorni" required>
+          </div>
+          <div id="val-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="form-row"><label>Valore</label><input type="number" step="0.001" name="valore" placeholder="1.018"></div>
+            <div class="form-row">
+              <label>Unità</label>
+              <select name="unita">
+                <option value="">—</option>
+                {% for u in ['SG','°C','°F','pH','IBU','EBC','L','bar','vol CO₂','%','g/L'] %}
+                <option value="{{ u }}">{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Fase</label>
+            <select name="fase">
+              {% for s in stati %}
+              <option value="{{ s }}" {% if s == cotta.stato %}selected{% endif %}>{{ fasi_label[s] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Note aggiuntive</label>
+            <textarea name="note" style="min-height:44px;" placeholder="Opzionale"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;">Aggiungi al diario</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── GRAFICI ───────────────────────────────────────────── -->
+<div id="stab-grafici" class="stab-panel">
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px;">📈 Curva di Fermentazione</div>
+    {% if misure_sg or misure_temp %}
+    <div style="position:relative;height:300px;">
+      <canvas id="fermentChart"></canvas>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--muted);justify-content:flex-end;flex-wrap:wrap;">
+      {% if misure_sg %}<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--amber);margin-right:4px;"></span>Densità (SG)</span>{% endif %}
+      {% if misure_temp %}<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--blue);margin-right:4px;"></span>Temperatura (°C)</span>{% endif %}
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">📊</div><p>Aggiungi misurazioni SG o °C dal diario per vedere il grafico.</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── DEGUSTAZIONE ─────────────────────────────────────── -->
+{% if cotta.stato in ['pronta','maturazione','imbottigliamento','condizionamento','archiviata'] %}
+<div id="stab-deg" class="stab-panel">
+  <div class="card" style="margin-bottom:14px;">
+    <h3 style="font-size:14px;margin-bottom:14px;">🍷 Nuova scheda di degustazione</h3>
+    <form method="post" action="/cotte/{{ cotta.id }}/degustazioni">
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Data</label>
+          <input type="date" name="data" value="{{ oggi }}">
+        </div>
+        <div class="form-row">
+          <label>Degustatore</label>
+          <input type="text" name="degustatore" placeholder="{{ session.nome or 'Anonimo' }}">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+        {% for campo,lbl in [('aroma','👃 Aroma'),('gusto','👅 Gusto'),('aspetto','👁 Aspetto'),('sensazione','🫦 Corposità')] %}
+        <div>
+          <label>{{ lbl }}</label>
+          <input type="range" name="{{ campo }}" min="0" max="10" step="0.5" value="7"
+            oninput="document.getElementById('{{ campo }}-val').textContent=this.value"
+            style="width:100%;accent-color:var(--amber);">
+          <div style="text-align:center;font-size:13px;color:var(--amber);font-weight:700;" id="{{ campo }}-val">7</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-row">
+        <label>Note dettagliate</label>
+        <textarea name="note" rows="3" placeholder="Descrivi aspetto, aroma, gusto, retrogusto, carbonatazione…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Salva scheda degustazione</button>
+    </form>
+  </div>
+
+  {% if degustazioni %}
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">📊 Schede salvate ({{ degustazioni|length }})</div>
+    {% for d in degustazioni %}
+    <div class="deg-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div>
+          <strong style="color:var(--text);">{{ d.degustatore or 'Anonimo' }}</strong>
+          <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ d.data }}</span>
+        </div>
+        {% if d.voto %}
+        <span class="badge badge-amber">⭐ {{ '%.1f'|format(d.voto) }}/10</span>
+        {% endif %}
+      </div>
+      <div class="deg-scores">
+        {% if d.aroma %}<div class="deg-score"><div class="dsv">{{ d.aroma }}</div><div class="dsl">👃 Aroma</div></div>{% endif %}
+        {% if d.gusto %}<div class="deg-score"><div class="dsv">{{ d.gusto }}</div><div class="dsl">👅 Gusto</div></div>{% endif %}
+        {% if d.aspetto %}<div class="deg-score"><div class="dsv">{{ d.aspetto }}</div><div class="dsl">👁 Aspetto</div></div>{% endif %}
+        {% if d.sensazione %}<div class="deg-score"><div class="dsv">{{ d.sensazione }}</div><div class="dsl">🫦 Corpo</div></div>{% endif %}
+      </div>
+      {% if d.note %}<p style="font-size:13px;color:var(--muted);margin:0;font-style:italic;">{{ d.note }}</p>{% endif %}
+      <form method="post" action="/cotte/{{ cotta.id }}/degustazioni/{{ d.id }}/elimina" style="margin-top:8px;">
+        <button class="btn btn-danger btn-xs" onclick="return confirm('Eliminare scheda?')">🗑 Elimina</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Azioni pericolose ─────────────────────────────────── -->
+<div class="card" style="margin-top:20px;border-color:var(--red);">
+  <div class="card-header">
+    <div class="card-title" style="color:var(--red);">⚠️ Azioni pericolose</div>
+  </div>
+  <form method="post" action="/cotte/{{ cotta.id }}/elimina" style="display:inline;">
+    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Eliminare questa cotta e tutto il suo diario?')">🗑 Elimina cotta</button>
+  </form>
+</div>
+
+<!-- ── AI FAB ─────────────────────────────────────────────── -->
+<div id="ai-box" class="ai-box hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--amber);border-radius:12px 12px 0 0;">
+    <span style="font:700 13px/1 inherit;color:#000;">🤖 Assistente AI</span>
+    <button onclick="toggleAI()" style="background:none;border:none;cursor:pointer;color:#000;font-size:16px;padding:0;">✕</button>
+  </div>
+  <div class="ai-msgs" id="ai-msgs">
+    <div class="ai-msg bot">Ciao! Sono il tuo assistente birraio 🍺 Dimmi come ti posso aiutare con questa cotta.</div>
+  </div>
+  <div class="ai-input-row">
+    <input type="text" id="ai-input" placeholder="Chiedi un consiglio…" style="flex:1;font-size:12px;padding:7px 10px;" onkeydown="if(event.key==='Enter')sendAI()">
+    <button onclick="sendAI()" class="btn btn-primary btn-xs">→</button>
+  </div>
+</div>
+<button class="ai-fab" onclick="toggleAI()" title="Assistente AI">🤖</button>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script>
+// ── TABS ──────────────────────────────────────────────────
+function showStab(id, btn) {
+  document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  document.getElementById('stab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+// ── LOG tipo toggle ───────────────────────────────────────
+function toggleVal() {
+  const t = document.getElementById('tipoLog');
+  const r = document.getElementById('val-row');
+  if (t && r) r.style.display = t.value === 'misura' ? 'grid' : 'none';
+}
+document.addEventListener('DOMContentLoaded', toggleVal);
+
+// ── PRIMING RAPIDO ────────────────────────────────────────
+function qPriming() {
+  const vol = parseFloat(document.getElementById('q-vol').value) || 20;
+  const co2 = parseFloat(document.getElementById('q-co2').value) || 2.4;
+  const temp = parseFloat(document.getElementById('q-temp').value) || 20;
+  const co2res = -0.9753 * Math.log(temp) + 4.9648;
+  const g = Math.max(0, (co2 - co2res) * 3.8 * vol);
+  document.getElementById('q-result').textContent =
+    `Saccarosio: ${g.toFixed(1)} g totali (${(g/vol).toFixed(2)} g/L · ${(g/vol*0.75).toFixed(2)} g per 75cl)`;
+}
+qPriming();
+
+// ── GRAFICO ───────────────────────────────────────────────
+{% if misure_sg or misure_temp %}
+(function() {
+  if (window['chartjs-plugin-annotation']) Chart.register(window['chartjs-plugin-annotation']);
+  const sgData = {{ misure_sg | tojson }};
+  const tempData = {{ misure_temp | tojson }};
+  const fgStimata = {{ fg_stimata if fg_stimata else 'null' }};
+  const ogReale = {{ cotta.og_reale if cotta.og_reale else 'null' }};
+  const allLabels = [...new Set([...sgData.map(d=>d.t),...tempData.map(d=>d.t)])].sort();
+  function pts(data, lbls) { const m={}; data.forEach(d=>m[d.t]=d.v); return lbls.map(l=>m[l]!==undefined?m[l]:null); }
+  const datasets = [];
+  if (sgData.length) datasets.push({ label:'Densità (SG)', data:pts(sgData,allLabels), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.1)', pointRadius:5, tension:.35, fill:true, yAxisID:'ySG', spanGaps:false });
+  if (tempData.length) datasets.push({ label:'Temp (°C)', data:pts(tempData,allLabels), borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,.06)', pointRadius:4, tension:.35, fill:false, yAxisID:'yT', spanGaps:false, borderDash:[5,3] });
+  const annotations = {};
+  if (fgStimata) annotations.fg = { type:'line', yScaleID:'ySG', yMin:fgStimata, yMax:fgStimata, borderColor:'#3fb950', borderWidth:2, borderDash:[6,4], label:{display:true,content:'FG stimata '+fgStimata,position:'end',backgroundColor:'rgba(63,185,80,.15)',color:'#3fb950',font:{size:11}} };
+  if (ogReale) annotations.og = { type:'line', yScaleID:'ySG', yMin:ogReale, yMax:ogReale, borderColor:'#f59e0b', borderWidth:1, borderDash:[4,4] };
+  const ctx = document.getElementById('fermentChart').getContext('2d');
+  new Chart(ctx, { type:'line', data:{labels:allLabels,datasets},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, annotation:{annotations} },
+      scales:{
+        x:{ticks:{maxTicksLimit:8,font:{size:10},color:'#8b949e'},grid:{color:'rgba(48,54,61,.5)'}},
+        ySG:{type:'linear',position:'left',display:sgData.length>0,ticks:{font:{size:10},color:'#f59e0b',callback:v=>Number(v).toFixed(3)},grid:{color:'rgba(48,54,61,.3)'}},
+        yT:{type:'linear',position:'right',display:tempData.length>0,ticks:{font:{size:10},color:'#58a6ff'},grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+})();
+{% endif %}
+
+// ── AI ASSISTANT ──────────────────────────────────────────
+let aiHistory = [];
+function toggleAI() {
+  const box = document.getElementById('ai-box');
+  box.classList.toggle('hidden');
+}
+async function sendAI() {
+  const input = document.getElementById('ai-input');
+  const q = input.value.trim();
+  if (!q) return;
+  addAIMsg('user', q);
+  input.value = '';
+  const ctx = `Cotta: {{ cotta.nome }} · Stato: {{ cotta.stato }} · OG: {{ cotta.og_reale or 'n/d' }} · FG: {{ cotta.fg_reale or 'n/d' }} · ABV: {{ cotta.abv_reale or abv_calcolato or 'n/d' }}`;
+  try {
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({domanda:q,contesto:ctx,storico:aiHistory}) });
+    const d = await r.json();
+    const resp = d.risposta || d.errore || 'Errore sconosciuto';
+    addAIMsg('bot', resp);
+    aiHistory.push({role:'user',content:q},{role:'assistant',content:resp});
+  } catch(e) { addAIMsg('bot','❌ Errore di rete: '+e.message); }
+}
+function addAIMsg(role, text) {
+  const msgs = document.getElementById('ai-msgs');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + role;
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── BREWMONK PUSH ─────────────────────────────────────────
+async function pushBrewMonk(rid, btn) {
+  btn.disabled=true; btn.textContent='…';
+  try {
+    const r = await fetch('/brewmonk/push/'+rid, {method:'POST'});
+    const d = await r.json();
+    btn.textContent = d.ok ? '✓ Inviata' : '✗ Errore';
+  } catch(e) { btn.textContent='✗ Errore'; }
+}
+</script>
+{% endblock %}

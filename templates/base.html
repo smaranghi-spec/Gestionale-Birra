@@ -40,55 +40,72 @@
     /* ── NAVBAR ─────────────────────────────── */
     .navbar {
       position: sticky; top:0; z-index:100;
-      background: rgba(22,27,34,0.95);
+      background: rgba(22,27,34,0.97);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
-      padding: 0 20px;
+      padding: 0 16px;
     }
     .navbar-inner {
       max-width: 1400px; margin: 0 auto;
-      display: flex; align-items: center; gap: 6px;
-      height: 56px; flex-wrap: nowrap;
+      display: flex; align-items: center; gap: 4px;
+      height: 52px;
     }
     .navbar-brand {
-      font-size: 18px; font-weight: 700; color: var(--amber);
-      white-space: nowrap; margin-right: 12px; text-decoration: none;
-      display: flex; align-items: center; gap: 6px;
+      font-size: 17px; font-weight: 700; color: var(--amber);
+      white-space: nowrap; margin-right: 8px; text-decoration: none;
+      flex-shrink: 0;
     }
     .navbar-brand:hover { text-decoration: none; color: var(--amber-dark); }
     .nav-links {
-      display: flex; align-items: center; gap: 2px;
+      display: flex; align-items: center; gap: 1px;
       overflow-x: auto; flex: 1;
-      scrollbar-width: none;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
     }
     .nav-links::-webkit-scrollbar { display: none; }
     .nav-links a {
-      color: var(--muted); font-size: 13px; font-weight: 500;
-      padding: 6px 10px; border-radius: 6px;
+      color: var(--muted); font-size: 12px; font-weight: 500;
+      padding: 5px 9px; border-radius: 6px;
       white-space: nowrap; text-decoration: none;
       transition: color .15s, background .15s;
     }
     .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
     .nav-links a.active { color: var(--amber); background: var(--amber-dim); }
-    .nav-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink:0; }
+    .nav-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; flex-shrink:0; }
     .navbar-user {
-      display: flex; align-items: center; gap: 8px;
-      margin-left: 8px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px;
+      margin-left: 6px; flex-shrink: 0;
     }
     .user-badge {
       background: var(--amber-dim); border: 1px solid var(--amber);
-      color: var(--amber); font-size: 12px; font-weight: 600;
-      padding: 4px 10px; border-radius: 20px;
+      color: var(--amber); font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 20px;
       white-space: nowrap;
     }
     .btn-logout {
-      color: var(--muted); font-size: 12px; padding: 4px 8px;
+      color: var(--muted); font-size: 11px; padding: 3px 7px;
       border-radius: 6px; text-decoration: none;
       border: 1px solid var(--border);
     }
     .btn-logout:hover { color: var(--red); border-color: var(--red); text-decoration: none; }
-
+    /* Hamburger mobile */
+    .nav-hamburger { display:none; background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 9px; cursor:pointer; font-size:16px; flex-shrink:0; }
+    .mobile-menu { display:none; position:fixed; top:52px; left:0; right:0; bottom:0; background:rgba(13,17,23,.97); z-index:99; overflow-y:auto; padding:12px 16px 40px; }
+    .mobile-menu.open { display:block; }
+    .mobile-menu a { display:block; padding:12px 16px; color:var(--text); font-size:15px; font-weight:500; border-radius:8px; text-decoration:none; border-bottom:1px solid rgba(48,54,61,.4); }
+    .mobile-menu a:last-child { border-bottom:none; }
+    .mobile-menu a:hover { background:var(--amber-dim); color:var(--amber); }
+    .mobile-section { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700; padding:12px 16px 4px; }
+    @media(max-width:768px) {
+      .nav-links { display:none; }
+      .nav-hamburger { display:flex; align-items:center; }
+      .page { padding: 16px 12px 80px; }
+      .grid-2,.grid-3,.grid-4 { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      table.tbl { font-size:11px; }
+      .tbl th,.tbl td { padding:7px 8px; }
+    }
     /* ── LAYOUT ─────────────────────────────── */
+
     .page { max-width: 1400px; margin: 0 auto; padding: 24px 20px 60px; }
 
     /* ── CARDS ─────────────────────────────── */
@@ -211,39 +228,91 @@
   <div class="navbar-inner">
     <a href="/" class="navbar-brand">🍺 Birrificio</a>
     <div class="nav-links">
-      <a href="/">🏠 Dashboard</a>
+      <a href="/">🏠</a>
       <a href="/ricette/html">🧪 Ricette</a>
       <a href="/cotte">🍺 Cotte</a>
       <div class="nav-sep"></div>
       <a href="/catalogo/ingredienti">📦 Catalogo</a>
       <a href="/stili">🌿 Stili</a>
-      <a href="/attrezzature">⚙️ Attrezzature</a>
       <a href="/inventario">📊 Inventario</a>
-      <a href="/tracciabilita">🔍 Tracciabilità</a>
-      <div class="nav-sep"></div>
-      <a href="/calendario">📅 Calendario</a>
-      <a href="/pulizie">🧹 Pulizie</a>
-      <a href="/vendite">💰 Vendite</a>
+      <a href="/tracciabilita">🔍 Traccia</a>
       <div class="nav-sep"></div>
       <a href="/acquisti">🛒 Acquisti</a>
+      <a href="/lista-acquisti">🛍️ Lista</a>
       <a href="/prezzi">💹 Prezzi</a>
-      <a href="/fattura">📄 Fatture</a>
       <div class="nav-sep"></div>
-      <a href="/impianto">⚙️ Impianto</a>
+      <a href="/strumenti">🔧 Strumenti</a>
       <a href="/profili-acqua">💧 Acqua</a>
-      <a href="/brewmonk">🍺 BrewMonk</a>
-      <a href="/soci">👥 Soci</a>
-      <a href="/birre" target="_blank">🌐 Pub</a>
-      {% if session and session.ruolo == 'admin' %}<a href="/utenti">👥 Utenti</a>{% endif %}
+      <a href="/impianto">⚙️ Impianto</a>
+      <div class="nav-sep"></div>
+      <a href="/calendario">📅</a>
+      <a href="/pulizie">🧹</a>
+      <a href="/vendite">💰</a>
+      <a href="/soci">👥</a>
+      <a href="/attrezzature">🔩</a>
+      <a href="/birre" target="_blank">🌐</a>
+      {% if session and session.ruolo == 'admin' %}<a href="/utenti">👤 Utenti</a>{% endif %}
     </div>
     <div class="navbar-user">
       {% if session and session.nome %}
-        <span class="user-badge">👤 {{ session.nome }}</span>
+        <span class="user-badge">{% if session.ruolo == 'ospite' %}👁{% else %}👤{% endif %} {{ session.nome }}</span>
       {% endif %}
       <a href="/logout" class="btn-logout">Esci</a>
     </div>
+    <button class="nav-hamburger" onclick="toggleMobileMenu()" id="hamburger-btn">☰</button>
   </div>
 </nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <div class="mobile-section">Produzione</div>
+  <a href="/" onclick="closeMM()">🏠 Dashboard</a>
+  <a href="/ricette/html" onclick="closeMM()">🧪 Ricette</a>
+  <a href="/cotte" onclick="closeMM()">🍺 Cotte</a>
+  <div class="mobile-section">Magazzino & Catalogo</div>
+  <a href="/catalogo/ingredienti" onclick="closeMM()">📦 Catalogo</a>
+  <a href="/inventario" onclick="closeMM()">📊 Inventario</a>
+  <a href="/inventario/fisico" onclick="closeMM()">📋 Conteggio fisico</a>
+  <a href="/tracciabilita" onclick="closeMM()">🔍 Tracciabilità</a>
+  <a href="/stili" onclick="closeMM()">🌿 Stili BJCP</a>
+  <div class="mobile-section">Acquisti & Prezzi</div>
+  <a href="/acquisti" onclick="closeMM()">🛒 Ordini acquisto</a>
+  <a href="/lista-acquisti" onclick="closeMM()">🛍️ Lista spesa</a>
+  <a href="/prezzi" onclick="closeMM()">💹 Comparatore prezzi</a>
+  <a href="/acquisti/importa-foto" onclick="closeMM()">📷 Importa da foto</a>
+  <div class="mobile-section">Strumenti</div>
+  <a href="/strumenti" onclick="closeMM()">🔧 Calcolatori</a>
+  <a href="/profili-acqua" onclick="closeMM()">💧 Profili acqua</a>
+  <a href="/impianto" onclick="closeMM()">⚙️ Impianto</a>
+  <div class="mobile-section">Gestione</div>
+  <a href="/calendario" onclick="closeMM()">📅 Calendario</a>
+  <a href="/pulizie" onclick="closeMM()">🧹 Pulizie</a>
+  <a href="/vendite" onclick="closeMM()">💰 Vendite</a>
+  <a href="/fattura" onclick="closeMM()">📄 Fatture</a>
+  <a href="/soci" onclick="closeMM()">👥 Soci</a>
+  <a href="/attrezzature" onclick="closeMM()">🔩 Attrezzature</a>
+  <a href="/brewmonk" onclick="closeMM()">🍺 BrewMonk</a>
+  <a href="/birre" target="_blank" onclick="closeMM()">🌐 Pagina Pub</a>
+  {% if session and session.ruolo == 'admin' %}
+  <div class="mobile-section">Admin</div>
+  <a href="/utenti" onclick="closeMM()">👤 Gestione utenti</a>
+  {% endif %}
+  <div style="padding:20px 16px;">
+    <a href="/logout" style="display:block;text-align:center;padding:12px;background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:8px;font-weight:700;">Esci</a>
+  </div>
+</div>
+<script>
+function toggleMobileMenu() {
+  const m = document.getElementById('mobile-menu');
+  const btn = document.getElementById('hamburger-btn');
+  m.classList.toggle('open');
+  btn.textContent = m.classList.contains('open') ? '✕' : '☰';
+}
+function closeMM() {
+  document.getElementById('mobile-menu').classList.remove('open');
+  document.getElementById('hamburger-btn').textContent = '☰';
+}
+</script>
 
 <div class="page">
   {% block content %}{% endblock %}

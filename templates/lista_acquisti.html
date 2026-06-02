@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Lista Acquisti{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 style="font-size:22px;margin-bottom:4px;">🛍️ Lista Acquisti</h1>
+    <p>{{ da_fare|length }} articoli da acquistare</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if da_fare %}
+    <form method="post" action="/lista-acquisti/crea-ordine">
+      <button class="btn btn-primary btn-sm">🛒 Crea Ordine</button>
+    </form>
+    {% endif %}
+    <a href="/acquisti" class="btn btn-ghost btn-sm">📋 Ordini</a>
+    <button class="btn btn-ghost btn-sm" onclick="toggleForm()">➕ Aggiungi</button>
+  </div>
+</div>
+
+<!-- Form aggiungi -->
+<div id="form-add" style="display:none;margin-bottom:20px;">
+  <div class="card">
+    <h3 style="font-size:14px;margin-bottom:14px;">➕ Nuovo articolo da acquistare</h3>
+    <form method="post" action="/lista-acquisti/aggiungi">
+      <div class="form-grid">
+        <div class="form-row" style="grid-column:span 2;">
+          <label>Prodotto *</label>
+          <input type="text" name="nome" placeholder="es. Luppolo Cascade 100g" required autofocus>
+        </div>
+        <div class="form-row">
+          <label>Categoria</label>
+          <select name="categoria">
+            {% for c in categorie %}<option>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Quantità</label>
+          <input type="number" name="quantita" step="0.1" value="1" min="0.01">
+        </div>
+        <div class="form-row">
+          <label>Unità</label>
+          <select name="unita">
+            {% for u in unita %}<option>{{ u }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Fornitore</label>
+          <input type="text" name="fornitore" placeholder="es. MrMalt">
+        </div>
+        <div class="form-row">
+          <label>Priorità</label>
+          <select name="priorita">
+            <option value="1">🔴 Alta</option>
+            <option value="2" selected>🟡 Media</option>
+            <option value="3">🟢 Bassa</option>
+          </select>
+        </div>
+        <div class="form-row" style="grid-column:span 2;">
+          <label>Note</label>
+          <input type="text" name="note" placeholder="Opzionale…">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary btn-sm">Aggiungi</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleForm()">Annulla</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lista da acquistare -->
+{% if da_fare %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">
+    <div class="card-title">🛍️ Da acquistare ({{ da_fare|length }})</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>P</th><th>Prodotto</th><th>Qtà</th><th>Categoria</th><th>Fornitore</th><th>Note</th><th>Azioni</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in da_fare %}
+      <tr>
+        <td>
+          {% if item.priorita == 1 %}<span style="color:var(--red)">🔴</span>
+          {% elif item.priorita == 3 %}<span style="color:var(--green)">🟢</span>
+          {% else %}<span style="color:var(--amber)">🟡</span>{% endif %}
+        </td>
+        <td style="font-weight:600;">{{ item.nome }}</td>
+        <td style="color:var(--muted);">{{ item.quantita }} {{ item.unita }}</td>
+        <td><span class="badge badge-gray">{{ item.categoria }}</span></td>
+        <td style="color:var(--muted);">{{ item.fornitore or '—' }}</td>
+        <td style="font-size:12px;color:var(--muted);">{{ item.note or '' }}</td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <form method="post" action="/lista-acquisti/{{ item.id }}/completa">
+              <button class="btn btn-success btn-xs" title="Segna come acquistato">✓</button>
+            </form>
+            <a href="/prezzi/cerca?q={{ item.nome }}" class="btn btn-ghost btn-xs" title="Cerca prezzi">💹</a>
+            <form method="post" action="/lista-acquisti/{{ item.id }}/elimina">
+              <button class="btn btn-danger btn-xs" onclick="return confirm('Rimuovere?')">✕</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <div class="empty-icon">🛍️</div>
+  <p>Lista vuota. Aggiungi articoli da acquistare.</p>
+</div>
+{% endif %}
+
+<!-- Completati -->
+{% if completati %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title" style="color:var(--muted);">✅ Acquistati ({{ completati|length }})</div>
+    <form method="post" action="/lista-acquisti/svuota-completati">
+      <button class="btn btn-ghost btn-xs" onclick="return confirm('Svuotare tutti i completati?')">🗑 Svuota</button>
+    </form>
+  </div>
+  <table class="tbl">
+    <tbody>
+      {% for item in completati %}
+      <tr style="opacity:.5;">
+        <td style="text-decoration:line-through;color:var(--muted);" colspan="5">✓ {{ item.nome }} · {{ item.quantita }} {{ item.unita }}</td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <form method="post" action="/lista-acquisti/{{ item.id }}/completa">
+              <button class="btn btn-ghost btn-xs">↩</button>
+            </form>
+            <form method="post" action="/lista-acquisti/{{ item.id }}/elimina">
+              <button class="btn btn-danger btn-xs">✕</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+function toggleForm() {
+  const f = document.getElementById('form-add');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  if (f.style.display === 'block') f.querySelector('input[name=nome]').focus();
+}
+</script>
+{% endblock %}

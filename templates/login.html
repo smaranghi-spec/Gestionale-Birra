@@ -5,43 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accedi — Gestionale Birrificio</title>
   <style>
-    :root {
-      --bg:#0d1117;--card:#1c2333;--border:#30363d;
-      --text:#e6edf3;--muted:#8b949e;
-      --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);
-      --red:#f85149;--red-dim:rgba(248,81,73,.12);
-      --green:#3fb950;
-    }
+    :root{--bg:#0d1117;--card:#1c2333;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);--red:#f85149;--red-dim:rgba(248,81,73,.12);--green:#3fb950;--green-dim:rgba(63,185,80,.12);}
     *{box-sizing:border-box;}
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;
-      background:var(--bg);color:var(--text);
-      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .login-wrap{width:100%;max-width:420px;}
-    .brand{text-align:center;margin-bottom:32px;}
-    .brand-icon{font-size:56px;display:block;margin-bottom:12px;}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .wrap{width:100%;max-width:440px;}
+    .brand{text-align:center;margin-bottom:28px;}
+    .brand-icon{font-size:52px;display:block;margin-bottom:10px;}
     .brand h1{font-size:22px;font-weight:700;margin:0 0 4px;color:var(--text);}
     .brand p{color:var(--muted);font-size:14px;margin:0;}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 28px;}
     .card h2{font-size:17px;font-weight:600;margin:0 0 20px;}
     .form-row{margin-bottom:14px;}
-    label{display:block;font-size:11px;font-weight:600;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
-    input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);
-      background:var(--bg);color:var(--text);font:inherit;font-size:14px;}
+    label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+    input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14px;transition:border .15s;}
     input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-dim);}
-    .btn{width:100%;padding:11px;border-radius:8px;border:none;
-      background:var(--amber);color:#000;font:700 14px/1 inherit;cursor:pointer;margin-top:8px;}
+    .btn{width:100%;padding:11px;border-radius:8px;border:none;background:var(--amber);color:#000;font:700 14px/1 inherit;cursor:pointer;margin-top:4px;transition:filter .15s;}
     .btn:hover{filter:brightness(1.1);}
-    .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;
-      border:1px solid var(--red);background:var(--red-dim);color:var(--red);}
-    .primo{padding:14px;border-radius:8px;border:1px solid var(--amber);
-      background:var(--amber-dim);color:var(--amber);font-size:13px;margin-bottom:20px;}
-    .link-row{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
-    .link-row a{color:var(--amber);}
+    .btn-guest{background:transparent;border:1px solid var(--border);color:var(--muted);margin-top:8px;}
+    .btn-guest:hover{border-color:var(--text);color:var(--text);}
+    .btn-reg{background:var(--green);color:#000;}
+    .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;border:1px solid var(--red);background:var(--red-dim);color:var(--red);}
+    .primo{padding:14px;border-radius:8px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);font-size:13px;margin-bottom:20px;}
+    .divider{display:flex;align-items:center;gap:10px;margin:16px 0;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .divider span{font-size:11px;color:var(--muted);}
+    .tabs{display:flex;gap:4px;margin-bottom:20px;}
+    .tab{flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font:600 13px/1 inherit;transition:.15s;text-align:center;}
+    .tab.active{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+    .tab-panel{display:none;} .tab-panel.active{display:block;}
   </style>
 </head>
 <body>
-<div class="login-wrap">
+<div class="wrap">
   <div class="brand">
     <span class="brand-icon">🍺</span>
     <h1>Gestionale Birrificio</h1>
@@ -50,43 +45,81 @@
 
   {% if primo_accesso %}
   <div class="primo">
-    🎉 <strong>Benvenuto!</strong> Nessun utente registrato. Crea il tuo account amministratore.
-    <div style="margin-top:8px;">
-      <a href="/register" style="color:inherit;text-decoration:underline;font-weight:600;">→ Registra il primo account</a>
-    </div>
+    🎉 <strong>Benvenuto!</strong> Nessun utente registrato.<br>
+    <a href="/register" style="color:inherit;text-decoration:underline;font-weight:600;margin-top:6px;display:inline-block;">→ Crea il primo account amministratore</a>
   </div>
   {% endif %}
 
   <div class="card">
-    <h2>Accedi</h2>
-
-    {% if errore %}
-    <div class="alert">{{ errore }}</div>
+    {% if not primo_accesso %}
+    <div class="tabs" id="tabs">
+      <button class="tab active" onclick="showTab('login', this)">🔑 Accedi</button>
+      <button class="tab" onclick="showTab('reg', this)">📝 Registrati</button>
+    </div>
     {% endif %}
 
-    <form method="post" action="/login">
-      <div class="form-row">
-        <label>Username</label>
-        <input type="text" name="username" placeholder="username" required autofocus>
-      </div>
-      <div class="form-row">
-        <label>Password</label>
-        <input type="password" name="password" placeholder="••••••••" required>
-      </div>
-      <button type="submit" class="btn">Entra →</button>
-    </form>
+    <!-- LOGIN -->
+    <div id="tab-login" class="tab-panel active">
+      <h2 style="{% if primo_accesso %}display:block{% else %}display:none{% endif %}">Accedi</h2>
 
-    {% if primo_accesso %}
-    <div class="link-row">
-      <a href="/register">Crea il primo account</a>
+      {% if errore %}
+      <div class="alert">{{ errore }}</div>
+      {% endif %}
+
+      <form method="post" action="/login">
+        <div class="form-row">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="username" required autofocus>
+        </div>
+        <div class="form-row">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn">Entra →</button>
+      </form>
+
+      <div class="divider"><span>oppure</span></div>
+
+      <form method="post" action="/login-ospite">
+        <button type="submit" class="btn btn-guest">👁 Entra come ospite (sola lettura)</button>
+      </form>
+    </div>
+
+    <!-- REGISTER inline -->
+    {% if not primo_accesso %}
+    <div id="tab-reg" class="tab-panel">
+      <form method="post" action="/register">
+        <div class="form-row">
+          <label>Nome visualizzato</label>
+          <input type="text" name="nome" placeholder="Il tuo nome" required>
+        </div>
+        <div class="form-row">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="username" required>
+        </div>
+        <div class="form-row">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="••••••••" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-reg">Crea account →</button>
+      </form>
+      <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted);">La registrazione richiede approvazione admin se gli account già esistono.</div>
     </div>
     {% endif %}
   </div>
 
-  <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--muted);">
-    Primo accesso? Vai a <a href="/debug/seed-admin" style="color:var(--amber);">/debug/seed-admin</a>
-    per creare il profilo <code>admin</code> con password <code>admin123</code>
+  <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted);">
+    Primo accesso? → <a href="/debug/seed-admin" style="color:var(--amber);">/debug/seed-admin</a>
+    (admin / admin123)
   </div>
 </div>
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
 </body>
 </html>

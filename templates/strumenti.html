@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+{% block title %}Strumenti Birrari{% endblock %}
+{% block extra_style %}
+.tool-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;}
+.tool-tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font:600 13px/1 inherit;transition:.15s;}
+.tool-tab.active,.tool-tab:hover{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+.tool-panel{display:none;} .tool-panel.active{display:block;}
+.calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;}
+.result-box{background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:14px 18px;margin-top:12px;}
+.result-box .result-val{font-size:2rem;font-weight:700;color:var(--amber);}
+.result-box .result-lbl{font-size:12px;color:var(--muted);}
+.result-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+.hop-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 40px;gap:8px;align-items:end;margin-bottom:8px;}
+@media(max-width:600px){.hop-row{grid-template-columns:1fr 1fr;}.result-row{flex-direction:column;}}
+{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;margin-bottom:4px;">🔧 Strumenti Birrari</h1>
+  <p>Calcolatori per IBU, ABV, colore EBC, priming CO₂, correzione densità, conversione unità e acqua.</p>
+</div>
+
+<div class="tool-tabs">
+  <button class="tool-tab active" onclick="showTab('ibu')">⚗️ IBU (Tinseth)</button>
+  <button class="tool-tab" onclick="showTab('abv')">🍺 ABV</button>
+  <button class="tool-tab" onclick="showTab('ebc')">🎨 Colore EBC</button>
+  <button class="tool-tab" onclick="showTab('priming')">💨 Priming CO₂</button>
+  <button class="tool-tab" onclick="showTab('densita')">🌡️ Correzione Densità</button>
+  <button class="tool-tab" onclick="showTab('converti')">🔄 Conversioni</button>
+  <button class="tool-tab" onclick="showTab('acqua')">💧 Acqua</button>
+  <button class="tool-tab" onclick="showTab('efficienza')">⚡ Efficienza</button>
+</div>
+
+<!-- ── IBU ──────────────────────────────────────────────────────── -->
+<div id="tab-ibu" class="tool-panel active card">
+  <h3 style="margin-bottom:4px;">⚗️ Calcolatore IBU — Metodo Tinseth</h3>
+  <p style="margin-bottom:16px;">Calcola i bittering units totali della ricetta.</p>
+
+  <div class="calc-grid">
+    <div class="form-row">
+      <label>Volume post-bollitura (L)</label>
+      <input type="number" id="ibu-vol" value="20" step="0.5" min="1" oninput="calcIbu()">
+    </div>
+    <div class="form-row">
+      <label>OG del mosto (pre-fermentazione)</label>
+      <input type="number" id="ibu-og" value="1.050" step="0.001" min="1.010" max="1.120" oninput="calcIbu()">
+    </div>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:8px;">Aggiunte di luppolo</div>
+    <div id="hop-rows"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addHopRow()">+ Aggiungi luppolo</button>
+  </div>
+
+  <div class="result-box" id="ibu-result" style="display:none;">
+    <div class="result-val" id="ibu-val">0</div>
+    <div class="result-lbl">IBU totali (Tinseth)</div>
+    <div id="ibu-detail" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<!-- ── ABV ──────────────────────────────────────────────────────── -->
+<div id="tab-abv" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">🍺 Calcolatore ABV</h3>
+  <p style="margin-bottom:16px;">Calcola la gradazione alcolica dalla densità iniziale e finale.</p>
+  <div class="calc-grid">
+    <div class="form-row">
+      <label>OG — Original Gravity</label>
+      <input type="number" id="abv-og" value="1.052" step="0.001" oninput="calcAbv()">
+    </div>
+    <div class="form-row">
+      <label>FG — Final Gravity</label>
+      <input type="number" id="abv-fg" value="1.010" step="0.001" oninput="calcAbv()">
+    </div>
+    <div class="form-row">
+      <label>Formula</label>
+      <select id="abv-formula" onchange="calcAbv()">
+        <option value="standard">Standard: (OG-FG)×131.25</option>
+        <option value="alternate">Alternativa: (76.08×(OG-FG)/(1.775-OG))×(FG/0.794)</option>
+      </select>
+    </div>
+  </div>
+  <div class="result-box">
+    <div class="result-val" id="abv-val">—</div>
+    <div class="result-lbl">% ABV</div>
+    <div id="abv-detail" style="margin-top:6px;font-size:12px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<!-- ── EBC ──────────────────────────────────────────────────────── -->
+<div id="tab-ebc" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">🎨 Colore EBC / SRM (Morey)</h3>
+  <p style="margin-bottom:16px;">Stima il colore della birra dai malti. Inserisci ogni malto con peso e colore SRM/EBC.</p>
+
+  <div class="calc-grid">
+    <div class="form-row">
+      <label>Volume batch (L)</label>
+      <input type="number" id="ebc-vol" value="20" step="0.5" oninput="calcEbc()">
+    </div>
+    <div class="form-row">
+      <label>Unità colore malti</label>
+      <select id="ebc-unit" onchange="calcEbc()">
+        <option value="srm">SRM (Lovibond)</option>
+        <option value="ebc">EBC</option>
+      </select>
+    </div>
+  </div>
+  <div id="malt-rows"></div>
+  <button class="btn btn-ghost btn-sm" onclick="addMaltRow()" style="margin-bottom:12px;">+ Aggiungi malto</button>
+
+  <div class="result-box">
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+      <div>
+        <div class="result-val" id="ebc-val">—</div>
+        <div class="result-lbl">EBC</div>
+      </div>
+      <div>
+        <div class="result-val" id="srm-val" style="font-size:1.4rem;">—</div>
+        <div class="result-lbl">SRM</div>
+      </div>
+      <div id="color-swatch" style="width:60px;height:60px;border-radius:8px;background:#ccc;border:1px solid var(--border);flex-shrink:0;"></div>
+      <div id="ebc-label" style="font-size:13px;color:var(--muted);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PRIMING ───────────────────────────────────────────────────── -->
+<div id="tab-priming" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">💨 Priming CO₂</h3>
+  <p style="margin-bottom:16px;">Calcola la quantità di zucchero per raggiungere il livello di carbonatazione desiderato.</p>
+  <div class="calc-grid">
+    <div class="form-row">
+      <label>Volume birra (L)</label>
+      <input type="number" id="pr-vol" value="20" step="0.5" oninput="calcPriming()">
+    </div>
+    <div class="form-row">
+      <label>CO₂ desiderata (vol)</label>
+      <input type="number" id="pr-co2" value="2.4" step="0.1" min="1" max="5" oninput="calcPriming()">
+    </div>
+    <div class="form-row">
+      <label>Temperatura fermentatore (°C)</label>
+      <input type="number" id="pr-temp" value="20" step="0.5" oninput="calcPriming()">
+    </div>
+    <div class="form-row">
+      <label>Tipo zucchero priming</label>
+      <select id="pr-tipo" onchange="calcPriming()">
+        <option value="1.0" selected>Saccarosio (100%)</option>
+        <option value="0.91">Destrosio / Glucosio (91%)</option>
+        <option value="0.46">Estratto di malto secco DME (46%)</option>
+        <option value="0.38">Miele (38%)</option>
+      </select>
+    </div>
+  </div>
+  <div class="result-box">
+    <div class="result-row">
+      <div><div class="result-val" id="pr-g">—</div><div class="result-lbl">grammi totali</div></div>
+      <div><div class="result-val" id="pr-gL" style="font-size:1.4rem;">—</div><div class="result-lbl">g/L</div></div>
+      <div><div class="result-val" id="pr-g75" style="font-size:1.4rem;">—</div><div class="result-lbl">g per bottiglia 75cl</div></div>
+    </div>
+    <div id="pr-co2-residua" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<!-- ── DENSITÀ ───────────────────────────────────────────────────── -->
+<div id="tab-densita" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">🌡️ Correzione Densità per Temperatura</h3>
+  <p style="margin-bottom:16px;">Correggi la lettura del densimetro in base alla temperatura effettiva del campione.</p>
+  <div class="calc-grid">
+    <div class="form-row">
+      <label>Densità letta (SG)</label>
+      <input type="number" id="dens-sg" value="1.050" step="0.001" oninput="calcDens()">
+    </div>
+    <div class="form-row">
+      <label>Temperatura campione (°C)</label>
+      <input type="number" id="dens-temp" value="25" step="0.5" oninput="calcDens()">
+    </div>
+    <div class="form-row">
+      <label>Temperatura calibrazione densimetro (°C)</label>
+      <input type="number" id="dens-cal" value="20" step="0.5" oninput="calcDens()">
+    </div>
+  </div>
+  <div class="result-box">
+    <div class="result-val" id="dens-val">—</div>
+    <div class="result-lbl">SG corretto</div>
+    <div id="dens-plato" style="margin-top:6px;font-size:13px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<!-- ── CONVERSIONI ───────────────────────────────────────────────── -->
+<div id="tab-converti" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">🔄 Conversioni Unità</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:12px;">
+    <div>
+      <h4 style="font-size:13px;color:var(--amber);margin-bottom:12px;">Densità</h4>
+      <div class="calc-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row"><label>SG</label><input type="number" id="cv-sg" step="0.001" value="1.050" oninput="cvSg()"></div>
+        <div class="form-row"><label>°Plato</label><input type="number" id="cv-plato" step="0.1" value="" oninput="cvPlato()"></div>
+        <div class="form-row"><label>°Brix</label><input type="number" id="cv-brix" step="0.1" value="" oninput="cvBrix()"></div>
+      </div>
+    </div>
+    <div>
+      <h4 style="font-size:13px;color:var(--amber);margin-bottom:12px;">Temperatura</h4>
+      <div class="calc-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row"><label>°Celsius</label><input type="number" id="cv-c" step="0.1" value="20" oninput="cvC()"></div>
+        <div class="form-row"><label>°Fahrenheit</label><input type="number" id="cv-f" step="0.1" value="" oninput="cvF()"></div>
+      </div>
+    </div>
+    <div>
+      <h4 style="font-size:13px;color:var(--amber);margin-bottom:12px;">Colore</h4>
+      <div class="calc-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row"><label>EBC</label><input type="number" id="cv-ebc" step="0.1" value="15" oninput="cvEbc()"></div>
+        <div class="form-row"><label>SRM/Lovibond</label><input type="number" id="cv-srm" step="0.1" value="" oninput="cvSrm()"></div>
+      </div>
+    </div>
+    <div>
+      <h4 style="font-size:13px;color:var(--amber);margin-bottom:12px;">Volume</h4>
+      <div class="calc-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row"><label>Litri</label><input type="number" id="cv-l" step="0.1" value="20" oninput="cvL()"></div>
+        <div class="form-row"><label>US Gallons</label><input type="number" id="cv-gal" step="0.01" value="" oninput="cvGal()"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ACQUA ─────────────────────────────────────────────────────── -->
+<div id="tab-acqua" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">💧 Calcolo Trattamento Acqua</h3>
+  <p style="margin-bottom:16px;">Calcola le aggiunte di minerali per raggiungere il profilo target (mg/L ≡ ppm).</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex-wrap:wrap;">
+    <div>
+      <h4 style="font-size:12px;color:var(--amber);text-transform:uppercase;margin-bottom:10px;">Acqua di partenza (mg/L)</h4>
+      <div class="calc-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row"><label>Ca²⁺</label><input type="number" id="aq-ca-base" value="0" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>Mg²⁺</label><input type="number" id="aq-mg-base" value="0" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>Na⁺</label><input type="number" id="aq-na-base" value="0" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>Cl⁻</label><input type="number" id="aq-cl-base" value="0" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>SO₄²⁻</label><input type="number" id="aq-so4-base" value="0" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>HCO₃⁻</label><input type="number" id="aq-hco3-base" value="0" step="1" oninput="calcAcqua()"></div>
+      </div>
+    </div>
+    <div>
+      <h4 style="font-size:12px;color:var(--amber);text-transform:uppercase;margin-bottom:10px;">Target (mg/L)</h4>
+      <div class="calc-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row"><label>Ca²⁺</label><input type="number" id="aq-ca-tgt" value="100" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>Mg²⁺</label><input type="number" id="aq-mg-tgt" value="10" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>Na⁺</label><input type="number" id="aq-na-tgt" value="10" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>Cl⁻</label><input type="number" id="aq-cl-tgt" value="80" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>SO₄²⁻</label><input type="number" id="aq-so4-tgt" value="120" step="1" oninput="calcAcqua()"></div>
+        <div class="form-row"><label>HCO₃⁻</label><input type="number" id="aq-hco3-tgt" value="50" step="1" oninput="calcAcqua()"></div>
+      </div>
+    </div>
+  </div>
+  <div class="form-row" style="margin-top:8px;">
+    <label>Volume acqua totale (L)</label>
+    <input type="number" id="aq-vol" value="30" step="1" oninput="calcAcqua()" style="max-width:140px;">
+  </div>
+  <div class="result-box" id="aq-result">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Aggiunte consigliate</div>
+    <div id="aq-detail"></div>
+  </div>
+</div>
+
+<!-- ── EFFICIENZA ────────────────────────────────────────────────── -->
+<div id="tab-efficienza" class="tool-panel card">
+  <h3 style="margin-bottom:4px;">⚡ Efficienza Birrificazione</h3>
+  <p style="margin-bottom:16px;">Calcola l'efficienza reale partendo dalla densità misurata e dai malti utilizzati.</p>
+  <div class="calc-grid">
+    <div class="form-row">
+      <label>Volume post-bollitura (L)</label>
+      <input type="number" id="eff-vol" value="20" step="0.5" oninput="calcEff()">
+    </div>
+    <div class="form-row">
+      <label>OG misurata</label>
+      <input type="number" id="eff-og" value="1.050" step="0.001" oninput="calcEff()">
+    </div>
+    <div class="form-row">
+      <label>Malti totali (kg)</label>
+      <input type="number" id="eff-kg" value="5" step="0.1" oninput="calcEff()">
+    </div>
+    <div class="form-row">
+      <label>% estrato medio malto</label>
+      <input type="number" id="eff-yield" value="80" step="1" oninput="calcEff()">
+    </div>
+  </div>
+  <div class="result-box">
+    <div class="result-row">
+      <div><div class="result-val" id="eff-pct">—</div><div class="result-lbl">% efficienza</div></div>
+      <div><div class="result-val" id="eff-max" style="font-size:1.4rem;">—</div><div class="result-lbl">OG teorica massima</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAB LOGIC ──────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── IBU / TINSETH ─────────────────────────────────────────
+let hopIdx = 0;
+function addHopRow(name='', weight=28, aa=7, time=60) {
+  const id = hopIdx++;
+  const d = document.createElement('div');
+  d.className = 'hop-row'; d.id = 'hop-' + id;
+  d.innerHTML = `
+    <div class="form-row" style="margin:0"><label>Nome luppolo</label><input type="text" placeholder="es. Cascade" value="${name}" oninput="calcIbu()"></div>
+    <div class="form-row" style="margin:0"><label>Peso (g)</label><input type="number" value="${weight}" min="1" oninput="calcIbu()"></div>
+    <div class="form-row" style="margin:0"><label>Alpha (%)</label><input type="number" value="${aa}" step="0.1" oninput="calcIbu()"></div>
+    <div class="form-row" style="margin:0"><label>Tempo (min)</label><input type="number" value="${time}" oninput="calcIbu()"></div>
+    <button class="btn btn-danger btn-xs" onclick="document.getElementById('hop-${id}').remove();calcIbu()" style="margin-bottom:4px;">✕</button>`;
+  document.getElementById('hop-rows').appendChild(d);
+  calcIbu();
+}
+addHopRow('Cascade', 28, 7.5, 60);
+addHopRow('Centennial', 14, 10, 15);
+
+function calcIbu() {
+  const vol = parseFloat(document.getElementById('ibu-vol').value) || 20;
+  const og = parseFloat(document.getElementById('ibu-og').value) || 1.050;
+  const bigness = 1.65 * Math.pow(0.000125, og - 1);
+  let totalIbu = 0, detail = '';
+  document.querySelectorAll('#hop-rows .hop-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const nome = inputs[0].value || 'Luppolo';
+    const g = parseFloat(inputs[1].value) || 0;
+    const aa = parseFloat(inputs[2].value) || 0;
+    const t = parseFloat(inputs[3].value) || 0;
+    if (!g || !aa || !t) return;
+    const tf = (1 - Math.exp(-0.04 * t)) / 4.15;
+    const ibu = (g * aa / 100 * 1000 * bigness * tf) / vol;
+    totalIbu += ibu;
+    detail += `<span>${nome}: ${ibu.toFixed(1)} IBU</span> `;
+  });
+  document.getElementById('ibu-val').textContent = totalIbu.toFixed(1);
+  document.getElementById('ibu-detail').innerHTML = detail;
+  document.getElementById('ibu-result').style.display = 'block';
+}
+
+// ── ABV ───────────────────────────────────────────────────
+function calcAbv() {
+  const og = parseFloat(document.getElementById('abv-og').value) || 1.052;
+  const fg = parseFloat(document.getElementById('abv-fg').value) || 1.010;
+  const formula = document.getElementById('abv-formula').value;
+  let abv;
+  if (formula === 'standard') {
+    abv = (og - fg) * 131.25;
+  } else {
+    abv = (76.08 * (og - fg) / (1.775 - og)) * (fg / 0.794);
+  }
+  const atten = ((og - fg) / (og - 1)) * 100;
+  document.getElementById('abv-val').textContent = abv.toFixed(2) + '%';
+  document.getElementById('abv-detail').textContent =
+    `Attenuazione apparente: ${atten.toFixed(1)}% · Cals/L (stima): ${Math.round(abv * 6.9 + (fg - 1) * 1000 * 0.5)}`;
+}
+calcAbv();
+
+// ── EBC ───────────────────────────────────────────────────
+let maltIdx = 0;
+function addMaltRow(name='', kg=5, color=5) {
+  const id = maltIdx++;
+  const d = document.createElement('div');
+  d.className = 'hop-row'; d.id = 'malt-' + id;
+  d.innerHTML = `
+    <div class="form-row" style="margin:0"><label>Malto</label><input type="text" placeholder="Pilsner, Monaco…" value="${name}" oninput="calcEbc()"></div>
+    <div class="form-row" style="margin:0"><label>Peso (kg)</label><input type="number" value="${kg}" step="0.1" oninput="calcEbc()"></div>
+    <div class="form-row" style="margin:0"><label>Colore</label><input type="number" value="${color}" step="0.5" oninput="calcEbc()"></div>
+    <div></div>
+    <button class="btn btn-danger btn-xs" onclick="document.getElementById('malt-${id}').remove();calcEbc()" style="margin-bottom:4px;">✕</button>`;
+  document.getElementById('malt-rows').appendChild(d);
+  calcEbc();
+}
+addMaltRow('Pilsner', 4.5, 3);
+addMaltRow('Monaco', 0.5, 20);
+
+const EBC_COLORS = [[2,'#f5f2a0'],[5,'#f3d670'],[10,'#d4a843'],[20,'#b07030'],[30,'#8b4512'],[50,'#5a2b05'],[80,'#2d1206'],[120,'#0d0603']];
+function ebcToHex(ebc) {
+  for (let i = 1; i < EBC_COLORS.length; i++) {
+    if (ebc <= EBC_COLORS[i][0]) {
+      const t = (ebc - EBC_COLORS[i-1][0]) / (EBC_COLORS[i][0] - EBC_COLORS[i-1][0]);
+      return lerpColor(EBC_COLORS[i-1][1], EBC_COLORS[i][1], t);
+    }
+  }
+  return '#0a0402';
+}
+function lerpColor(a, b, t) {
+  const ah = parseInt(a.slice(1),16), bh = parseInt(b.slice(1),16);
+  const ar = (ah>>16)&0xff, ag = (ah>>8)&0xff, ab = ah&0xff;
+  const br = (bh>>16)&0xff, bg = (bh>>8)&0xff, bb = bh&0xff;
+  return '#' + [Math.round(ar+(br-ar)*t),Math.round(ag+(bg-ag)*t),Math.round(ab+(bb-ab)*t)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+const EBC_LABELS = [[5,'Giallo paglierino'],[10,'Giallo dorato'],[20,'Ambra'],[35,'Rame'],[50,'Marrone'],[80,'Scuro'],[120,'Nero']];
+function ebcLabel(ebc) { return (EBC_LABELS.find(([t])=>ebc<=t) || [0,'Molto scuro'])[1]; }
+
+function calcEbc() {
+  const vol = parseFloat(document.getElementById('ebc-vol').value) || 20;
+  const unit = document.getElementById('ebc-unit').value;
+  let mcu = 0;
+  document.querySelectorAll('#malt-rows .hop-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const kg = parseFloat(inputs[1].value) || 0;
+    let color = parseFloat(inputs[2].value) || 0;
+    if (unit === 'ebc') color = color / 1.97;
+    const lb = kg * 2.20462, gal = vol * 0.264172;
+    mcu += (lb * color) / gal;
+  });
+  const srm = 1.4922 * Math.pow(mcu, 0.6859);
+  const ebc = srm * 1.97;
+  document.getElementById('ebc-val').textContent = ebc.toFixed(1);
+  document.getElementById('srm-val').textContent = srm.toFixed(1);
+  document.getElementById('color-swatch').style.background = ebcToHex(ebc);
+  document.getElementById('ebc-label').textContent = ebcLabel(ebc);
+}
+calcEbc();
+
+// ── PRIMING ───────────────────────────────────────────────
+function calcPriming() {
+  const vol = parseFloat(document.getElementById('pr-vol').value) || 20;
+  const co2Target = parseFloat(document.getElementById('pr-co2').value) || 2.4;
+  const tempC = parseFloat(document.getElementById('pr-temp').value) || 20;
+  const efficiency = parseFloat(document.getElementById('pr-tipo').value) || 1.0;
+  const co2Residua = -0.9753 * Math.log(tempC) + 4.9648;
+  const co2DaAggiungere = co2Target - Math.max(0, co2Residua);
+  const gSaccarosio = (co2DaAggiungere * 3.8 * vol) / efficiency;
+  const gPerL = gSaccarosio / vol;
+  document.getElementById('pr-g').textContent = Math.max(0, gSaccarosio).toFixed(1) + ' g';
+  document.getElementById('pr-gL').textContent = Math.max(0, gPerL).toFixed(2) + ' g/L';
+  document.getElementById('pr-g75').textContent = Math.max(0, gPerL * 0.75).toFixed(2) + ' g';
+  document.getElementById('pr-co2-residua').textContent =
+    `CO₂ residua a ${tempC}°C: ~${Math.max(0,co2Residua).toFixed(2)} vol · Da aggiungere: ${Math.max(0,co2DaAggiungere).toFixed(2)} vol`;
+}
+calcPriming();
+
+// ── DENSITÀ CORREZIONE ────────────────────────────────────
+function calcDens() {
+  const sg = parseFloat(document.getElementById('dens-sg').value) || 1.050;
+  const tSample = parseFloat(document.getElementById('dens-temp').value) || 25;
+  const tCal = parseFloat(document.getElementById('dens-cal').value) || 20;
+  const sgC = sg * ((1.00130346 - 0.000134722124*tSample + 0.00000204052596*tSample**2 - 0.00000000232820948*tSample**3) /
+                    (1.00130346 - 0.000134722124*tCal + 0.00000204052596*tCal**2 - 0.00000000232820948*tCal**3));
+  const plato = (-1 * 616.868) + (1111.14 * sgC) - (630.272 * sgC**2) + (135.997 * sgC**3);
+  document.getElementById('dens-val').textContent = sgC.toFixed(4);
+  document.getElementById('dens-plato').textContent = `°Plato: ${plato.toFixed(2)} · °Brix: ${(plato * 1.04).toFixed(2)}`;
+}
+calcDens();
+
+// ── CONVERSIONI ───────────────────────────────────────────
+function sgToPlato(sg) { return -616.868 + 1111.14*sg - 630.272*sg**2 + 135.997*sg**3; }
+function platoToSg(p) { return 1 + (p / (258.6 - (p/258.2)*227.1)); }
+function cvSg() { const sg=parseFloat(document.getElementById('cv-sg').value)||1.050; const p=sgToPlato(sg); document.getElementById('cv-plato').value=p.toFixed(2); document.getElementById('cv-brix').value=(p*1.04).toFixed(2); }
+function cvPlato() { const p=parseFloat(document.getElementById('cv-plato').value)||0; const sg=platoToSg(p); document.getElementById('cv-sg').value=sg.toFixed(4); document.getElementById('cv-brix').value=(p*1.04).toFixed(2); }
+function cvBrix() { const b=parseFloat(document.getElementById('cv-brix').value)||0; const p=b/1.04; const sg=platoToSg(p); document.getElementById('cv-sg').value=sg.toFixed(4); document.getElementById('cv-plato').value=p.toFixed(2); }
+function cvC() { const c=parseFloat(document.getElementById('cv-c').value)||0; document.getElementById('cv-f').value=(c*9/5+32).toFixed(1); }
+function cvF() { const f=parseFloat(document.getElementById('cv-f').value)||0; document.getElementById('cv-c').value=((f-32)*5/9).toFixed(1); }
+function cvEbc() { const e=parseFloat(document.getElementById('cv-ebc').value)||0; document.getElementById('cv-srm').value=(e/1.97).toFixed(1); }
+function cvSrm() { const s=parseFloat(document.getElementById('cv-srm').value)||0; document.getElementById('cv-ebc').value=(s*1.97).toFixed(1); }
+function cvL() { const l=parseFloat(document.getElementById('cv-l').value)||0; document.getElementById('cv-gal').value=(l*0.264172).toFixed(3); }
+function cvGal() { const g=parseFloat(document.getElementById('cv-gal').value)||0; document.getElementById('cv-l').value=(g/0.264172).toFixed(2); }
+cvSg(); cvC(); cvEbc(); cvL();
+
+// ── ACQUA ─────────────────────────────────────────────────
+function calcAcqua() {
+  const vol = parseFloat(document.getElementById('aq-vol').value) || 30;
+  const ions = ['ca','mg','na','cl','so4','hco3'];
+  const labels = ['Ca²⁺','Mg²⁺','Na⁺','Cl⁻','SO₄²⁻','HCO₃⁻'];
+  const delta = ions.map(ion => {
+    const base = parseFloat(document.getElementById(`aq-${ion}-base`).value) || 0;
+    const tgt = parseFloat(document.getElementById(`aq-${ion}-tgt`).value) || 0;
+    return { ion, label: labels[ions.indexOf(ion)], diff: tgt - base };
+  });
+  const CaCl2_factor = { ca: 0.2719, cl: 0.4831 };
+  const CaSO4_factor = { ca: 0.2328, so4: 0.5579 };
+  const NaCl_factor = { na: 0.3934, cl: 0.6066 };
+  const MgSO4_factor = { mg: 0.0987, so4: 0.3950 };
+  let html = '';
+  const so4Delta = delta.find(d=>d.ion==='so4').diff;
+  const caNeeded = Math.max(0, delta.find(d=>d.ion==='ca').diff);
+  const mgNeeded = Math.max(0, delta.find(d=>d.ion==='mg').diff);
+  const naNeeded = Math.max(0, delta.find(d=>d.ion==='na').diff);
+  const gCaSO4 = Math.max(0, (caNeeded/CaSO4_factor.ca) * vol/1000);
+  const gMgSO4 = Math.max(0, (mgNeeded/MgSO4_factor.mg) * vol/1000);
+  const gNaCl = Math.max(0, (naNeeded/NaCl_factor.na) * vol/1000);
+  const addons = [
+    {nome:'CaSO₄ (gesso)',g:gCaSO4},
+    {nome:'MgSO₄ (sale Epsom)',g:gMgSO4},
+    {nome:'NaCl (sale da cucina)',g:gNaCl},
+  ];
+  addons.forEach(a => {
+    if (a.g > 0.01) html += `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span>${a.nome}</span><strong style="color:var(--amber)">${a.g.toFixed(2)} g</strong></div>`;
+  });
+  if (!html) html = '<div style="color:var(--green)">✓ Acqua già nel target, nessuna aggiunta necessaria</div>';
+  document.getElementById('aq-detail').innerHTML = html;
+}
+calcAcqua();
+
+// ── EFFICIENZA ────────────────────────────────────────────
+function calcEff() {
+  const vol = parseFloat(document.getElementById('eff-vol').value) || 20;
+  const og = parseFloat(document.getElementById('eff-og').value) || 1.050;
+  const kg = parseFloat(document.getElementById('eff-kg').value) || 5;
+  const yieldPct = parseFloat(document.getElementById('eff-yield').value) || 80;
+  const pointsTarget = kg * (yieldPct / 100) * 46 / (vol / 3.785);
+  const ogMax = 1 + (pointsTarget / 1000);
+  const pointsAchieved = (og - 1) * 1000 * (vol / 3.785);
+  const pointsTheory = kg * (yieldPct / 100) * 46;
+  const eff = (pointsAchieved / pointsTheory) * 100;
+  document.getElementById('eff-pct').textContent = eff.toFixed(1) + '%';
+  document.getElementById('eff-max').textContent = ogMax.toFixed(3);
+}
+calcEff();
+</script>
+{% endblock %}
