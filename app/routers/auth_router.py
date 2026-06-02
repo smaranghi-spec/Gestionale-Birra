@@ -72,11 +72,9 @@ def logout(request: Request):
 
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request, db: Session = Depends(get_db)):
-    n = db.query(User).count()
-    if n > 0 and request.session.get("ruolo") != "admin":
-        return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse(request, "register.html", {
         "errore": None,
+        "successo": False,
         "session": request.session,
     })
 
@@ -90,14 +88,13 @@ def register(
     db: Session = Depends(get_db),
 ):
     from datetime import datetime
-    n = db.query(User).count()
-    if n > 0 and request.session.get("ruolo") != "admin":
-        return RedirectResponse("/login", status_code=303)
     if db.query(User).filter(User.username == username).first():
         return templates.TemplateResponse(request, "register.html", {
-            "errore": "Username già in uso.",
+            "errore": "Username già in uso. Scegline un altro.",
+            "successo": False,
             "session": request.session,
         })
+    n = db.query(User).count()
     ruolo = "admin" if n == 0 else "birraio"
     u = User(
         username=username,
@@ -110,11 +107,13 @@ def register(
     db.add(u)
     db.commit()
     db.refresh(u)
-    request.session["user_id"] = u.id
-    request.session["username"] = u.username
-    request.session["nome"] = u.nome
-    request.session["ruolo"] = u.ruolo
-    return RedirectResponse("/", status_code=303)
+    # Mostra conferma senza auto-login: l'utente va al login e poi diventa socio
+    return templates.TemplateResponse(request, "register.html", {
+        "errore": None,
+        "successo": True,
+        "nuovo_username": u.username,
+        "session": {},
+    })
 
 
 @router.get("/utenti", response_class=HTMLResponse)

@@ -6,7 +6,8 @@
   <title>Registrazione — Gestionale Birrificio</title>
   <style>
     :root{--bg:#0d1117;--card:#1c2333;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
-      --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);--red:#f85149;--red-dim:rgba(248,81,73,.12);}
+      --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);--red:#f85149;--red-dim:rgba(248,81,73,.12);
+      --green:#22c55e;--green-dim:rgba(34,197,94,.12);}
     *{box-sizing:border-box;}
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;
       background:var(--bg);color:var(--text);min-height:100vh;
@@ -14,7 +15,7 @@
     .wrap{width:100%;max-width:420px;}
     .brand{text-align:center;margin-bottom:28px;}
     .brand span{font-size:48px;display:block;margin-bottom:8px;}
-    h1{font-size:22px;font-weight:700;margin:0 0 4px;}
+    h1{font-size:22px;font-weight:700;margin:0 0 4px;text-align:center;}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;}
     .card h2{font-size:17px;font-weight:600;margin:0 0 20px;}
     .form-row{margin-bottom:14px;}
@@ -23,14 +24,28 @@
     input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);
       background:var(--bg);color:var(--text);font:inherit;font-size:14px;}
     input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-dim);}
-    .btn{width:100%;padding:11px;border-radius:8px;border:none;
-      background:var(--amber);color:#000;font:700 14px/1 inherit;cursor:pointer;margin-top:4px;}
+    .btn{display:block;width:100%;padding:12px;border-radius:8px;border:none;
+      background:var(--amber);color:#000;font:700 14px/1 inherit;cursor:pointer;
+      text-align:center;text-decoration:none;margin-top:4px;}
     .btn:hover{filter:brightness(1.1);}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+    .btn-ghost:hover{background:rgba(255,255,255,.05);filter:none;}
+    .btn-green{background:#16a34a;color:#fff;}
     .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;
       border:1px solid var(--red);background:var(--red-dim);color:var(--red);}
+    .success-box{padding:20px;border-radius:10px;font-size:14px;
+      border:1px solid var(--green);background:var(--green-dim);color:var(--green);
+      text-align:center;margin-bottom:20px;}
+    .success-icon{font-size:40px;display:block;margin-bottom:10px;}
     .link-row{text-align:center;margin-top:14px;font-size:13px;color:var(--muted);}
     .link-row a{color:var(--amber);}
     small{color:var(--muted);font-size:12px;}
+    .step{display:flex;align-items:flex-start;gap:12px;padding:12px;background:rgba(255,255,255,.03);
+      border-radius:8px;margin-bottom:8px;font-size:13px;}
+    .step-num{background:var(--amber);color:#000;font-weight:700;border-radius:50%;
+      width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+      font-size:12px;flex-shrink:0;margin-top:1px;}
+    .step-num.done{background:var(--green);}
   </style>
 </head>
 <body>
@@ -39,27 +54,63 @@
     <span>🍺</span>
     <h1>Gestionale Birrificio</h1>
   </div>
+
+  {% if successo %}
+  <!-- ── SCHERMATA DI CONFERMA ─────────────────────────────── -->
+  <div class="card">
+    <div class="success-box">
+      <span class="success-icon">✓</span>
+      <strong style="font-size:16px;display:block;margin-bottom:6px;">Account creato!</strong>
+      L'account <strong>{{ nuovo_username }}</strong> è stato registrato con successo.
+    </div>
+
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Prossimi passi</div>
+
+    <div class="step">
+      <div class="step-num done">✓</div>
+      <div><strong>Account creato</strong><br><span style="color:var(--muted);">Username: {{ nuovo_username }}</span></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div><strong>Accedi al gestionale</strong><br><span style="color:var(--muted);">Usa username e password appena scelti</span></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div><strong>Diventa Socio</strong><br><span style="color:var(--muted);">Completa il tuo profilo per sbloccare le funzionalità operative</span></div>
+    </div>
+
+    <a href="/login" class="btn" style="margin-top:20px;">Vai al login →</a>
+    <a href="/register" class="btn btn-ghost" style="margin-top:8px;">Registra un altro account</a>
+  </div>
+
+  {% else %}
+  <!-- ── FORM DI REGISTRAZIONE ─────────────────────────────── -->
   <div class="card">
     <h2>Crea account</h2>
-    {% if errore %}<div class="alert">{{ errore }}</div>{% endif %}
+    {% if errore %}<div class="alert">⚠ {{ errore }}</div>{% endif %}
     <form method="post" action="/register">
       <div class="form-row">
         <label>Nome visualizzato</label>
-        <input type="text" name="nome" placeholder="es. Marco Rossi">
+        <input type="text" name="nome" placeholder="es. Marco Rossi" autofocus>
       </div>
       <div class="form-row">
         <label>Username *</label>
-        <input type="text" name="username" placeholder="username" required>
+        <input type="text" name="username" placeholder="username" required autocomplete="username">
         <small>Verrà usato per il login</small>
       </div>
       <div class="form-row">
         <label>Password *</label>
-        <input type="password" name="password" placeholder="Almeno 6 caratteri" required minlength="6">
+        <input type="password" name="password" placeholder="Almeno 6 caratteri" required minlength="6" autocomplete="new-password">
       </div>
       <button type="submit" class="btn">Crea account</button>
     </form>
+    <div style="margin-top:16px;padding:12px;background:rgba(245,158,11,.07);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.5;">
+      ✦ Dopo la registrazione potrai accedere e completare il profilo per diventare socio.
+    </div>
     <div class="link-row"><a href="/login">← Torna al login</a></div>
   </div>
+  {% endif %}
+
 </div>
 </body>
 </html>
