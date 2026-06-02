@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import User
+from ..models import User, ProfiloSocio
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -118,14 +118,94 @@ def register(
 
 
 @router.get("/utenti", response_class=HTMLResponse)
-def gestisci_utenti(request: Request, db: Session = Depends(get_db)):
+def gestisci_utenti(request: Request, msg: str = None, db: Session = Depends(get_db)):
     if request.session.get("ruolo") != "admin":
         return RedirectResponse("/", status_code=303)
     utenti = db.query(User).order_by(User.id).all()
+    # mappa user_id → ProfiloSocio
+    soci_map = {s.user_id: s for s in db.query(ProfiloSocio).filter(ProfiloSocio.user_id.isnot(None)).all()}
     return templates.TemplateResponse(request, "utenti.html", {
         "utenti": utenti,
+        "soci_map": soci_map,
+        "msg": msg,
         "session": request.session,
     })
+
+
+@router.post("/utenti/{uid}/ruolo")
+def cambia_ruolo(uid: int, request: Request, ruolo: str = Form(...), db: Session = Depends(get_db)):
+    if request.session.get("ruolo") != "admin":
+        return RedirectResponse("/", status_code=303)
+    u = db.query(User).filter(User.id == uid).first()
+    if u and u.id != request.session.get("user_id") and ruolo in ("admin", "socio", "birraio"):
+        u.ruolo = ruolo
+        db.commit()
+    return RedirectResponse("/utenti?msg=Ruolo+aggiornato", status_code=303)
+
+
+@router.get("/diventa-socio", response_class=HTMLResponse)
+def diventa_socio_page(request: Request, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+    # Se è già socio o admin, reindirizza
+    ruolo = request.session.get("ruolo", "")
+    if ruolo in ("socio", "admin"):
+        return RedirectResponse("/?msg=Sei+già+socio", status_code=303)
+    u = db.query(User).filter(User.id == uid).first()
+    # Controlla se ha già un profilo socio
+    profilo = db.query(ProfiloSocio).filter(ProfiloSocio.user_id == uid).first()
+    if profilo:
+        return RedirectResponse(f"/soci/{profilo.id}?msg=Profilo+già+esistente", status_code=303)
+    from datetime import datetime
+    return templates.TemplateResponse(request, "diventa_socio.html", {
+        "u": u,
+        "anno_corrente": datetime.now().year,
+        "session": request.session,
+    })
+
+
+@router.post("/diventa-socio")
+def diventa_socio_submit(
+    request: Request,
+    nome: str = Form(...),
+    cognome: str = Form(""),
+    email: str = Form(""),
+    telefono: str = Form(""),
+    data_nascita: str = Form(""),
+    codice_fiscale: str = Form(""),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    from datetime import datetime
+    uid = request.session.get("user_id")
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+    # Controlla che non esista già
+    if db.query(ProfiloSocio).filter(ProfiloSocio.user_id == uid).first():
+        return RedirectResponse("/", status_code=303)
+    s = ProfiloSocio(
+        nome=nome.strip(),
+        cognome=cognome.strip() or None,
+        email=email.strip() or None,
+        telefono=telefono.strip() or None,
+        data_nascita=data_nascita or None,
+        codice_fiscale=codice_fiscale.strip() or None,
+        anno_iscrizione=datetime.now().year,
+        stato_socio="attivo",
+        note=note.strip() or None,
+        user_id=uid,
+    )
+    db.add(s)
+    u = db.query(User).filter(User.id == uid).first()
+    if u and u.ruolo not in ("admin",):
+        u.ruolo = "socio"
+        u.nome = nome.strip() or u.nome
+    db.commit()
+    # Aggiorna la sessione in tempo reale
+    request.session["ruolo"] = "socio"
+    request.session["nome"] = u.nome if u else request.session.get("nome", "")
+    return RedirectResponse("/?msg=Benvenuto+tra+i+soci!", status_code=303)
 
 
 @router.post("/utenti/{uid}/toggle")

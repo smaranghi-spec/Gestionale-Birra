@@ -64,6 +64,15 @@ def lista_soci(request: Request, stato: str = None, msg: str = None, db: Session
     })
 
 
+def _sync_ruolo_socio(db: Session, user_id_val, stato: str = "attivo"):
+    """Se un utente viene collegato a un ProfiloSocio attivo, promuovilo a 'socio'."""
+    if not user_id_val:
+        return
+    u = db.query(User).filter(User.id == user_id_val).first()
+    if u and u.ruolo not in ("admin",):
+        u.ruolo = "socio" if stato == "attivo" else "birraio"
+
+
 @router.post("/soci/nuovo")
 def nuovo_socio(
     nome: str = Form(...),
@@ -79,6 +88,7 @@ def nuovo_socio(
     user_id: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    uid = int(user_id) if user_id.strip().isdigit() else None
     s = ProfiloSocio(
         nome=nome.strip(),
         cognome=cognome.strip() or None,
@@ -90,10 +100,11 @@ def nuovo_socio(
         quota_annuale=float(quota_annuale) if quota_annuale.strip() else None,
         ruolo_interno=ruolo_interno or None,
         note=note.strip() or None,
-        user_id=int(user_id) if user_id.strip().isdigit() else None,
+        user_id=uid,
         stato_socio="attivo",
     )
     db.add(s)
+    _sync_ruolo_socio(db, uid, "attivo")
     db.commit()
     return RedirectResponse("/soci?msg=Socio+aggiunto", status_code=303)
 
@@ -154,7 +165,13 @@ def aggiorna_socio(
     s.stato_socio = stato_socio
     s.ruolo_interno = ruolo_interno or None
     s.note = note.strip() or None
-    s.user_id = int(user_id) if user_id.strip().isdigit() else None
+    new_uid = int(user_id) if user_id.strip().isdigit() else None
+    old_uid = s.user_id
+    s.user_id = new_uid
+    # Se l'utente collegato cambia o lo stato cambia, ricalcola il ruolo
+    if old_uid and old_uid != new_uid:
+        _sync_ruolo_socio(db, old_uid, "uscito")  # revoca
+    _sync_ruolo_socio(db, new_uid, s.stato_socio)
     db.commit()
     return RedirectResponse(f"/soci/{sid}?msg=Salvato", status_code=303)
 

@@ -255,7 +255,16 @@
     </div>
     <div class="navbar-user">
       {% if session and session.nome %}
-        <span class="user-badge">{% if session.ruolo == 'ospite' %}👁{% else %}👤{% endif %} {{ session.nome }}</span>
+        <span class="user-badge">
+          {% if session.ruolo == 'ospite' %}👁
+          {% elif session.ruolo == 'socio' %}✦
+          {% elif session.ruolo == 'admin' %}🔑
+          {% else %}👤{% endif %}
+          {{ session.nome }}
+        </span>
+      {% endif %}
+      {% if session and session.ruolo == 'birraio' %}
+        <a href="/diventa-socio" class="btn btn-primary" style="padding:5px 12px;font-size:12px;">✦ Diventa Socio</a>
       {% endif %}
       <a href="/logout" class="btn-logout">Esci</a>
     </div>
@@ -293,6 +302,10 @@
   <a href="/attrezzature" onclick="closeMM()">🔩 Attrezzature</a>
   <a href="/brewmonk" onclick="closeMM()">🍺 BrewMonk</a>
   <a href="/birre" target="_blank" onclick="closeMM()">🌐 Pagina Pub</a>
+  {% if session and session.ruolo == 'birraio' %}
+  <div class="mobile-section">Il tuo account</div>
+  <a href="/diventa-socio" onclick="closeMM()" style="color:var(--amber);font-weight:700;">✦ Diventa Socio</a>
+  {% endif %}
   {% if session and session.ruolo == 'admin' %}
   <div class="mobile-section">Admin</div>
   <a href="/utenti" onclick="closeMM()">👤 Gestione utenti</a>

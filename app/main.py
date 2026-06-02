@@ -56,6 +56,8 @@ READ_ONLY_PATHS = ("/", "/ricette/html", "/cotte", "/stili", "/catalogo",
                    "/tracciabilita", "/inventario")
 
 WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
+# Scritture consentite anche per utenti non-soci (solo queste route)
+SOCIO_EXEMPT_WRITES = ("/diventa-socio",)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -66,13 +68,22 @@ class AuthMiddleware(BaseHTTPMiddleware):
         user_id = request.session.get("user_id")
         if not user_id and user_id != 0:
             return RedirectResponse("/login", status_code=303)
-        # Ospite: blocca azioni di scrittura
-        if request.session.get("ruolo") == "ospite" and request.method in WRITE_METHODS:
+        ruolo = request.session.get("ruolo", "birraio")
+        # Ospite e birraio (non-socio): blocca azioni di scrittura
+        if ruolo in ("ospite", "birraio") and request.method in WRITE_METHODS:
+            if any(path.startswith(e) for e in SOCIO_EXEMPT_WRITES):
+                return await call_next(request)
+            if ruolo == "ospite":
+                msg = "Sei in modalità ospite (sola lettura).<br>Esegui il login per modificare i dati."
+                cta = '<a href="/login" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#f59e0b;color:#000;border-radius:8px;text-decoration:none;font-weight:700;">Accedi</a>'
+            else:
+                msg = "Solo i soci possono registrare dati operativi.<br>Diventa socio per sbloccare tutte le funzionalità."
+                cta = '<a href="/diventa-socio" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#f59e0b;color:#000;border-radius:8px;text-decoration:none;font-weight:700;">✦ Diventa Socio</a>'
             return HTMLResponse(
                 '<html><body style="background:#0d1117;color:#e6edf3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;">'
-                '<div><div style="font-size:48px;">🔒</div><h2>Accesso negato</h2>'
-                '<p style="color:#8b949e;">Sei in modalità ospite (sola lettura).<br>Esegui il login per modificare i dati.</p>'
-                '<a href="/login" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#f59e0b;color:#000;border-radius:8px;text-decoration:none;font-weight:700;">Accedi</a></div></body></html>',
+                f'<div><div style="font-size:48px;">🔒</div><h2>Accesso negato</h2>'
+                f'<p style="color:#8b949e;">{msg}</p>{cta}'
+                '<br><br><a href="/" style="color:#8b949e;font-size:13px;">← Torna alla home</a></div></body></html>',
                 status_code=403
             )
         return await call_next(request)

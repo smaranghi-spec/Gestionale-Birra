@@ -2,62 +2,136 @@
 {% block title %}Gestione Utenti{% endblock %}
 {% block content %}
 
-<div style="margin-bottom:20px;">
-  <h1 style="font-size:22px;margin-bottom:4px;">👥 Gestione Utenti</h1>
-  <p>Visualizza e gestisci gli utenti del gestionale. Solo gli amministratori possono accedere a questa sezione.</p>
+<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 style="font-size:22px;margin-bottom:4px;">👥 Gestione Utenti</h1>
+    <p style="color:var(--muted);font-size:13px;">Solo gli amministratori possono gestire gli utenti. Le modifiche di ruolo sono immediate.</p>
+  </div>
+  <a href="/register" class="btn btn-primary">➕ Nuovo utente</a>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+{% if msg %}
+<div style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;">✓ {{ msg }}</div>
+{% endif %}
 
-  <div class="card" style="padding:0;overflow:hidden;">
-    <table class="tbl">
-      <thead><tr><th>Username</th><th>Nome</th><th>Ruolo</th><th>Registrato</th><th>Stato</th><th></th></tr></thead>
-      <tbody>
-      {% for u in utenti %}
+<!-- Statistiche rapide -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;">
+  {% set n_admin = utenti|selectattr('ruolo','eq','admin')|list|length %}
+  {% set n_soci = utenti|selectattr('ruolo','eq','socio')|list|length %}
+  {% set n_birraio = utenti|selectattr('ruolo','eq','birraio')|list|length %}
+  {% set n_attivi = utenti|selectattr('is_active')|list|length %}
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;color:var(--text);">{{ utenti|length }}</div>
+    <div style="font-size:12px;color:var(--muted);">Utenti totali</div>
+  </div>
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;color:#22c55e;">{{ n_soci }}</div>
+    <div style="font-size:12px;color:var(--muted);">Soci attivi</div>
+  </div>
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;color:var(--amber);">{{ n_admin }}</div>
+    <div style="font-size:12px;color:var(--muted);">Amministratori</div>
+  </div>
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;color:var(--muted);">{{ n_birraio }}</div>
+    <div style="font-size:12px;color:var(--muted);">Non ancora soci</div>
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="tbl">
+    <thead>
       <tr>
-        <td style="font-weight:600;">{{ u.username }}</td>
-        <td>{{ u.nome or '—' }}</td>
-        <td>
-          {% if u.ruolo == 'admin' %}
-            <span class="badge badge-amber">🔑 Admin</span>
-          {% else %}
-            <span class="badge badge-gray">Birraio</span>
-          {% endif %}
-        </td>
-        <td style="font-size:12px;color:var(--muted);">{{ u.created_at or '—' }}</td>
-        <td>
-          {% if u.is_active %}
-            <span class="badge badge-green">Attivo</span>
-          {% else %}
-            <span class="badge badge-red">Disabilitato</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if u.id != session.user_id %}
-          <form method="post" action="/utenti/{{ u.id }}/toggle">
-            <button type="submit" class="btn btn-ghost btn-xs">
+        <th>#</th>
+        <th>Username</th>
+        <th>Nome</th>
+        <th>Ruolo</th>
+        <th>Profilo socio</th>
+        <th>Registrato</th>
+        <th>Stato</th>
+        <th style="text-align:right;">Azioni</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in utenti %}
+    <tr>
+      <td style="color:var(--muted);font-size:12px;">{{ u.id }}</td>
+      <td style="font-weight:600;">
+        {{ u.username }}
+        {% if u.id == session.user_id %}
+          <span style="font-size:10px;color:var(--amber);margin-left:4px;">(tu)</span>
+        {% endif %}
+      </td>
+      <td>{{ u.nome or '—' }}</td>
+      <td>
+        {% if u.ruolo == 'admin' %}
+          <span class="badge badge-amber">🔑 Admin</span>
+        {% elif u.ruolo == 'socio' %}
+          <span class="badge badge-green">✦ Socio</span>
+        {% else %}
+          <span class="badge badge-gray">Registrato</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if u.id in soci_map %}
+          {% set sp = soci_map[u.id] %}
+          <a href="/soci/{{ sp.id }}" style="color:var(--amber);font-size:13px;text-decoration:none;">
+            {{ sp.nome }} {{ sp.cognome or '' }}
+            {% if sp.stato_socio == 'sospeso' %}<span style="color:var(--red);font-size:11px;"> (sospeso)</span>{% endif %}
+            {% if sp.stato_socio == 'uscito' %}<span style="color:var(--muted);font-size:11px;"> (uscito)</span>{% endif %}
+          </a>
+        {% else %}
+          <span style="color:var(--muted);font-size:12px;">—</span>
+        {% endif %}
+      </td>
+      <td style="font-size:12px;color:var(--muted);">{{ u.created_at or '—' }}</td>
+      <td>
+        {% if u.is_active %}
+          <span class="badge badge-green">Attivo</span>
+        {% else %}
+          <span class="badge badge-red">Disabilitato</span>
+        {% endif %}
+      </td>
+      <td style="text-align:right;">
+        {% if u.id != session.user_id %}
+        <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap;">
+          <!-- Cambia ruolo -->
+          <form method="post" action="/utenti/{{ u.id }}/ruolo" style="display:inline;">
+            <select name="ruolo" onchange="this.form.submit()"
+              style="background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer;">
+              <option value="birraio" {% if u.ruolo == 'birraio' %}selected{% endif %}>Registrato</option>
+              <option value="socio" {% if u.ruolo == 'socio' %}selected{% endif %}>Socio</option>
+              <option value="admin" {% if u.ruolo == 'admin' %}selected{% endif %}>Admin</option>
+            </select>
+          </form>
+          <!-- Abilita/Disabilita -->
+          <form method="post" action="/utenti/{{ u.id }}/toggle" style="display:inline;">
+            <button type="submit" class="btn btn-ghost btn-xs"
+              style="{% if not u.is_active %}color:var(--green);{% else %}color:var(--red);{% endif %}">
               {% if u.is_active %}Disabilita{% else %}Abilita{% endif %}
             </button>
           </form>
-          {% else %}
-          <span style="font-size:11px;color:var(--muted);">Tu</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3 style="font-size:15px;margin-bottom:8px;">➕ Invita Utente</h3>
-    <p style="font-size:13px;margin-bottom:16px;">Condividi il link di registrazione con il nuovo membro del team.</p>
-    <div style="padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);font-family:monospace;font-size:13px;word-break:break-all;color:var(--text);">
-      /register
-    </div>
-    <p style="font-size:12px;margin-top:10px;">Il link è accessibile a chiunque. Dopo la registrazione, potrai assegnare i ruoli qui.</p>
-    <a href="/register" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Vai alla registrazione</a>
-  </div>
-
+        </div>
+        {% else %}
+          <span style="font-size:11px;color:var(--muted);">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">Nessun utente registrato.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
 </div>
+
+<!-- Nota ruoli -->
+<div class="card" style="margin-top:16px;padding:16px;border-left:3px solid var(--amber);">
+  <div style="font-size:13px;font-weight:600;margin-bottom:8px;">ℹ️ Livelli di accesso</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;">
+    <div><span class="badge badge-amber" style="margin-right:6px;">🔑 Admin</span>Accesso completo + gestione utenti</div>
+    <div><span class="badge badge-green" style="margin-right:6px;">✦ Socio</span>Può registrare cotte, ricette e dati operativi</div>
+    <div><span class="badge badge-gray" style="margin-right:6px;">Registrato</span>Solo lettura — può diventare socio</div>
+  </div>
+</div>
+
 {% endblock %}

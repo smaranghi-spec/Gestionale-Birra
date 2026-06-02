@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Diventa Socio{% endblock %}
+{% block content %}
+
+<div style="max-width:640px;margin:0 auto;">
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-size:48px;margin-bottom:8px;">✦</div>
+    <h1 style="font-size:26px;margin-bottom:8px;">Diventa Socio del Birrificio</h1>
+    <p style="color:var(--muted);font-size:14px;line-height:1.6;">
+      Iscrivendoti come socio, potrai registrare cotte, creare ricette e accedere a tutte le funzionalità operative del gestionale.
+    </p>
+  </div>
+
+  <form method="post" action="/diventa-socio">
+
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        Dati personali
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Nome *</label>
+          <input name="nome" type="text" class="input" required autofocus
+            value="{{ u.nome or '' }}"
+            placeholder="Mario">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Cognome</label>
+          <input name="cognome" type="text" class="input" placeholder="Rossi">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Email</label>
+          <input name="email" type="email" class="input" placeholder="mario@example.com">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Telefono</label>
+          <input name="telefono" type="tel" class="input" placeholder="+39 333 …">
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        Dati anagrafici (facoltativi)
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Data di nascita</label>
+          <input name="data_nascita" type="date" class="input">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Codice fiscale</label>
+          <input name="codice_fiscale" type="text" class="input" placeholder="RSSMRA80A01H501U"
+            style="text-transform:uppercase;">
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Note (motivazione, interessi, ecc.)</label>
+        <textarea name="note" class="input" rows="3" placeholder="Appassionato di birre artigianali da 5 anni…" style="resize:vertical;"></textarea>
+      </div>
+    </div>
+
+    <!-- Riepilogo account -->
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;">
+      <div style="color:var(--muted);margin-bottom:4px;">Account collegato</div>
+      <div style="font-weight:600;">{{ session.username }}</div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;padding:14px;font-size:15px;font-weight:700;">
+        ✦ Iscriviti come Socio
+      </button>
+      <a href="/" class="btn btn-ghost" style="padding:14px 20px;">Annulla</a>
+    </div>
+  </form>
+
+</div>
+
+{% endblock %}
