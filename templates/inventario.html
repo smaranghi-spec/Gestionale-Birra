@@ -60,9 +60,10 @@
             <div style="display:flex;gap:4px;flex-wrap:wrap;">
               <form method="post" action="/inventario/{{ item.id }}/aggiorna" style="display:flex;gap:3px;">
                 <input type="number" name="delta" step="0.1" placeholder="±" style="width:55px;padding:3px 5px;font-size:12px;" required>
-                <button type="submit" class="btn btn-ghost btn-xs">↻</button>
+                <button type="submit" class="btn btn-ghost btn-xs" title="Aggiorna quantità">↻</button>
               </form>
-              <a href="/inventario/{{ item.id }}/aggiungi-a-ricetta" class="btn btn-ghost btn-xs" title="Aggiungi a ricetta" style="color:var(--amber);border-color:var(--amber)">📝</a>
+              <a href="/inventario/{{ item.id }}/modifica" class="btn btn-ghost btn-xs" title="Modifica articolo" style="color:var(--amber);border-color:var(--amber)">✏️</a>
+              <a href="/inventario/{{ item.id }}/aggiungi-a-ricetta" class="btn btn-ghost btn-xs" title="Aggiungi a ricetta">📝</a>
               <a href="/prezzi/cerca?q={{ item.nome }}" class="btn btn-ghost btn-xs" title="Cerca prezzi" style="font-size:10px">💹</a>
               <form method="post" action="/inventario/{{ item.id }}/elimina">
                 <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Modifica — {{ item.nome }}{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="/inventario" class="btn btn-ghost btn-sm" style="margin-bottom:12px;">← Inventario</a>
+  <h1 style="font-size:22px;margin-bottom:4px;">✏️ Modifica articolo</h1>
+  <p style="color:var(--muted);">ID #{{ item.id }}</p>
+</div>
+
+<form method="post" action="/inventario/{{ item.id }}/modifica" style="max-width:760px;">
+
+  <!-- Informazioni base -->
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+      Informazioni base
+    </div>
+    <div class="form-row">
+      <label>Nome *</label>
+      <input type="text" name="nome" value="{{ item.nome }}" required autofocus>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row">
+        <label>Categoria</label>
+        <select name="categoria">
+          {% for c in categorie %}
+          <option {% if c == item.categoria %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Tipo ingrediente</label>
+        <select name="tipo_ingrediente" id="tipo-sel" onchange="aggiornaTipo()">
+          <option value="">— nessuno —</option>
+          {% for t in ['malto','luppolo','lievito','aroma','chimico','packaging','altro'] %}
+          <option {% if t == item.tipo_ingrediente %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Fornitore</label>
+      <input type="text" name="fornitore" value="{{ item.fornitore or '' }}" placeholder="es. MrMalt">
+    </div>
+  </div>
+
+  <!-- Stock e prezzi -->
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+      Stock e prezzi
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
+      <div class="form-row">
+        <label>Unità</label>
+        <select name="unita">
+          {% for u in unita %}
+          <option {% if u == item.unita %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Q.tà attuale</label>
+        <input type="number" name="quantita" value="{{ item.quantita or 0 }}" step="0.001" min="0">
+      </div>
+      <div class="form-row">
+        <label>Soglia minima</label>
+        <input type="number" name="quantita_minima" value="{{ item.quantita_minima or 0 }}" step="0.001" min="0">
+      </div>
+      <div class="form-row">
+        <label>Prezzo (€/unità)</label>
+        <input type="text" name="prezzo_unitario" value="{{ '%.4f'|format(item.prezzo_unitario) if item.prezzo_unitario else '' }}" placeholder="0.00">
+      </div>
+    </div>
+  </div>
+
+  <!-- Lotto e scadenza -->
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+      Lotto e scadenza (TMC)
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row">
+        <label>N° lotto</label>
+        <input type="text" name="numero_lotto" value="{{ item.numero_lotto or '' }}" placeholder="es. L2024-001">
+      </div>
+      <div class="form-row">
+        <label>Scadenza / TMC</label>
+        <input type="date" name="data_scadenza" value="{{ item.data_scadenza or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Specifiche per tipo -->
+  <div class="card" style="margin-bottom:16px;" id="specs-card">
+    <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+      Specifiche tecniche
+    </div>
+
+    <!-- Luppolo -->
+    <div id="specs-luppolo" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row">
+          <label>Alfa acidi (%)</label>
+          <input type="number" name="alfa_acidi" value="{{ item.alfa_acidi or '' }}" step="0.1" min="0" max="100" placeholder="es. 12.5">
+        </div>
+        <div class="form-row">
+          <label>IBU teorici</label>
+          <input type="number" name="ibu_teorici" value="{{ item.ibu_teorici or '' }}" step="0.1" min="0" placeholder="es. 80">
+        </div>
+      </div>
+    </div>
+
+    <!-- Lievito -->
+    <div id="specs-lievito" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row">
+          <label>Attenuazione (%)</label>
+          <input type="number" name="attenuazione" value="{{ item.attenuazione or '' }}" step="0.5" min="0" max="100" placeholder="es. 75">
+        </div>
+        <div class="form-row">
+          <label>Flocculazione</label>
+          <select name="flocculazione">
+            <option value="">—</option>
+            {% for f in ['alta','media','bassa','molto alta'] %}
+            <option {% if f == item.flocculazione %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Malto -->
+    <div id="specs-malto" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row">
+          <label>Resa estratto (%)</label>
+          <input type="number" name="resa_estratto" value="{{ item.resa_estratto or '' }}" step="0.5" min="0" max="100" placeholder="es. 80">
+        </div>
+        <div class="form-row">
+          <label>Colore (EBC)</label>
+          <input type="number" name="colore_ebc" value="{{ item.colore_ebc or '' }}" step="0.5" min="0" placeholder="es. 5.5">
+        </div>
+      </div>
+    </div>
+
+    <!-- Default (nessun tipo specifico) -->
+    <div id="specs-default">
+      <p style="color:var(--muted);font-size:13px;margin:0;">Seleziona un tipo ingrediente (luppolo, lievito, malto) per visualizzare le specifiche tecniche relative.</p>
+    </div>
+  </div>
+
+  <!-- Note -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="form-row" style="margin:0;">
+      <label>Note</label>
+      <textarea name="note" rows="3" style="resize:vertical;">{{ item.note or '' }}</textarea>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;">
+    <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;padding:12px;">💾 Salva modifiche</button>
+    <a href="/inventario" class="btn btn-ghost" style="padding:12px 20px;">Annulla</a>
+  </div>
+</form>
+
+<script>
+function aggiornaTipo() {
+  const t = document.getElementById('tipo-sel').value;
+  document.getElementById('specs-luppolo').style.display = t === 'luppolo' ? '' : 'none';
+  document.getElementById('specs-lievito').style.display = t === 'lievito' ? '' : 'none';
+  document.getElementById('specs-malto').style.display = t === 'malto' ? '' : 'none';
+  document.getElementById('specs-default').style.display = ['luppolo','lievito','malto'].includes(t) ? 'none' : '';
+}
+aggiornaTipo();
+</script>
+{% endblock %}

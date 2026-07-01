@@ -1,7 +1,10 @@
-"""Importa ordine da foto o PDF tramite OCR (pytesseract)."""
-import io
+"""Importa ordine da foto o PDF tramite Gemini Vision."""
+import base64
+import json
+import os
 import re
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, File, UploadFile, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -22,84 +25,114 @@ def get_db():
         db.close()
 
 
-def _ocr_from_image(data: bytes) -> str:
+async def _gemini_vision_parse(data: bytes, mime_type: str = "image/jpeg") -> tuple:
+    """Usa Gemini Vision per estrarre articoli da una foto/PDF."""
+    import httpx
+
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        return [], "GEMINI_API_KEY non configurata nei Secrets."
+
+    b64 = base64.b64encode(data).decode()
+    prompt = (
+        "Analizza questa immagine. È una fattura, un documento d'ordine o uno scontrino.\n"
+        "Estrai ogni prodotto/articolo e restituisci SOLO un JSON array con questa struttura:\n"
+        '[{"nome": "nome prodotto", "quantita": 1.0, "unita": "kg", '
+        '"prezzo_unitario": 0.0, "categoria": "ingrediente"}]\n\n'
+        "Categorie possibili: ingrediente, consumabile, packaging, chimico, altro.\n"
+        "Unità possibili: kg, g, L, mL, pz.\n"
+        "Se non riesci a determinare un valore, usa null.\n"
+        "Rispondi SOLO con il JSON array, nessun testo aggiuntivo."
+    )
+
     try:
-        import pytesseract
-        from PIL import Image
-        img = Image.open(io.BytesIO(data))
-        return pytesseract.image_to_string(img, lang="ita+eng")
+        async with httpx.AsyncClient(timeout=45) as client:
+            resp = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}",
+                json={
+                    "contents": [{
+                        "parts": [
+                            {"text": prompt},
+                            {"inline_data": {"mime_type": mime_type, "data": b64}},
+                        ]
+                    }],
+                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
+                },
+            )
+        resp_data = resp.json()
+        if "error" in resp_data:
+            return [], f"Errore Gemini: {resp_data['error'].get('message', str(resp_data['error']))}"
+
+        text = resp_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        m = re.search(r"\[.*\]", text, re.DOTALL)
+        if m:
+            righe = json.loads(m.group(0))
+            out = []
+            for r in righe[:30]:
+                nome = (r.get("nome") or "").strip()
+                if not nome or len(nome) < 2:
+                    continue
+                try:
+                    qty = float(r.get("quantita") or 1)
+                except Exception:
+                    qty = 1.0
+                unita = (r.get("unita") or "pz").strip().lower()
+                try:
+                    pu = float(r.get("prezzo_unitario") or 0) or None
+                except Exception:
+                    pu = None
+                out.append({
+                    "nome": nome[:80],
+                    "quantita": qty,
+                    "unita": unita,
+                    "prezzo_unitario": pu,
+                    "categoria": r.get("categoria") or "ingrediente",
+                })
+            return out, ""
+        return [], f"Risposta non valida:\n{text[:400]}"
     except Exception as e:
-        return f"[ERRORE OCR: {e}]"
+        return [], f"Errore connessione: {str(e)[:200]}"
 
 
-def _ocr_from_pdf(data: bytes) -> str:
+def _pdf_first_page_png(data: bytes) -> tuple:
+    """Converte prima pagina PDF in PNG per Gemini Vision."""
     try:
-        import fitz  # pymupdf
+        import fitz
         doc = fitz.open(stream=data, filetype="pdf")
-        testo = ""
-        for page in doc:
-            testo += page.get_text()
-        return testo
-    except Exception as e:
-        return f"[ERRORE PDF: {e}]"
-
-
-def _parse_righe(testo: str) -> list:
-    """Estrae righe prodotto da testo OCR grezzo. Heuristic-based."""
-    righe = []
-    lines = [l.strip() for l in testo.splitlines() if l.strip()]
-    price_pattern = re.compile(r"(\d+[.,]\d{1,2})\s*€?$|€\s*(\d+[.,]\d{1,2})")
-    qty_pattern = re.compile(r"(\d+[.,]?\d*)\s*(kg|g|L|ml|pz|pcs|bst|bot)", re.IGNORECASE)
-
-    for line in lines:
-        if len(line) < 4:
-            continue
-        price_m = price_pattern.search(line)
-        qty_m = qty_pattern.search(line)
-        prezzo = None
-        quantita = None
-        unita = "pz"
-        if price_m:
-            raw = price_m.group(1) or price_m.group(2)
-            prezzo = float(raw.replace(",", "."))
-        if qty_m:
-            quantita = float(qty_m.group(1).replace(",", "."))
-            unita = qty_m.group(2).lower()
-        nome = re.sub(r"\d+[.,]\d{1,2}\s*€?", "", line).strip()
-        nome = re.sub(r"€\s*\d+[.,]\d{1,2}", "", nome).strip()
-        nome = re.sub(r"\d+[.,]?\d*\s*(kg|g|L|ml|pz|pcs)", "", nome, flags=re.IGNORECASE).strip()
-        nome = nome.strip(".,;:-|")
-        if nome and len(nome) > 2 and not nome.replace(" ", "").isdigit():
-            righe.append({
-                "nome": nome[:80],
-                "quantita": quantita or 1.0,
-                "unita": unita,
-                "prezzo_unitario": prezzo,
-                "categoria": "ingrediente",
-            })
-    return righe[:30]
+        pix = doc[0].get_pixmap(dpi=150)
+        return pix.tobytes("png"), "image/png"
+    except Exception:
+        return data, "image/png"
 
 
 @router.get("/acquisti/importa-foto", response_class=HTMLResponse)
 def form_importa(request: Request):
     return templates.TemplateResponse(request, "acquisti_importa_foto.html", {
         "session": request.session,
+        "righe": [],
+        "errore": None,
     })
 
 
 @router.post("/acquisti/importa-foto", response_class=HTMLResponse)
 async def processa_foto(request: Request, file: UploadFile = File(...)):
     data = await file.read()
-    fname = file.filename or ""
-    if fname.lower().endswith(".pdf"):
-        testo = _ocr_from_pdf(data)
-    else:
-        testo = _ocr_from_image(data)
+    fname = (file.filename or "").lower()
 
-    righe = _parse_righe(testo)
+    if fname.endswith(".pdf"):
+        img_bytes, mime = _pdf_first_page_png(data)
+    elif fname.endswith(".png"):
+        img_bytes, mime = data, "image/png"
+    elif fname.endswith(".webp"):
+        img_bytes, mime = data, "image/webp"
+    else:
+        img_bytes, mime = data, "image/jpeg"
+
+    righe, errore = await _gemini_vision_parse(img_bytes, mime)
+
     return templates.TemplateResponse(request, "acquisti_importa_foto.html", {
-        "testo_ocr": testo[:3000],
         "righe": righe,
+        "errore": errore or None,
         "session": request.session,
     })
 
@@ -118,7 +151,7 @@ async def salva_importato(request: Request, db: Session = Depends(get_db)):
         data=datetime.now().strftime("%Y-%m-%d"),
         fornitore=fornitore or None,
         stato="bozza",
-        note="Importato da foto/PDF",
+        note="Importato da foto/PDF tramite Gemini AI",
     )
     db.add(ordine)
     db.flush()

@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA, Degustazione
+from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA, Degustazione, InventarioItem
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -322,6 +322,110 @@ def elimina_log(cotta_id: int, log_id: int, db: Session = Depends(get_db)):
         db.delete(entry)
         db.commit()
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
+
+
+@router.get("/cotte/{cotta_id}/vai-produzione", response_class=HTMLResponse)
+def vai_produzione_page(cotta_id: int, request: Request, db: Session = Depends(get_db)):
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta:
+        return RedirectResponse("/cotte", status_code=303)
+    if not cotta.ricetta:
+        return RedirectResponse(f"/cotte/{cotta_id}?msg=Nessuna+ricetta+collegata", status_code=303)
+
+    ricetta = cotta.ricetta
+    vol_ricetta = ricetta.volume_target or 20.0
+
+    # Scala ingredienti in base al volume batch (di default = volume ricetta)
+    vol_batch = cotta.volume_post_bollitura or vol_ricetta
+    fattore = vol_batch / vol_ricetta if vol_ricetta else 1.0
+
+    ingredienti_scalati = []
+    for ing in ricetta.ingredienti:
+        qty_scalata = round(ing.quantita * fattore, 3)
+        # Controlla disponibilità in inventario
+        inv = db.query(InventarioItem).filter(
+            InventarioItem.nome.ilike(f"%{ing.nome[:20]}%")
+        ).first()
+        disponibile = inv.quantita if inv else None
+        ingredienti_scalati.append({
+            "id": ing.id,
+            "nome": ing.nome,
+            "categoria": ing.categoria,
+            "quantita_ricetta": ing.quantita,
+            "unita": ing.unita,
+            "quantita_scalata": qty_scalata,
+            "disponibile": disponibile,
+            "inv_id": inv.id if inv else None,
+            "sufficiente": (disponibile is None or disponibile >= qty_scalata),
+        })
+
+    return templates.TemplateResponse(request, "vai_produzione.html", {
+        "cotta": cotta,
+        "ricetta": ricetta,
+        "vol_ricetta": vol_ricetta,
+        "vol_batch": vol_batch,
+        "fattore": round(fattore, 3),
+        "ingredienti": ingredienti_scalati,
+        "session": request.session,
+    })
+
+
+@router.post("/cotte/{cotta_id}/vai-produzione")
+async def vai_produzione_submit(cotta_id: int, request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    vol_batch = float(form.get("vol_batch", 0) or 0)
+    scarica_inventario = form.get("scarica_inventario") == "1"
+
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta or not cotta.ricetta:
+        return RedirectResponse("/cotte", status_code=303)
+
+    ricetta = cotta.ricetta
+    vol_ricetta = ricetta.volume_target or 20.0
+    if vol_batch <= 0:
+        vol_batch = vol_ricetta
+    fattore = vol_batch / vol_ricetta if vol_ricetta else 1.0
+
+    # Aggiorna volume cotta
+    cotta.volume_post_bollitura = vol_batch
+
+    # Avanza a brewday se era pianificata
+    if cotta.stato == "pianificata":
+        cotta.stato = "brewday"
+        db.add(LogCotta(
+            cotta_id=cotta_id,
+            timestamp=_now_str(),
+            fase="brewday",
+            tipo="evento",
+            descrizione=f"Avviata produzione — volume: {vol_batch}L (fattore scala: ×{round(fattore,3)})",
+        ))
+
+    # Scala ingredienti e scarica inventario se richiesto
+    movimenti = []
+    for ing in ricetta.ingredienti:
+        qty_scalata = round(ing.quantita * fattore, 3)
+        log_desc = f"Ingrediente: {ing.nome} × {qty_scalata} {ing.unita}"
+        if scarica_inventario:
+            inv = db.query(InventarioItem).filter(
+                InventarioItem.nome.ilike(f"%{ing.nome[:20]}%")
+            ).first()
+            if inv and inv.quantita >= qty_scalata:
+                inv.quantita = round(inv.quantita - qty_scalata, 4)
+                inv.ultimo_aggiornamento = _now_str()
+                log_desc += f" (scaricato da magazzino)"
+        movimenti.append(log_desc)
+
+    if movimenti:
+        db.add(LogCotta(
+            cotta_id=cotta_id,
+            timestamp=_now_str(),
+            fase="brewday",
+            tipo="nota",
+            descrizione="Ingredienti scalati: " + " | ".join(movimenti[:5]) + (f" + altri {len(movimenti)-5}" if len(movimenti)>5 else ""),
+        ))
+
+    db.commit()
+    return RedirectResponse(f"/cotte/{cotta_id}?msg=Produzione+avviata", status_code=303)
 
 
 @router.post("/cotte/{cotta_id}/elimina")

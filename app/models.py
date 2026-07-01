@@ -236,12 +236,22 @@ class InventarioItem(Base):
     __tablename__ = "inventario"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False)
-    categoria = Column(String, default="consumabile")  # consumabile / non_consumabile
+    categoria = Column(String, default="consumabile")  # consumabile / non_consumabile / ingrediente / chimico / packaging
+    tipo_ingrediente = Column(String, nullable=True)    # malto / luppolo / lievito / aroma / altro
     unita = Column(String, default="pz")
     quantita = Column(Float, default=0.0)
     quantita_minima = Column(Float, default=0.0)
     prezzo_unitario = Column(Float, nullable=True)
     fornitore = Column(String, nullable=True)
+    numero_lotto = Column(String, nullable=True)
+    data_scadenza = Column(String, nullable=True)       # TMC
+    # Specifiche per tipo
+    alfa_acidi = Column(Float, nullable=True)           # luppoli %
+    ibu_teorici = Column(Float, nullable=True)          # luppoli
+    attenuazione = Column(Float, nullable=True)         # lieviti %
+    flocculazione = Column(String, nullable=True)       # lieviti: alta/media/bassa
+    resa_estratto = Column(Float, nullable=True)        # malti %
+    colore_ebc = Column(Float, nullable=True)           # malti EBC
     note = Column(Text, nullable=True)
     ultimo_aggiornamento = Column(String, nullable=True)
 

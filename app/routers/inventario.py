@@ -38,24 +38,101 @@ def lista(request: Request, db: Session = Depends(get_db)):
 def nuovo(
     nome: str = Form(...),
     categoria: str = Form("consumabile"),
+    tipo_ingrediente: str = Form(""),
     unita: str = Form("pz"),
     quantita: float = Form(0),
     quantita_minima: float = Form(0),
-    prezzo_unitario: float = Form(None),
+    prezzo_unitario: str = Form(""),
     fornitore: str = Form(""),
+    numero_lotto: str = Form(""),
+    data_scadenza: str = Form(""),
+    alfa_acidi: str = Form(""),
+    attenuazione: str = Form(""),
+    flocculazione: str = Form(""),
+    resa_estratto: str = Form(""),
+    colore_ebc: str = Form(""),
     note: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    def _f(v): return float(v.replace(",", ".")) if v.strip() else None
     db.add(InventarioItem(
-        nome=nome, categoria=categoria, unita=unita,
+        nome=nome, categoria=categoria,
+        tipo_ingrediente=tipo_ingrediente or None,
+        unita=unita,
         quantita=quantita, quantita_minima=quantita_minima,
-        prezzo_unitario=prezzo_unitario,
+        prezzo_unitario=_f(prezzo_unitario),
         fornitore=fornitore or None,
+        numero_lotto=numero_lotto or None,
+        data_scadenza=data_scadenza or None,
+        alfa_acidi=_f(alfa_acidi),
+        attenuazione=_f(attenuazione),
+        flocculazione=flocculazione or None,
+        resa_estratto=_f(resa_estratto),
+        colore_ebc=_f(colore_ebc),
         note=note or None,
         ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),
     ))
     db.commit()
     return RedirectResponse("/inventario", status_code=303)
+
+
+@router.get("/inventario/{iid}/modifica", response_class=HTMLResponse)
+def modifica_form(iid: int, request: Request, db: Session = Depends(get_db)):
+    item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
+    if not item:
+        return RedirectResponse("/inventario", status_code=303)
+    return templates.TemplateResponse(request, "inventario_modifica.html", {
+        "item": item,
+        "categorie": CATEGORIE,
+        "unita": UNITA,
+        "session": request.session,
+    })
+
+
+@router.post("/inventario/{iid}/modifica")
+def modifica_salva(
+    iid: int,
+    nome: str = Form(...),
+    categoria: str = Form("consumabile"),
+    tipo_ingrediente: str = Form(""),
+    unita: str = Form("pz"),
+    quantita: float = Form(0),
+    quantita_minima: float = Form(0),
+    prezzo_unitario: str = Form(""),
+    fornitore: str = Form(""),
+    numero_lotto: str = Form(""),
+    data_scadenza: str = Form(""),
+    alfa_acidi: str = Form(""),
+    attenuazione: str = Form(""),
+    flocculazione: str = Form(""),
+    resa_estratto: str = Form(""),
+    colore_ebc: str = Form(""),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
+    if not item:
+        return RedirectResponse("/inventario", status_code=303)
+    def _f(v): return float(v.replace(",", ".")) if v.strip() else None
+    item.nome = nome
+    item.categoria = categoria
+    item.tipo_ingrediente = tipo_ingrediente or None
+    item.unita = unita
+    item.quantita = quantita
+    item.quantita_minima = quantita_minima
+    item.prezzo_unitario = _f(prezzo_unitario)
+    item.fornitore = fornitore or None
+    item.numero_lotto = numero_lotto or None
+    item.data_scadenza = data_scadenza or None
+    item.alfa_acidi = _f(alfa_acidi)
+    item.attenuazione = _f(attenuazione)
+    item.flocculazione = flocculazione or None
+    item.resa_estratto = _f(resa_estratto)
+    item.colore_ebc = _f(colore_ebc)
+    item.note = note or None
+    item.ultimo_aggiornamento = datetime.now().strftime("%Y-%m-%d %H:%M")
+    db.commit()
+    return RedirectResponse("/inventario?msg=Articolo+aggiornato", status_code=303)
 
 
 @router.post("/inventario/{iid}/aggiorna")
