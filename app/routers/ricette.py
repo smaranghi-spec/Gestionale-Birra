@@ -490,16 +490,47 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
+    # Calcola stats per OG/FG/IBU/colore
+    stats = calcola_stats(ingredienti, ricetta.volume_target_litri or 20.0, ricetta.efficienza or 75.0)
+
     root = Element("RECIPES")
     r_el = SubElement(root, "RECIPE")
     SubElement(r_el, "NAME").text = ricetta.nome
-    SubElement(r_el, "VERSION").text = str(ricetta.versione)
-    SubElement(r_el, "TYPE").text = ricetta.tipo
-    SubElement(r_el, "BATCH_SIZE").text = str(ricetta.volume_target_litri)
-    SubElement(r_el, "EFFICIENCY").text = str(ricetta.efficienza)
-
+    SubElement(r_el, "VERSION").text = "1"
+    SubElement(r_el, "TYPE").text = ricetta.tipo or "All Grain"
+    SubElement(r_el, "BATCH_SIZE").text = str(ricetta.volume_target_litri or 20.0)
+    SubElement(r_el, "BOIL_SIZE").text = str(round((ricetta.volume_target_litri or 20.0) * 1.20, 1))
+    SubElement(r_el, "BOIL_TIME").text = "60"
+    SubElement(r_el, "EFFICIENCY").text = str(ricetta.efficienza or 75.0)
+    if stats.get("og"):
+        SubElement(r_el, "OG").text = str(stats["og"])
+    if stats.get("fg"):
+        SubElement(r_el, "FG").text = str(stats["fg"])
+    if stats.get("ibu"):
+        SubElement(r_el, "IBU").text = str(stats["ibu"])
+    if stats.get("srm"):
+        SubElement(r_el, "COLOR").text = str(stats["srm"])
+    if stats.get("abv"):
+        SubElement(r_el, "ABV").text = str(stats["abv"])
     if ricetta.note:
         SubElement(r_el, "NOTES").text = ricetta.note
+
+    # STYLE
+    if ricetta.stile:
+        st_el = SubElement(r_el, "STYLE")
+        SubElement(st_el, "NAME").text = ricetta.stile.nome
+        SubElement(st_el, "VERSION").text = "1"
+        SubElement(st_el, "CATEGORY").text = ricetta.stile.nome
+        SubElement(st_el, "CATEGORY_NUMBER").text = "0"
+        SubElement(st_el, "STYLE_LETTER").text = "A"
+        SubElement(st_el, "STYLE_GUIDE").text = "BJCP"
+        SubElement(st_el, "TYPE").text = "Ale"
+        if ricetta.stile.og_min: SubElement(st_el, "OG_MIN").text = str(ricetta.stile.og_min)
+        if ricetta.stile.og_max: SubElement(st_el, "OG_MAX").text = str(ricetta.stile.og_max)
+        if ricetta.stile.fg_min: SubElement(st_el, "FG_MIN").text = str(ricetta.stile.fg_min)
+        if ricetta.stile.fg_max: SubElement(st_el, "FG_MAX").text = str(ricetta.stile.fg_max)
+        if ricetta.stile.ibu_min: SubElement(st_el, "IBU_MIN").text = str(ricetta.stile.ibu_min)
+        if ricetta.stile.ibu_max: SubElement(st_el, "IBU_MAX").text = str(ricetta.stile.ibu_max)
 
     fermentables = SubElement(r_el, "FERMENTABLES")
     hops = SubElement(r_el, "HOPS")
@@ -512,10 +543,15 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
             SubElement(fe, "NAME").text = i.nome
             SubElement(fe, "VERSION").text = "1"
             SubElement(fe, "AMOUNT").text = str(i.quantita)
+            SubElement(fe, "TYPE").text = "Grain"
             if i.yield_percent:
                 SubElement(fe, "YIELD").text = str(i.yield_percent)
+            else:
+                SubElement(fe, "YIELD").text = "75.0"
             if i.color_srm:
                 SubElement(fe, "COLOR").text = str(i.color_srm)
+            else:
+                SubElement(fe, "COLOR").text = "2"
 
         elif i.categoria == "hop":
             he = SubElement(hops, "HOP")
@@ -524,24 +560,53 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
             SubElement(he, "AMOUNT").text = str(i.quantita)
             if i.alpha_acid:
                 SubElement(he, "ALPHA").text = str(i.alpha_acid)
-            if i.time_min:
+            else:
+                SubElement(he, "ALPHA").text = "5.0"
+            if i.time_min is not None:
                 SubElement(he, "TIME").text = str(i.time_min)
+                if i.time_min == 0:
+                    SubElement(he, "USE").text = "Dry Hop"
+                else:
+                    SubElement(he, "USE").text = "Boil"
+            else:
+                SubElement(he, "USE").text = "Boil"
+                SubElement(he, "TIME").text = "60"
+            if i.hop_form:
+                SubElement(he, "FORM").text = i.hop_form.capitalize()
 
         elif i.categoria == "yeast":
             ye = SubElement(yeasts, "YEAST")
             SubElement(ye, "NAME").text = i.nome
             SubElement(ye, "VERSION").text = "1"
-            SubElement(ye, "AMOUNT").text = str(i.quantita)
+            SubElement(ye, "AMOUNT").text = str(i.quantita or 1)
+            SubElement(ye, "TYPE").text = "Ale"
+            SubElement(ye, "FORM").text = i.yeast_form.capitalize() if i.yeast_form else "Dry"
             if i.attenuation:
                 SubElement(ye, "ATTENUATION").text = str(i.attenuation)
 
-        elif i.categoria == "misc":
+        elif i.categoria in ("misc", "other", "spice", "water"):
             me = SubElement(miscs, "MISC")
             SubElement(me, "NAME").text = i.nome
             SubElement(me, "VERSION").text = "1"
             SubElement(me, "AMOUNT").text = str(i.quantita)
-            if i.time_min:
+            SubElement(me, "TYPE").text = "Other"
+            SubElement(me, "USE").text = "Boil"
+            if i.time_min is not None:
                 SubElement(me, "TIME").text = str(i.time_min)
+
+    # MASH profile
+    if ricetta.profilo_mash:
+        mash_el = SubElement(r_el, "MASH")
+        SubElement(mash_el, "NAME").text = ricetta.profilo_mash.nome or "Singolo infuso"
+        SubElement(mash_el, "VERSION").text = "1"
+        steps_el = SubElement(mash_el, "MASH_STEPS")
+        for step in (ricetta.profilo_mash.steps if hasattr(ricetta.profilo_mash, "steps") else []):
+            s_el = SubElement(steps_el, "MASH_STEP")
+            SubElement(s_el, "NAME").text = step.nome or "Saccarificazione"
+            SubElement(s_el, "VERSION").text = "1"
+            SubElement(s_el, "TYPE").text = "Infusion"
+            SubElement(s_el, "STEP_TEMP").text = str(step.temperatura or 67)
+            SubElement(s_el, "STEP_TIME").text = str(step.durata_min or 60)
 
     xml_str = minidom.parseString(tostring(root, encoding="unicode")).toprettyxml(
         indent="  "

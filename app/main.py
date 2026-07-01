@@ -15,6 +15,7 @@ from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 from .routers import prezzi, fattura, brewmonk, soci
 from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
+from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario
 
 Base.metadata.create_all(bind=engine)
 
@@ -47,6 +48,10 @@ def run_migrations():
         "ALTER TABLE cotte ADD COLUMN note_ferm TEXT",
         "ALTER TABLE cotte ADD COLUMN note_cond TEXT",
         "ALTER TABLE cotte ADD COLUMN note_imbott TEXT",
+        # ProdottoFinito
+        "CREATE TABLE IF NOT EXISTS prodotti_finiti (id INTEGER PRIMARY KEY, cotta_id INTEGER REFERENCES cotte(id), nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, tipo_packaging TEXT DEFAULT 'bottiglia', n_pezzi_iniziali INTEGER DEFAULT 0, n_pezzi_disponibili INTEGER DEFAULT 0, data_imbottigliamento TEXT, data_scadenza TEXT, prezzo_vendita REAL, note TEXT, stato TEXT DEFAULT 'disponibile', created_at TEXT)",
+        # CostoFisso
+        "CREATE TABLE IF NOT EXISTS costi_fissi (id INTEGER PRIMARY KEY, categoria TEXT NOT NULL, descrizione TEXT NOT NULL, importo REAL DEFAULT 0, periodicita TEXT DEFAULT 'mensile', attivo INTEGER DEFAULT 1, note TEXT)",
     ]:
         try:
             conn.execute(sql)
@@ -132,6 +137,19 @@ app.include_router(strumenti.router)
 app.include_router(lista_acquisti.router)
 app.include_router(ai_assistant.router)
 app.include_router(aggiunte_cotta.router)
+app.include_router(prodotti_finiti.router)
+app.include_router(costi_fissi.router)
+app.include_router(export_db.router)
+app.include_router(api_inventario.router)
+
+
+@app.get("/amministrazione", response_class=HTMLResponse)
+def amministrazione(request: Request):
+    if request.session.get("ruolo") != "admin":
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "amministrazione.html", {
+        "session": request.session,
+    })
 
 
 @app.get("/", response_class=HTMLResponse)

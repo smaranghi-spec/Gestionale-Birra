@@ -239,6 +239,7 @@
       <div class="nav-sep"></div>
       <a href="/acquisti">🛒 Acquisti</a>
       <a href="/lista-acquisti">🛍️ Lista</a>
+      <a href="/magazzino-finiti">🍾 Finiti</a>
       <a href="/prezzi">💹 Prezzi</a>
       <div class="nav-sep"></div>
       <a href="/strumenti">🔧 Strumenti</a>
@@ -251,7 +252,7 @@
       <a href="/soci">👥</a>
       <a href="/attrezzature">🔩</a>
       <a href="/birre" target="_blank">🌐</a>
-      {% if session and session.ruolo == 'admin' %}<a href="/utenti">👤 Utenti</a>{% endif %}
+      {% if session and session.ruolo == 'admin' %}<a href="/amministrazione">🔑 Admin</a>{% endif %}
     </div>
     <div class="navbar-user">
       {% if session and session.nome %}
@@ -296,6 +297,8 @@
   <div class="mobile-section">Gestione</div>
   <a href="/calendario" onclick="closeMM()">📅 Calendario</a>
   <a href="/pulizie" onclick="closeMM()">🧹 Pulizie</a>
+  <a href="/magazzino-finiti" onclick="closeMM()">🍾 Magazzino finiti</a>
+  <a href="/costi-fissi" onclick="closeMM()">💰 Costi fissi</a>
   <a href="/vendite" onclick="closeMM()">💰 Vendite</a>
   <a href="/fattura" onclick="closeMM()">📄 Fatture</a>
   <a href="/soci" onclick="closeMM()">👥 Soci</a>
@@ -308,6 +311,7 @@
   {% endif %}
   {% if session and session.ruolo == 'admin' %}
   <div class="mobile-section">Admin</div>
+  <a href="/amministrazione" onclick="closeMM()">🔑 Amministrazione</a>
   <a href="/utenti" onclick="closeMM()">👤 Gestione utenti</a>
   {% endif %}
   <div style="padding:20px 16px;">

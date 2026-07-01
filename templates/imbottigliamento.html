@@ -1,20 +1,185 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Imbottigliamento</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f3ee; }
-        .card { background: white; padding: 24px; border-radius: 12px; max-width: 900px; }
-        h1 { color: #5a381e; }
-        a { color: #8b5a2b; font-weight: bold; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>Imbottigliamento</h1>
-        <p>Sezione per confezionamento e lotti finali.</p>
-        <p><a href="/">Torna alla home</a></p>
+{% extends "base.html" %}
+{% block title %}Imbottigliamento — {{ cotta.nome }}{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="/cotte/{{ cotta.id }}" class="btn btn-ghost btn-sm" style="margin-bottom:12px;">← {{ cotta.nome }}</a>
+  <h1 style="font-size:22px;margin-bottom:4px;">🍾 Imbottigliamento</h1>
+  <p style="color:var(--muted);">Registra i lotti per formato/confezionamento da questa cotta.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+
+  <!-- Form principale -->
+  <div>
+    <form method="post" action="/cotte/{{ cotta.id }}/imbottiglia" id="form-imbott">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+          Date e codice lotto
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-row">
+            <label>Data imbottigliamento</label>
+            <input type="date" name="data_imbottigliamento" value="{{ oggi }}" required>
+          </div>
+          <div class="form-row">
+            <label>Scadenza (TMC)</label>
+            <input type="date" name="data_scadenza">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;">Formati imbottigliati</div>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="aggiungiFormato()">+ formato</button>
+        </div>
+
+        <div id="formati-list">
+          <div class="formato-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 36px;gap:8px;align-items:end;margin-bottom:10px;background:var(--panel);padding:10px;border-radius:8px;">
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Codice lotto</label>
+              <input type="text" name="codice_lotto[]" value="{{ codice_suggerito }}" placeholder="{{ codice_suggerito }}">
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Tipo</label>
+              <select name="tipo_packaging[]">
+                {% for t in tipi %}<option>{{ t }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Formato (mL)</label>
+              <select name="formato_ml[]">
+                {% for f in formati %}<option {% if f==750 %}selected{% endif %}>{{ f }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">N° pezzi</label>
+              <input type="number" name="n_pezzi[]" min="0" value="0" oninput="aggiornaTot()">
+            </div>
+            <div class="form-row" style="margin:0;">
+              <label style="font-size:10px;">Prezzo vend. (€)</label>
+              <input type="number" name="prezzo_vendita[]" step="0.01" placeholder="2.50">
+            </div>
+            <div style="padding-bottom:2px;">
+              <button type="button" onclick="this.closest('.formato-row').remove();aggiornaTot()" class="btn btn-danger btn-xs">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:10px;background:var(--panel);border-radius:8px;font-size:13px;text-align:right;color:var(--muted);margin-top:6px;">
+          Totale pezzi: <strong style="color:var(--amber);" id="tot-pz">0 pz</strong>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:700;">
+        🍾 Salva imbottigliamento
+      </button>
+    </form>
+  </div>
+
+  <!-- Sidebar info -->
+  <div>
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        Info cotta
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);">Stato</span>
+          <span class="badge badge-amber">{{ cotta.stato }}</span>
+        </div>
+        {% if cotta.volume_imbottigliato %}
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);">Volume imb.</span>
+          <strong>{{ cotta.volume_imbottigliato }} L</strong>
+        </div>
+        {% endif %}
+        {% if cotta.fg_reale and cotta.og_reale %}
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);">ABV stimato</span>
+          <strong>{{ '%.1f'|format((cotta.og_reale - cotta.fg_reale) * 131.25) }}%</strong>
+        </div>
+        {% endif %}
+        {% if cotta.carbonatazione_vols %}
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);">Carbonatazione</span>
+          <strong>{{ cotta.carbonatazione_vols }} vol</strong>
+        </div>
+        {% endif %}
+      </div>
     </div>
-</body>
-</html>
+
+    {% if prodotti %}
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        Lotti già registrati
+      </div>
+      {% for p in prodotti %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <div>
+          <div style="font-weight:600;">{{ p.formato_ml }}mL × {{ p.n_pezzi_disponibili }} pz</div>
+          <div style="font-size:11px;color:var(--muted);">{{ p.codice_lotto }}</div>
+        </div>
+        <span class="badge badge-{{ 'green' if p.stato=='disponibile' else 'red' }}">{{ p.stato }}</span>
+      </div>
+      {% endfor %}
+      <a href="/magazzino-finiti" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:10px;">
+        🍺 Vedi magazzino
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+const FORMATI = {{ formati | tojson }};
+const TIPI = {{ tipi | tojson }};
+const CODICE = "{{ codice_suggerito }}";
+let idx = 1;
+
+function aggiungiFormato() {
+  idx++;
+  const suf = String.fromCharCode(64 + idx);
+  const div = document.createElement('div');
+  div.className = 'formato-row';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 36px;gap:8px;align-items:end;margin-bottom:10px;background:var(--panel);padding:10px;border-radius:8px;';
+  div.innerHTML = `
+    <div class="form-row" style="margin:0;">
+      <label style="font-size:10px;">Codice lotto</label>
+      <input type="text" name="codice_lotto[]" value="${CODICE}-${suf}">
+    </div>
+    <div class="form-row" style="margin:0;">
+      <label style="font-size:10px;">Tipo</label>
+      <select name="tipo_packaging[]">${TIPI.map(t=>`<option>${t}</option>`).join('')}</select>
+    </div>
+    <div class="form-row" style="margin:0;">
+      <label style="font-size:10px;">Formato (mL)</label>
+      <select name="formato_ml[]">${FORMATI.map(f=>`<option${f===330?' selected':''}>${f}</option>`).join('')}</select>
+    </div>
+    <div class="form-row" style="margin:0;">
+      <label style="font-size:10px;">N° pezzi</label>
+      <input type="number" name="n_pezzi[]" min="0" value="0" oninput="aggiornaTot()">
+    </div>
+    <div class="form-row" style="margin:0;">
+      <label style="font-size:10px;">Prezzo vend. (€)</label>
+      <input type="number" name="prezzo_vendita[]" step="0.01" placeholder="2.50">
+    </div>
+    <div style="padding-bottom:2px;">
+      <button type="button" onclick="this.closest('.formato-row').remove();aggiornaTot()" class="btn btn-danger btn-xs">✕</button>
+    </div>`;
+  document.getElementById('formati-list').appendChild(div);
+}
+
+function aggiornaTot() {
+  const tot = [...document.querySelectorAll('input[name="n_pezzi[]"]')]
+    .reduce((s,i)=>s+(parseInt(i.value)||0),0);
+  document.getElementById('tot-pz').textContent = tot + ' pz';
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('input[name="n_pezzi[]"]').forEach(i=>i.addEventListener('input',aggiornaTot));
+});
+</script>
+{% endblock %}

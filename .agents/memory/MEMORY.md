@@ -1,8 +1,13 @@
 - [Auth middleware](auth-middleware.md) — all routes except /login /register /birre /debug /static require session; guest uses user_id=0, check with `user_id != 0` not just `not user_id`; guests blocked on WRITE methods.
 - [SQLite migrations](sqlite-migrations.md) — create_all only creates new tables; existing table column additions require run_migrations() ALTER TABLE pattern in main.py.
-- [New routers wiring](new-routers.md) — strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto added; always import from routers + app.include_router.
+- [New routers wiring](new-routers.md) — strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto, prodotti_finiti, costi_fissi, export_db, api_inventario added; always import from routers + app.include_router.
 - [Recipe cost page](recipe-cost.md) — /ricette/{id}/costo; pulls prezzo_unitario from IngredienteRicetta, falls back to InventarioItem fuzzy match; IVA 0/4/10/22%.
 - [Purchase flow](purchase-flow.md) — OrdineAcquisto bozza→ricevuto; /acquisti/{id}/conferma auto-adds all RigaOrdine to InventarioItem (upsert by name).
 - [Water presets seed](water-presets.md) — ProfiloAcquaPreset seeded on first /profili-acqua GET; 11 classic city profiles; SO4/Cl ratio shown for hop/malt character.
 - [Cotta model extensions](cotta-model-ext.md) — colonne industriali temp_ambiente/acqua_totale_litri/pressione_bar/note_ferm/note_cond/note_imbott aggiunte in models.py E in run_migrations(); AggiuntaCotta/ListaAcquisti/RicettaModalita sono nuove tabelle.
 - [Scrapers refactor](scrapers-refactor.md) — _extract_products() generico per tutti i fornitori; FORNITORE_INFO con URL esatti; aggiunto Forniture Birra e Enosystem; rimosso AEB (B2B).
+- [Route ordering](route-ordering.md) — route specifiche/statiche prima di route dinamiche `/{id}` nello stesso router; importa_foto prima di acquisti in main.py.
+- [volume_target field](volume-target.md) — campo corretto in Ricetta è `volume_target_litri`, non `volume_target`; bug corretto in cotte.py (vai-produzione GET e POST).
+- [Gemini Vision](gemini-vision.md) — importa_foto.py usa Gemini 2.0 Flash Vision API (generativelanguage.googleapis.com); pytesseract NON installato, non usare.
+- [Bottling flow](bottling-flow.md) — GET/POST /cotte/{id}/imbottiglia in prodotti_finiti.py; crea ProdottoFinito per ogni formato; link 🍾 in dettaglio_cotta.html.
+- [Admin section](admin-section.md) — /amministrazione route in main.py (solo admin); export DB: GET /admin/export-db; import DB: POST /admin/import-db (verifica SQLite magic bytes).

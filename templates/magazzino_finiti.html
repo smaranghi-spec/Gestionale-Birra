@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Magazzino Prodotti Finiti{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <h1 style="font-size:22px;margin:0 0 4px;">🍺 Magazzino Prodotti Finiti</h1>
+    <p style="color:var(--muted);margin:0;">Lotti imbottigliati, fusti e disponibilità</p>
+  </div>
+  <a href="#nuovo-lotto" class="btn btn-primary" onclick="document.getElementById('panel-nuovo').style.display='block'">+ Nuovo lotto</a>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+  <div class="card" style="text-align:center;padding:16px;">
+    <div style="font-size:28px;font-weight:800;color:var(--amber);">{{ totale_pezzi }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Pezzi disponibili</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px;">
+    <div style="font-size:28px;font-weight:800;color:var(--amber);">{{ n_lotti }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Lotti attivi</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px;">
+    <div style="font-size:28px;font-weight:800;color:var(--amber);">€{{ '%.0f'|format(valore_magazzino) }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Valore stimato</div>
+  </div>
+</div>
+
+<!-- Form nuovo lotto -->
+<div id="panel-nuovo" style="display:none;margin-bottom:20px;">
+<div class="card">
+  <h3 style="font-size:15px;margin-bottom:16px;">📦 Registra nuovo lotto</h3>
+  <form method="post" action="/magazzino-finiti/nuovo">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="form-row" style="margin:0;">
+        <label>Nome prodotto *</label>
+        <input type="text" name="nome" placeholder="es. IPA Summer 2025" required>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Cotta di origine</label>
+        <select name="cotta_id">
+          <option value="">— nessuna —</option>
+          {% for c in cotte %}
+          <option value="{{ c.id }}">{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Codice lotto</label>
+        <input type="text" name="codice_lotto" placeholder="auto-generato">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="form-row" style="margin:0;">
+        <label>Tipo</label>
+        <select name="tipo_packaging">
+          {% for t in tipi %}<option>{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Formato (mL)</label>
+        <select name="formato_ml">
+          {% for f in formati %}<option>{{ f }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>N° pezzi *</label>
+        <input type="number" name="n_pezzi" min="1" required placeholder="es. 50">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Data imb.</label>
+        <input type="date" name="data_imbottigliamento">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Prezzo vend. (€)</label>
+        <input type="number" name="prezzo_vendita" step="0.01" placeholder="2.50">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button type="submit" class="btn btn-primary">💾 Salva lotto</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('panel-nuovo').style.display='none'">Annulla</button>
+    </div>
+  </form>
+</div>
+</div>
+
+<!-- Tabella prodotti -->
+{% if prodotti %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Lotto</th>
+        <th>Prodotto</th>
+        <th>Formato</th>
+        <th style="text-align:right;">Disponibili</th>
+        <th style="text-align:right;">Iniziali</th>
+        <th style="text-align:right;">€/pz</th>
+        <th>Data imb.</th>
+        <th>Stato</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for p in prodotti %}
+    <tr>
+      <td><code style="font-size:11px;color:var(--amber);">{{ p.codice_lotto or '—' }}</code></td>
+      <td>
+        <div style="font-weight:600;">{{ p.nome }}</div>
+        {% if p.cotta %}<div style="font-size:11px;color:var(--muted);">← {{ p.cotta.nome }}</div>{% endif %}
+      </td>
+      <td>
+        <span class="badge badge-gray">{{ p.tipo_packaging }}</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:4px;">{{ p.formato_ml }}mL</span>
+      </td>
+      <td style="text-align:right;font-weight:700;color:{% if p.n_pezzi_disponibili == 0 %}var(--red){% else %}var(--text){% endif %};">
+        {{ p.n_pezzi_disponibili }}
+      </td>
+      <td style="text-align:right;color:var(--muted);font-size:12px;">{{ p.n_pezzi_iniziali }}</td>
+      <td style="text-align:right;color:var(--muted);">{% if p.prezzo_vendita %}€{{ '%.2f'|format(p.prezzo_vendita) }}{% else %}—{% endif %}</td>
+      <td style="font-size:12px;color:var(--muted);">{{ p.data_imbottigliamento or '—' }}</td>
+      <td>
+        <span class="badge badge-{% if p.stato == 'disponibile' %}green{% elif p.stato == 'esaurito' %}red{% else %}gray{% endif %}">
+          {{ p.stato }}
+        </span>
+      </td>
+      <td>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <form method="post" action="/magazzino-finiti/{{ p.id }}/scarica" style="display:flex;gap:3px;">
+            <input type="number" name="delta" min="1" max="{{ p.n_pezzi_disponibili }}" placeholder="n" style="width:48px;padding:3px 5px;font-size:12px;">
+            <button type="submit" class="btn btn-ghost btn-xs" title="Scarica pezzi">−</button>
+          </form>
+          <form method="post" action="/magazzino-finiti/{{ p.id }}/elimina">
+            <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty">
+  <div class="empty-icon">🍺</div>
+  <p>Nessun prodotto finito in magazzino.<br>
+  Imbottiglia una cotta oppure aggiungi un lotto manualmente.</p>
+</div>
+{% endif %}
+{% endblock %}

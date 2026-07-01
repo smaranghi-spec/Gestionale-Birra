@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Costi Fissi{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <h1 style="font-size:22px;margin:0 0 4px;">💰 Costi Fissi</h1>
+    <p style="color:var(--muted);margin:0;">Energia, affitto, personale e overhead del birrificio</p>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;">
+  <div class="card" style="text-align:center;padding:16px;">
+    <div style="font-size:26px;font-weight:800;color:var(--amber);">€{{ '%.0f'|format(totale_mensile) }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Totale mensile</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px;">
+    <div style="font-size:26px;font-weight:800;color:var(--amber);">€{{ '%.0f'|format(totale_annuale) }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Totale annuale</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px;">
+    <div style="font-size:26px;font-weight:800;color:var(--amber);">{{ costi|length }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Voci registrate</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+
+  <!-- Tabella costi -->
+  <div>
+    {% if costi %}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Categoria</th>
+            <th>Descrizione</th>
+            <th style="text-align:right;">Importo</th>
+            <th>Periodicità</th>
+            <th style="text-align:right;">≈ Mensile</th>
+            <th>Stato</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in costi %}
+        {% set mensile = (c.importo/12) if c.periodicita=='annuale' else (c.importo*4 if c.periodicita=='per_cotta' else c.importo) %}
+        <tr style="{% if not c.attivo %}opacity:.45;{% endif %}">
+          <td>
+            <span class="badge badge-{% if c.categoria=='energia' %}amber{% elif c.categoria=='personale' %}blue{% elif c.categoria=='affitto' %}green{% else %}gray{% endif %}">
+              {{ c.categoria }}
+            </span>
+          </td>
+          <td style="font-weight:600;">{{ c.descrizione }}</td>
+          <td style="text-align:right;font-weight:700;">€{{ '%.2f'|format(c.importo) }}</td>
+          <td style="color:var(--muted);font-size:12px;">{{ c.periodicita.replace('_',' ') }}</td>
+          <td style="text-align:right;color:var(--amber);font-size:13px;">€{{ '%.2f'|format(mensile) }}</td>
+          <td>
+            <form method="post" action="/costi-fissi/{{ c.id }}/toggle" style="display:inline;">
+              <button type="submit" class="btn btn-ghost btn-xs" title="{{ 'Disattiva' if c.attivo else 'Attiva' }}">
+                {{ '✓ attivo' if c.attivo else '— inattivo' }}
+              </button>
+            </form>
+          </td>
+          <td>
+            <form method="post" action="/costi-fissi/{{ c.id }}/elimina">
+              <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if cat_totali %}
+    <div class="card" style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:12px;">Ripartizione per categoria (mensile)</div>
+      {% for cat, tot in cat_totali.items() %}
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;">
+          <span>{{ cat }}</span>
+          <strong>€{{ '%.2f'|format(tot) }}</strong>
+        </div>
+        <div style="height:6px;background:var(--panel);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;background:var(--amber);border-radius:3px;width:{{ [((tot/totale_mensile)*100)|int, 100]|min if totale_mensile else 0 }}%;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="card empty">
+      <div class="empty-icon">💰</div>
+      <p>Nessun costo fisso registrato.<br>Aggiungi le voci dal pannello a destra.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Form nuovo costo -->
+  <div class="card">
+    <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova voce</h3>
+    <form method="post" action="/costi-fissi/nuovo">
+      <div class="form-row">
+        <label>Categoria</label>
+        <select name="categoria">
+          {% for c in categorie %}<option>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Descrizione *</label>
+        <input type="text" name="descrizione" placeholder="es. Energia elettrica mensile" required>
+      </div>
+      <div class="form-row">
+        <label>Importo (€)</label>
+        <input type="number" name="importo" step="0.01" min="0" placeholder="0.00" required>
+      </div>
+      <div class="form-row">
+        <label>Periodicità</label>
+        <select name="periodicita">
+          {% for p in periodicita_opts %}
+          <option value="{{ p }}">{{ p.replace('_',' ') }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Note</label>
+        <textarea name="note" rows="2" placeholder="Opzionale…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">➕ Aggiungi</button>
+    </form>
+
+    <div style="margin-top:16px;padding:12px;background:var(--panel);border-radius:8px;font-size:12px;color:var(--muted);">
+      <strong style="color:var(--text);">💡 Periodicità</strong>
+      <ul style="margin:6px 0 0 14px;padding:0;line-height:1.9;">
+        <li><strong>mensile</strong> — usato direttamente</li>
+        <li><strong>annuale</strong> — diviso per 12</li>
+        <li><strong>per_cotta</strong> — moltiplicato ×4 cotte/mese</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

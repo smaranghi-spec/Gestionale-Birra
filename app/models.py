@@ -455,3 +455,39 @@ class RicettaModalita(Base):
     modalita = Column(String, default="catalogo")  # catalogo / magazzino
     convertita_il = Column(String, nullable=True)
     ricetta = relationship("Ricetta", backref="modalita_info", uselist=False)
+
+
+# ── PRODOTTI FINITI ───────────────────────────────────────────────────────────
+
+class ProdottoFinito(Base):
+    """Magazzino prodotto finito: bottiglie/fusti imbottigliati da una cotta."""
+    __tablename__ = "prodotti_finiti"
+    id = Column(Integer, primary_key=True, index=True)
+    cotta_id = Column(Integer, ForeignKey("cotte.id"), nullable=True)
+    nome = Column(String, nullable=False)
+    codice_lotto = Column(String, nullable=True)       # auto: YYYY-MM-CODICE
+    formato_ml = Column(Integer, default=750)          # 330 / 500 / 750 / 1000 / fusto
+    tipo_packaging = Column(String, default="bottiglia")  # bottiglia / fusto / lattina
+    n_pezzi_iniziali = Column(Integer, default=0)
+    n_pezzi_disponibili = Column(Integer, default=0)
+    data_imbottigliamento = Column(String, nullable=True)
+    data_scadenza = Column(String, nullable=True)
+    prezzo_vendita = Column(Float, nullable=True)      # € per pezzo
+    note = Column(Text, nullable=True)
+    stato = Column(String, default="disponibile")      # disponibile / esaurito / archiviato
+    created_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    cotta = relationship("Cotta", backref="prodotti_finiti")
+
+
+# ── COSTI FISSI ───────────────────────────────────────────────────────────────
+
+class CostoFisso(Base):
+    """Costi fissi del birrificio (energia, affitto, attrezzatura…) per calcolo breakeven."""
+    __tablename__ = "costi_fissi"
+    id = Column(Integer, primary_key=True, index=True)
+    categoria = Column(String, nullable=False)          # energia / affitto / personale / attrezzatura / altro
+    descrizione = Column(String, nullable=False)
+    importo = Column(Float, nullable=False, default=0.0)
+    periodicita = Column(String, default="mensile")    # mensile / annuale / per_cotta
+    attivo = Column(Boolean, default=True)
+    note = Column(Text, nullable=True)

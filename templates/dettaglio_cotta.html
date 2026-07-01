@@ -53,6 +53,7 @@
   <span class="badge badge-amber">{{ fasi_label[cotta.stato] }}</span>
   {% if cotta.ricetta_id %}
   <a href="/cotte/{{ cotta.id }}/vai-produzione" class="btn btn-success btn-sm" title="Solo ricette da magazzino">▶ Vai in Produzione</a>
+  <a href="/cotte/{{ cotta.id }}/imbottiglia" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);">🍾 Imbottiglia</a>
   {% endif %}
   {% if cotta.ricetta_id %}
   <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" style="background:transparent;border:1px solid var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">🍺 Push BrewMonk</button>

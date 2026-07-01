@@ -333,7 +333,7 @@ def vai_produzione_page(cotta_id: int, request: Request, db: Session = Depends(g
         return RedirectResponse(f"/cotte/{cotta_id}?msg=Nessuna+ricetta+collegata", status_code=303)
 
     ricetta = cotta.ricetta
-    vol_ricetta = ricetta.volume_target or 20.0
+    vol_ricetta = ricetta.volume_target_litri or 20.0
 
     # Scala ingredienti in base al volume batch (di default = volume ricetta)
     vol_batch = cotta.volume_post_bollitura or vol_ricetta
@@ -381,7 +381,7 @@ async def vai_produzione_submit(cotta_id: int, request: Request, db: Session = D
         return RedirectResponse("/cotte", status_code=303)
 
     ricetta = cotta.ricetta
-    vol_ricetta = ricetta.volume_target or 20.0
+    vol_ricetta = ricetta.volume_target_litri or 20.0
     if vol_batch <= 0:
         vol_batch = vol_ricetta
     fattore = vol_batch / vol_ricetta if vol_ricetta else 1.0
