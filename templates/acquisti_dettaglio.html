@@ -33,12 +33,23 @@ select.form-mini { background:#0a0f1a; border:1px solid var(--border); border-ra
 
 {% if msg %}<div class="alert-ok">{{ msg }}</div>{% endif %}
 
-<div class="info-box">
+<div class="info-box" style="grid-template-columns:1fr 1fr 1fr 1fr">
   <div class="info-item"><div class="lbl">Fornitore</div><div class="val">{{ ordine.fornitore or '—' }}</div></div>
   <div class="info-item"><div class="lbl">Data</div><div class="val">{{ ordine.data }}</div></div>
+  <div class="info-item"><div class="lbl">Acquirente</div><div class="val">{{ ordine.acquirente or '—' }}</div></div>
   <div class="info-item"><div class="lbl">Totale</div><div class="totale-big">€{{ '%.2f'|format(totale) }}</div></div>
 </div>
 {% if ordine.note %}<div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;padding:.5rem .8rem;background:#0a0f1a;border-radius:6px">📝 {{ ordine.note }}</div>{% endif %}
+
+<div class="ad-card" style="padding:1rem 1.3rem">
+  <form method="post" action="/acquisti/{{ ordine.id }}/acquirente" style="display:flex;gap:.6rem;align-items:end;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">👤 Chi ha fatto l'acquisto / speso i soldi</label>
+      <input name="acquirente" value="{{ ordine.acquirente or '' }}" placeholder="Nome persona…" class="form-mini" style="border:1px solid var(--border);border-radius:5px;padding:.45rem .7rem;width:100%;background:#0a0f1a;color:var(--text)">
+    </div>
+    <button type="submit" class="btn-ghost">💾 Salva</button>
+  </form>
+</div>
 
 {% if ordine.stato == 'ricevuto' %}
 <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;color:#4ade80">

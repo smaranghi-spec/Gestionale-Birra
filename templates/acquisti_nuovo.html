@@ -48,6 +48,13 @@ select.riga-input { background:#0a0f1a; border:1px solid var(--border); border-r
         <input class="form-input" type="text" name="note" placeholder="Note ordine…">
       </div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr;gap:0 1rem">
+      <div>
+        <label class="form-label">Acquirente (chi ha fatto l'acquisto / speso i soldi)</label>
+        <input class="form-input" type="text" name="acquirente" placeholder="Nome persona…" list="lista-acquirenti">
+        <datalist id="lista-acquirenti"></datalist>
+      </div>
+    </div>
   </div>
 
   <div class="an-card">

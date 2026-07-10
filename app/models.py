@@ -367,6 +367,7 @@ class OrdineAcquisto(Base):
     stato = Column(String, default="bozza")   # bozza / confermato / ricevuto
     note = Column(Text, nullable=True)
     totale = Column(Float, nullable=True)
+    acquirente = Column(String, nullable=True)  # chi ha fatto l'acquisto / speso i soldi
     created_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
     righe = relationship("RigaOrdine", back_populates="ordine", cascade="all, delete-orphan")
 

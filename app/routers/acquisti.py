@@ -54,6 +54,7 @@ def crea_ordine(
     fornitore: str = Form(""),
     data: str = Form(""),
     note: str = Form(""),
+    acquirente: str = Form(""),
     righe_json: str = Form("[]"),
     db: Session = Depends(get_db),
 ):
@@ -69,6 +70,7 @@ def crea_ordine(
         fornitore=fornitore or None,
         data=data,
         note=note or None,
+        acquirente=acquirente.strip() or None,
         stato="bozza",
     )
     db.add(ordine)
@@ -97,6 +99,30 @@ def crea_ordine(
     return RedirectResponse(f"/acquisti/{ordine.id}", status_code=303)
 
 
+@router.get("/acquisti/report/spese", response_class=HTMLResponse)
+def report_spese(request: Request, db: Session = Depends(get_db)):
+    ordini = db.query(OrdineAcquisto).order_by(OrdineAcquisto.data.desc()).all()
+    per_persona = {}
+    for o in ordini:
+        chi = (o.acquirente or "Non specificato").strip() or "Non specificato"
+        tot = sum((r.quantita or 0) * (r.prezzo_unitario or 0) for r in o.righe) if o.righe else (o.totale or 0)
+        entry = per_persona.setdefault(chi, {"totale": 0.0, "ordini": []})
+        entry["totale"] += tot
+        entry["ordini"].append({"ordine": o, "totale": round(tot, 2)})
+
+    per_persona = dict(sorted(per_persona.items(), key=lambda kv: kv[1]["totale"], reverse=True))
+    for v in per_persona.values():
+        v["totale"] = round(v["totale"], 2)
+
+    totale_generale = round(sum(v["totale"] for v in per_persona.values()), 2)
+
+    return templates.TemplateResponse(request, "acquisti_report_spese.html", {
+        "per_persona": per_persona,
+        "totale_generale": totale_generale,
+        "session": request.session,
+    })
+
+
 @router.get("/acquisti/{oid}", response_class=HTMLResponse)
 def dettaglio_ordine(oid: int, request: Request, msg: str = None, db: Session = Depends(get_db)):
     ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
@@ -111,6 +137,15 @@ def dettaglio_ordine(oid: int, request: Request, msg: str = None, db: Session = 
         "msg": msg,
         "session": request.session,
     })
+
+
+@router.post("/acquisti/{oid}/acquirente")
+def aggiorna_acquirente(oid: int, acquirente: str = Form(""), db: Session = Depends(get_db)):
+    ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
+    if ordine:
+        ordine.acquirente = acquirente.strip() or None
+        db.commit()
+    return RedirectResponse(f"/acquisti/{oid}?msg=Acquirente+aggiornato", status_code=303)
 
 
 @router.post("/acquisti/{oid}/aggiorna-riga/{rid}")

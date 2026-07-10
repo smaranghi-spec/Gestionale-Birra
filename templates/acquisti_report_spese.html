@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Report Spese per Persona{% endblock %}
+{% block content %}
+<style>
+.rs-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1rem; }
+.rs-persona { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; margin-bottom:.8rem; overflow:hidden; }
+.rs-persona-head { display:flex; justify-content:space-between; align-items:center; padding:.9rem 1.2rem; cursor:pointer; }
+.rs-persona-head:hover { background:rgba(245,158,11,.05); }
+.rs-nome { font-weight:700; font-size:1rem; color:var(--text); }
+.rs-tot { font-size:1.15rem; font-weight:800; color:var(--amber); }
+.rs-ordine-row { display:grid; grid-template-columns:100px 1fr 100px 90px 100px; gap:.5rem; padding:.5rem 1.2rem; font-size:.82rem; border-top:1px solid var(--border); align-items:center; }
+.rs-ordine-header { display:grid; grid-template-columns:100px 1fr 100px 90px 100px; gap:.5rem; padding:.4rem 1.2rem; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; border-top:1px solid var(--border); background:rgba(255,255,255,.02); }
+.totale-generale-box { background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.04)); border:1px solid rgba(245,158,11,.35); border-radius:10px; padding:1.2rem 1.5rem; display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.45rem 1rem; font-size:.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.45rem 1rem; font-weight:700; cursor:pointer; font-size:.85rem; text-decoration:none; display:inline-block; }
+.stato-badge { display:inline-block; padding:.15rem .5rem; border-radius:10px; font-size:.68rem; font-weight:600; text-transform:uppercase; }
+.stato-bozza { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+.stato-ricevuto { background:rgba(74,222,128,.15); color:#4ade80; border:1px solid rgba(74,222,128,.3); }
+.stato-confermato { background:rgba(96,165,250,.15); color:#60a5fa; border:1px solid rgba(96,165,250,.3); }
+@media print {
+  .no-print { display:none !important; }
+  body { background:#fff !important; color:#000 !important; }
+}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.7rem" class="no-print">
+  <div style="display:flex;align-items:center;gap:1rem">
+    <a href="/acquisti" style="color:var(--muted);font-size:.83rem;text-decoration:none">← Ordini</a>
+    <div style="font-size:1.3rem;font-weight:700;color:var(--text)">📊 Report Spese per Persona</div>
+  </div>
+  <button onclick="window.print()" class="btn-ghost">🖨️ Stampa / Esporta PDF</button>
+</div>
+
+<div class="totale-generale-box">
+  <span style="font-size:.95rem;color:var(--muted)">Totale generale acquisti</span>
+  <span style="font-size:1.7rem;font-weight:800;color:var(--amber)">€{{ '%.2f'|format(totale_generale) }}</span>
+</div>
+
+{% if per_persona %}
+<div class="rs-card">
+  {% for nome, dati in per_persona.items() %}
+  <div class="rs-persona">
+    <div class="rs-persona-head" onclick="toggleP(this)">
+      <span class="rs-nome">👤 {{ nome }}</span>
+      <span style="display:flex;align-items:center;gap:1rem">
+        <span style="font-size:.78rem;color:var(--muted)">{{ dati.ordini|length }} ordine{{ 's' if dati.ordini|length != 1 else '' }}</span>
+        <span class="rs-tot">€{{ '%.2f'|format(dati.totale) }}</span>
+      </span>
+    </div>
+    <div class="rs-ordine-header">
+      <div>Data</div><div>Fornitore</div><div>Stato</div><div>Totale</div><div>Azioni</div>
+    </div>
+    {% for item in dati.ordini %}
+    <div class="rs-ordine-row">
+      <div style="color:var(--muted)">{{ item.ordine.data }}</div>
+      <div>{{ item.ordine.fornitore or 'Non specificato' }}{% if item.ordine.note %} · <span style="color:var(--muted)">{{ item.ordine.note[:30] }}</span>{% endif %}</div>
+      <div><span class="stato-badge stato-{{ item.ordine.stato }}">{{ item.ordine.stato }}</span></div>
+      <div style="font-weight:600;color:var(--amber)">€{{ '%.2f'|format(item.totale) }}</div>
+      <div class="no-print"><a href="/acquisti/{{ item.ordine.id }}" class="btn-ghost" style="padding:.25rem .6rem;font-size:.75rem">Apri</a></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem;color:var(--muted)">
+  <div style="font-size:3rem;margin-bottom:.7rem">📊</div>
+  <p>Nessun ordine di acquisto registrato.</p>
+</div>
+{% endif %}
+
+<script>
+function toggleP(head) {
+  const rows = [...head.parentElement.querySelectorAll('.rs-ordine-header, .rs-ordine-row')];
+  const hidden = rows[0].style.display === 'none';
+  rows.forEach(r => r.style.display = hidden ? '' : 'none');
+}
+</script>
+{% endblock %}

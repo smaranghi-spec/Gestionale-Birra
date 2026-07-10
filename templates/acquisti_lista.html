@@ -16,22 +16,26 @@
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.7rem">
   <div style="font-size:1.3rem;font-weight:700;color:var(--text)">🛒 Ordini di Acquisto</div>
-  <a href="/acquisti/nuovo" class="btn-amber">+ Nuovo Ordine</a>
+  <div style="display:flex;gap:.6rem">
+    <a href="/acquisti/report/spese" class="btn-ghost">📊 Report spese per persona</a>
+    <a href="/acquisti/nuovo" class="btn-amber">+ Nuovo Ordine</a>
+  </div>
 </div>
 
 {% if msg %}<div class="alert-ok">{{ msg }}</div>{% endif %}
 
 {% if ordini %}
-<div style="display:grid;grid-template-columns:100px 1fr 120px 100px 120px;gap:.5rem;padding:.2rem .8rem;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">
-  <div>Data</div><div>Fornitore</div><div>Stato</div><div>Totale</div><div>Azioni</div>
+<div style="display:grid;grid-template-columns:100px 1fr 130px 120px 100px 120px;gap:.5rem;padding:.2rem .8rem;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">
+  <div>Data</div><div>Fornitore</div><div>Acquirente</div><div>Stato</div><div>Totale</div><div>Azioni</div>
 </div>
 {% for o in ordini %}
-<div class="ordine-row">
+<div class="ordine-row" style="grid-template-columns:100px 1fr 130px 120px 100px 120px">
   <div style="font-size:.83rem;color:var(--muted)">{{ o.data }}</div>
   <div>
     <div style="font-weight:600;color:var(--text)">{{ o.fornitore or 'Fornitore non specificato' }}</div>
     <div style="font-size:.73rem;color:var(--muted)">{{ o.righe|length }} articoli{% if o.note %} · {{ o.note[:40] }}{% endif %}</div>
   </div>
+  <div style="font-size:.83rem;color:{% if o.acquirente %}var(--text){% else %}var(--muted){% endif %}">{{ o.acquirente or '—' }}</div>
   <div><span class="stato-badge stato-{{ o.stato }}">{{ o.stato }}</span></div>
   <div style="font-weight:600;color:var(--text)">{% if o.totale %}€{{ '%.2f'|format(o.totale) }}{% else %}—{% endif %}</div>
   <div style="display:flex;gap:.4rem;flex-wrap:wrap">

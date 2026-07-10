@@ -52,6 +52,7 @@ def run_migrations():
         "CREATE TABLE IF NOT EXISTS prodotti_finiti (id INTEGER PRIMARY KEY, cotta_id INTEGER REFERENCES cotte(id), nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, tipo_packaging TEXT DEFAULT 'bottiglia', n_pezzi_iniziali INTEGER DEFAULT 0, n_pezzi_disponibili INTEGER DEFAULT 0, data_imbottigliamento TEXT, data_scadenza TEXT, prezzo_vendita REAL, note TEXT, stato TEXT DEFAULT 'disponibile', created_at TEXT)",
         # CostoFisso
         "CREATE TABLE IF NOT EXISTS costi_fissi (id INTEGER PRIMARY KEY, categoria TEXT NOT NULL, descrizione TEXT NOT NULL, importo REAL DEFAULT 0, periodicita TEXT DEFAULT 'mensile', attivo INTEGER DEFAULT 1, note TEXT)",
+        "ALTER TABLE ordini_acquisto ADD COLUMN acquirente TEXT",
     ]:
         try:
             conn.execute(sql)
