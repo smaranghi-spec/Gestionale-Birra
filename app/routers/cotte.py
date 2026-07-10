@@ -277,6 +277,49 @@ def aggiorna_cotta(
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
 
 
+@router.post("/cotte/{cotta_id}/log-bulk")
+async def aggiungi_log_bulk(cotta_id: int, request: Request, db: Session = Depends(get_db)):
+    """Inserimento massivo di letture fermentazione: più righe (data/temp/densità) in un colpo."""
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta:
+        return RedirectResponse("/cotte", status_code=303)
+
+    form = await request.form()
+    n_righe = 0
+    i = 0
+    while f"data_{i}" in form:
+        data_i = form.get(f"data_{i}")
+        temp_i = form.get(f"temp_{i}")
+        dens_i = form.get(f"densita_{i}")
+        note_i = form.get(f"note_{i}")
+        if data_i and (temp_i or dens_i):
+            timestamp = data_i.strip()
+            if temp_i:
+                try:
+                    db.add(LogCotta(
+                        cotta_id=cotta_id, timestamp=timestamp, fase=cotta.stato,
+                        tipo="temperatura", descrizione="Lettura temperatura (bulk)",
+                        valore=float(temp_i), unita="°C", note=note_i or None,
+                    ))
+                    n_righe += 1
+                except ValueError:
+                    pass
+            if dens_i:
+                try:
+                    db.add(LogCotta(
+                        cotta_id=cotta_id, timestamp=timestamp, fase=cotta.stato,
+                        tipo="densita", descrizione="Lettura densità (bulk)",
+                        valore=float(dens_i), unita="SG", note=note_i or None,
+                    ))
+                    n_righe += 1
+                except ValueError:
+                    pass
+        i += 1
+
+    db.commit()
+    return RedirectResponse(f"/cotte/{cotta_id}?msg={n_righe}+letture+aggiunte", status_code=303)
+
+
 @router.post("/cotte/{cotta_id}/log")
 def aggiungi_log(
     cotta_id: int,

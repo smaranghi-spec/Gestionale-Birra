@@ -22,14 +22,23 @@ def get_db():
 
 
 @router.get("/inventario", response_class=HTMLResponse)
-def lista(request: Request, db: Session = Depends(get_db)):
+def lista(request: Request, q: str = None, ricetta_id: int = None, db: Session = Depends(get_db)):
     items = db.query(InventarioItem).order_by(InventarioItem.categoria, InventarioItem.nome).all()
+    if q:
+        ql = q.lower()
+        items = [i for i in items if ql in i.nome.lower()]
     sotto_soglia = [i for i in items if i.quantita_minima and i.quantita <= i.quantita_minima]
+    ricetta_sel = None
+    if ricetta_id:
+        ricetta_sel = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     return templates.TemplateResponse(request, "inventario.html", {
         "items": items,
         "sotto_soglia": sotto_soglia,
         "categorie": CATEGORIE,
         "unita": UNITA,
+        "q": q or "",
+        "ricetta_id": ricetta_id,
+        "ricetta_sel": ricetta_sel,
         "session": request.session,
     })
 
@@ -162,7 +171,7 @@ def elimina(iid: int, db: Session = Depends(get_db)):
 
 
 @router.get("/inventario/{iid}/aggiungi-a-ricetta", response_class=HTMLResponse)
-def aggiungi_a_ricetta_form(iid: int, request: Request, db: Session = Depends(get_db)):
+def aggiungi_a_ricetta_form(iid: int, request: Request, ricetta_id: int = None, db: Session = Depends(get_db)):
     item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
     if not item:
         return RedirectResponse("/inventario", status_code=303)
@@ -170,6 +179,7 @@ def aggiungi_a_ricetta_form(iid: int, request: Request, db: Session = Depends(ge
     return templates.TemplateResponse(request, "inv_aggiungi_ricetta.html", {
         "item": item,
         "ricette": ricette,
+        "ricetta_id_preselect": ricetta_id,
         "session": request.session,
     })
 
@@ -194,6 +204,9 @@ def aggiungi_a_ricetta(
         quantita=quantita,
         unita=unita,
         prezzo_unitario=item.prezzo_unitario,
+        numero_lotto=item.numero_lotto,
+        fornitore_lotto=item.fornitore,
+        data_scadenza_lotto=item.data_scadenza,
     ))
     db.commit()
     return RedirectResponse(f"/ricette/{ricetta_id}?msg=Ingrediente+aggiunto", status_code=303)

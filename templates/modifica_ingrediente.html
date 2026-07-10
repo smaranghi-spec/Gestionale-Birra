@@ -51,6 +51,14 @@
             <label>Note</label>
             <input type="text" name="note" value="{{ ing.note or '' }}">
 
+            <h2>Lotto / Tracciabilità</h2>
+            <label>Numero lotto</label>
+            <input type="text" name="numero_lotto" value="{{ ing.numero_lotto or '' }}" placeholder="es. L2026-014">
+            <label>Fornitore</label>
+            <input type="text" name="fornitore_lotto" value="{{ ing.fornitore_lotto or '' }}" placeholder="es. Weyermann">
+            <label>Scadenza lotto</label>
+            <input type="date" name="data_scadenza_lotto" value="{{ ing.data_scadenza_lotto or '' }}">
+
             <h2>Dati tecnici Grain</h2>
             <label>Fermentable type</label>
             <input type="text" name="fermentable_type" value="{{ ing.fermentable_type or '' }}">

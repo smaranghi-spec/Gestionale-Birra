@@ -208,6 +208,7 @@
             <a href="/ricette/html">← Ricette</a>
             <a href="/ricette/{{ ricetta.id }}/modifica" class="btn">✏ Modifica ricetta</a>
             <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
+            <a href="/inventario?ricetta_id={{ ricetta.id }}" class="btn">📦 Aggiungi da Magazzino</a>
             <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
             <a href="/ricette/{{ ricetta.id }}/costo" class="btn" style="background:#d97706;">💰 Calcola costo</a>
             <button type="button" onclick="aggiornaStats()">Ricalcola statistiche</button>
@@ -393,6 +394,9 @@
                             type={{ i.misc_type or '-' }}, use={{ i.misc_use or '-' }}, time={{ i.time_min or '-' }} min
                         {% else %}
                             -
+                        {% endif %}
+                        {% if i.numero_lotto %}
+                        <br><span class="small-note">🏷️ Lotto {{ i.numero_lotto }}{% if i.fornitore_lotto %} · {{ i.fornitore_lotto }}{% endif %}{% if i.data_scadenza_lotto %} · scad. {{ i.data_scadenza_lotto }}{% endif %}</span>
                         {% endif %}
                     </td>
                     <td>
@@ -594,7 +598,104 @@
                 </button>
             </form>
         </details>
+
+        <details style="margin-top:16px;">
+            <summary>🧪 Calcolatore aggiustamento sali</summary>
+            <div style="margin-top:14px;padding:14px;background:#f7fbff;border-radius:8px;border:1px solid #d0e8f5;">
+                <p style="font-size:12px;color:#666;margin-bottom:10px;">
+                    Calcola i grammi di sali da aggiungere per passare dal profilo attuale a un profilo target, sul volume d'ammostamento/acqua indicato.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end;">
+                    <div>
+                        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:3px;">Profilo target</label>
+                        <select id="salt-target-preset" style="padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;min-width:220px;">
+                            <option value="">— Personalizzato —</option>
+                            {% for p in profili_preset_acqua %}
+                            <option value="{{ p.id }}" data-ca="{{ p.ca }}" data-mg="{{ p.mg }}" data-na="{{ p.na }}" data-cl="{{ p.cl }}" data-so4="{{ p.so4 }}" data-hco3="{{ p.hco3 }}">{{ p.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:3px;">Volume acqua (L)</label>
+                        <input type="number" id="salt-volume" value="{{ ricetta.volume_target_litri or 20 }}" step="0.1" min="0.1" style="width:100px;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;">
+                    </div>
+                    <button type="button" class="btn-add-step" onclick="calcolaSali()">Calcola dosi sali</button>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px;">
+                    <div><label style="font-size:11px;color:#666;">Target Ca²⁺</label><input type="number" id="salt-t-ca" value="0" step="0.1" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;"></div>
+                    <div><label style="font-size:11px;color:#666;">Target Mg²⁺</label><input type="number" id="salt-t-mg" value="0" step="0.1" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;"></div>
+                    <div><label style="font-size:11px;color:#666;">Target Na⁺</label><input type="number" id="salt-t-na" value="0" step="0.1" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;"></div>
+                    <div><label style="font-size:11px;color:#666;">Target Cl⁻</label><input type="number" id="salt-t-cl" value="0" step="0.1" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;"></div>
+                    <div><label style="font-size:11px;color:#666;">Target SO₄²⁻</label><input type="number" id="salt-t-so4" value="0" step="0.1" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;"></div>
+                    <div><label style="font-size:11px;color:#666;">Target HCO₃⁻</label><input type="number" id="salt-t-hco3" value="0" step="0.1" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;"></div>
+                </div>
+                <div id="salt-result" style="font-size:13px;"></div>
+            </div>
+        </details>
     </div>
+
+    <script>
+    const SALI_ACQUA_ATTUALE = {
+        ca: {{ profilo_acqua.ca if profilo_acqua else 0 }}, mg: {{ profilo_acqua.mg if profilo_acqua else 0 }},
+        na: {{ profilo_acqua.na if profilo_acqua else 0 }}, cl: {{ profilo_acqua.cl if profilo_acqua else 0 }},
+        so4: {{ profilo_acqua.so4 if profilo_acqua else 0 }}, hco3: {{ profilo_acqua.hco3 if profilo_acqua else 0 }}
+    };
+    document.getElementById('salt-target-preset')?.addEventListener('change', function(e){
+        const o = e.target.selectedOptions[0];
+        if (!o.value) return;
+        document.getElementById('salt-t-ca').value = o.dataset.ca || 0;
+        document.getElementById('salt-t-mg').value = o.dataset.mg || 0;
+        document.getElementById('salt-t-na').value = o.dataset.na || 0;
+        document.getElementById('salt-t-cl').value = o.dataset.cl || 0;
+        document.getElementById('salt-t-so4').value = o.dataset.so4 || 0;
+        document.getElementById('salt-t-hco3').value = o.dataset.hco3 || 0;
+    });
+    function calcolaSali(){
+        const vol = parseFloat(document.getElementById('salt-volume').value) || 1;
+        const t = {
+            ca: parseFloat(document.getElementById('salt-t-ca').value)||0,
+            mg: parseFloat(document.getElementById('salt-t-mg').value)||0,
+            na: parseFloat(document.getElementById('salt-t-na').value)||0,
+            cl: parseFloat(document.getElementById('salt-t-cl').value)||0,
+            so4: parseFloat(document.getElementById('salt-t-so4').value)||0,
+            hco3: parseFloat(document.getElementById('salt-t-hco3').value)||0,
+        };
+        const delta = {
+            ca: Math.max(0, t.ca - SALI_ACQUA_ATTUALE.ca),
+            mg: Math.max(0, t.mg - SALI_ACQUA_ATTUALE.mg),
+            na: Math.max(0, t.na - SALI_ACQUA_ATTUALE.na),
+            cl: Math.max(0, t.cl - SALI_ACQUA_ATTUALE.cl),
+            so4: Math.max(0, t.so4 - SALI_ACQUA_ATTUALE.so4),
+        };
+        // contributi in mg/L per grammo di sale su 1L (fattori standard)
+        const gypsum_g = (delta.ca>0 && delta.so4>0) ? Math.min(delta.ca/61.5, delta.so4/55.8) * vol : 0;
+        const caCl2_g = delta.ca>0 ? Math.max(0,(delta.ca - gypsum_g*61.5/vol)) / 72.0 * vol : 0;
+        const cacl2_cl = caCl2_g * 63.7 / vol;
+        const nacl_g = delta.na>0 ? delta.na / 393.0 * vol : 0;
+        const epsom_g = delta.mg>0 ? delta.mg / 26.0 * vol : 0;
+        const cl_rimanente = Math.max(0, delta.cl - cacl2_cl);
+        const nacl_extra_g = cl_rimanente>0 ? cl_rimanente / 607.0 * vol : 0;
+        const bakingsoda_g = delta.hco3>0 ? delta.hco3 / 273.0 * vol : 0;
+
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        html += '<tr style="background:#eef6fc;"><th style="text-align:left;padding:5px 8px;">Sale</th><th style="text-align:right;padding:5px 8px;">Dose stimata</th></tr>';
+        const rows = [
+            ['Gesso (CaSO₄, gypsum)', gypsum_g],
+            ['Cloruro di calcio (CaCl₂)', caCl2_g],
+            ['Sale da cucina (NaCl)', nacl_g + nacl_extra_g],
+            ['Sale di Epsom (MgSO₄)', epsom_g],
+            ['Bicarbonato di sodio (NaHCO₃)', bakingsoda_g],
+        ];
+        for (const [nome, val] of rows) {
+            if (val > 0.01) {
+                html += `<tr><td style="padding:5px 8px;border-top:1px solid #e0eef7;">${nome}</td><td style="text-align:right;padding:5px 8px;border-top:1px solid #e0eef7;font-weight:bold;">${val.toFixed(2)} g</td></tr>`;
+            }
+        }
+        html += '</table>';
+        html += '<p style="font-size:11px;color:#888;margin-top:8px;">Stima approssimativa basata su fattori standard di conversione ioni/sali. Verifica sempre con un software dedicato per ricette sensibili.</p>';
+        document.getElementById('salt-result').innerHTML = html;
+    }
+    </script>
 
     <div class="card" id="profilo-mash">
         <h2>🌡️ Profilo di ammostamento</h2>

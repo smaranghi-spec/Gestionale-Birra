@@ -11,3 +11,5 @@
 - [Gemini Vision](gemini-vision.md) — importa_foto.py usa Gemini 2.0 Flash Vision API (generativelanguage.googleapis.com); pytesseract NON installato, non usare.
 - [Bottling flow](bottling-flow.md) — GET/POST /cotte/{id}/imbottiglia in prodotti_finiti.py; crea ProdottoFinito per ogni formato; link 🍾 in dettaglio_cotta.html.
 - [Admin section](admin-section.md) — /amministrazione route in main.py (solo admin); export DB: GET /admin/export-db; import DB: POST /admin/import-db (verifica SQLite magic bytes).
+- [ICS calendar export](ics-calendar-export.md) — /calendario/export.ics genera VCALENDAR da EventoCalendario per sync con Google/Apple/Outlook via URL webcal.
+- [Bulk fermentation log](bulk-fermentation-log.md) — pattern per form multi-riga con nomi dinamici data_N/temp_N/densita_N letti via `await request.form()` e loop su indice crescente finché la chiave esiste.

@@ -11,7 +11,12 @@
     <a href="/calendario?mese={{ mese_prec }}" class="btn btn-ghost btn-sm">‹ Prec</a>
     <span style="font-weight:600;font-size:15px;min-width:140px;text-align:center;">{{ mese_nome }}</span>
     <a href="/calendario?mese={{ mese_succ }}" class="btn btn-ghost btn-sm">Succ ›</a>
+    <a href="/calendario/export.ics" class="btn btn-ghost btn-sm" title="Scarica/sottoscrivi il calendario (Google Calendar, Apple Calendar, Outlook)">📤 Esporta ICS</a>
   </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;padding:10px 16px;font-size:12px;color:var(--muted);">
+  🔗 <strong>Sincronizza con Google Calendar:</strong> in Google Calendar vai su "Altri calendari" → "Da URL" e incolla l'indirizzo di questa pagina con protocollo <code>webcal://</code> al posto di <code>https://</code>, oppure scarica il file .ics e importalo manualmente. L'indirizzo del feed è: <code>{{ request.url.scheme }}://{{ request.url.netloc }}/calendario/export.ics</code>
 </div>
 
 <!-- CHECK-IN / CHECK-OUT -->

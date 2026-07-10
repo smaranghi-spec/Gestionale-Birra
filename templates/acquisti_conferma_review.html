@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Revisione ordine #{{ ordine.id }}{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="/acquisti/{{ ordine.id }}" style="color:var(--muted);text-decoration:none;font-size:.85rem;">← Torna all'ordine</a>
+  <h1 style="font-size:22px;margin:8px 0 4px;">📦 Revisione ricezione ordine #{{ ordine.id }}</h1>
+  <p style="color:var(--muted);font-size:.85rem;">Controlla e correggi i nuovi articoli prima di crearli in magazzino. Gli articoli già presenti verranno solo aggiornati in quantità.</p>
+</div>
+
+<form method="post" action="/acquisti/{{ ordine.id }}/conferma-review">
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;">
+    <table class="tbl">
+      <thead>
+        <tr><th>Riga ordine</th><th>Qtà</th><th>Stato</th><th>Nome definitivo</th><th>Categoria</th><th>Unità</th><th>Soglia minima</th></tr>
+      </thead>
+      <tbody>
+      {% for info in righe_info %}
+      {% set r = info.riga %}
+      <tr>
+        <td>
+          <div style="font-weight:600;">{{ r.nome }}</div>
+          {% if r.note %}<div style="font-size:11px;color:var(--muted);">{{ r.note[:60] }}</div>{% endif %}
+        </td>
+        <td>{{ r.quantita }} {{ r.unita }}</td>
+        <td>
+          {% if info.existing %}
+          <span class="badge badge-blue">↻ Aggiorna: {{ info.existing.nome }}</span>
+          {% else %}
+          <span class="badge badge-amber">✨ Nuovo articolo</span>
+          {% endif %}
+        </td>
+        {% if info.existing %}
+        <td colspan="4" style="color:var(--muted);font-size:12px;">
+          Quantità attuale {{ info.existing.quantita }} {{ info.existing.unita }} → diventerà {{ (info.existing.quantita or 0) + (r.quantita or 0) }} {{ info.existing.unita }}
+        </td>
+        {% else %}
+        <td><input type="text" name="nome_{{ r.id }}" value="{{ r.nome }}" style="width:100%;padding:5px 8px;background:#0a0f1a;border:1px solid var(--border);border-radius:5px;color:var(--text);"></td>
+        <td>
+          <select name="categoria_{{ r.id }}" style="width:100%;padding:5px 8px;background:#0a0f1a;border:1px solid var(--border);border-radius:5px;color:var(--text);">
+            {% for c in categorie %}
+            <option value="{{ c }}" {% if r.categoria == c %}selected{% endif %}>{{ c|replace('_',' ')|title }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <select name="unita_{{ r.id }}" style="width:100%;padding:5px 8px;background:#0a0f1a;border:1px solid var(--border);border-radius:5px;color:var(--text);">
+            {% for u in unita %}
+            <option value="{{ u }}" {% if r.unita == u %}selected{% endif %}>{{ u }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td><input type="number" name="soglia_{{ r.id }}" value="0" step="0.01" style="width:90px;padding:5px 8px;background:#0a0f1a;border:1px solid var(--border);border-radius:5px;color:var(--text);"></td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;gap:10px;">
+    <button type="submit" class="btn-green" onclick="return confirm('Confermare la ricezione con questi dati?')">✅ Conferma e crea/aggiorna articoli</button>
+    <a href="/acquisti/{{ ordine.id }}" class="btn btn-ghost">Annulla</a>
+  </div>
+</form>
+{% endblock %}

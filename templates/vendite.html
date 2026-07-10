@@ -17,6 +17,11 @@
 <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
 
   <div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <a href="/vendite" class="btn {% if not stato_filtro %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">Tutte</a>
+      <a href="/vendite?stato=confermata" class="btn {% if stato_filtro=='confermata' %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">✅ Confermate</a>
+      <a href="/vendite?stato=bozza" class="btn {% if stato_filtro=='bozza' %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">📝 Provvisorie {% if n_bozze %}({{ n_bozze }}){% endif %}</a>
+    </div>
     {% if trend %}
     <div class="card" style="margin-bottom:16px;">
       <div class="card-title" style="margin-bottom:14px;">📈 Andamento mensile (ultimi 6 mesi)</div>
@@ -37,7 +42,7 @@
     {% if vendite %}
     <div class="card" style="padding:0;overflow:hidden;">
       <table class="tbl">
-        <thead><tr><th>Data</th><th>Prodotto</th><th>Cliente</th><th>Qt</th><th>Importo</th><th></th></tr></thead>
+        <thead><tr><th>Data</th><th>Prodotto</th><th>Cliente</th><th>Qt</th><th>Importo</th><th>Stato</th><th></th></tr></thead>
         <tbody>
         {% for v in vendite %}
         <tr>
@@ -55,9 +60,19 @@
             {% if v.prezzo_euro %}€{{ '%.2f'|format(v.prezzo_euro) }}{% else %}—{% endif %}
           </td>
           <td>
+            {% if (v.stato or 'confermata') == 'bozza' %}<span class="badge badge-amber">📝 Provvisorio</span>{% else %}<span class="badge badge-green">✅ Confermata</span>{% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+            {% if (v.stato or 'confermata') == 'bozza' %}
+            <form method="post" action="/vendite/{{ v.id }}/conferma">
+              <button type="submit" class="btn btn-primary btn-xs" title="Confermare vendita">✔</button>
+            </form>
+            {% endif %}
             <form method="post" action="/vendite/{{ v.id }}/elimina">
               <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
             </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -87,6 +102,13 @@
       </div>
       <div class="form-row"><label>Prezzo (€)</label><input type="number" name="prezzo_euro" step="0.01" placeholder="0.00"></div>
       <div class="form-row"><label>Note</label><textarea name="note" rows="2" placeholder="Note aggiuntive…"></textarea></div>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+          <input type="checkbox" id="bozza-check" style="width:auto;" onchange="document.getElementById('stato-field').value = this.checked ? 'bozza' : 'confermata'">
+          Salva come ordine provvisorio (bozza)
+        </label>
+        <input type="hidden" id="stato-field" name="stato" value="confermata">
+      </div>
       <button type="submit" class="btn btn-primary" style="width:100%;">💾 Registra</button>
     </form>
   </div>

@@ -180,6 +180,8 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
         except Exception:
             mash_steps = []
 
+    profili_preset_acqua = db.query(ProfiloAcquaPreset).order_by(ProfiloAcquaPreset.nome).all()
+
     return templates.TemplateResponse(
         "dettaglio_ricetta.html",
         {
@@ -199,6 +201,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
             "profilo_acqua": profilo_acqua,
             "profilo_mash": profilo_mash,
             "mash_steps": mash_steps,
+            "profili_preset_acqua": profili_preset_acqua,
         },
     )
 

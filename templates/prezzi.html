@@ -73,6 +73,67 @@ select.pz-input { appearance:none; max-width:180px; flex:0 0 180px; }
   {% endif %}
 </div>
 
+<div class="pz-search">
+  <h2>🧮 Calcolatore prezzo per unità</h2>
+  <p style="font-size:.82rem;color:var(--muted);margin:-.5rem 0 1rem">Confronta offerte con formati diversi normalizzando il prezzo a kg o litro.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;">
+    <div id="pz-calc-a" class="fornitore-card" style="padding:1rem;">
+      <div style="font-weight:700;color:var(--text);font-size:.85rem;margin-bottom:.6rem;">Offerta A</div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+        <input class="pz-input" type="number" step="0.01" placeholder="Prezzo €" id="pzA-prezzo" style="flex:1">
+        <input class="pz-input" type="number" step="0.001" placeholder="Quantità" id="pzA-qta" style="flex:1">
+        <select class="pz-input" id="pzA-unita" style="flex:0 0 90px">
+          <option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="mL">mL</option><option value="pz">pz</option>
+        </select>
+      </div>
+      <div id="pzA-result" style="font-size:.9rem;font-weight:700;color:var(--amber);"></div>
+    </div>
+    <div id="pz-calc-b" class="fornitore-card" style="padding:1rem;">
+      <div style="font-weight:700;color:var(--text);font-size:.85rem;margin-bottom:.6rem;">Offerta B</div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+        <input class="pz-input" type="number" step="0.01" placeholder="Prezzo €" id="pzB-prezzo" style="flex:1">
+        <input class="pz-input" type="number" step="0.001" placeholder="Quantità" id="pzB-qta" style="flex:1">
+        <select class="pz-input" id="pzB-unita" style="flex:0 0 90px">
+          <option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="mL">mL</option><option value="pz">pz</option>
+        </select>
+      </div>
+      <div id="pzB-result" style="font-size:.9rem;font-weight:700;color:var(--amber);"></div>
+    </div>
+  </div>
+  <div id="pz-calc-verdict" style="margin-top:.8rem;font-size:.85rem;color:var(--text);"></div>
+</div>
+
+<script>
+function pzNormalizza(prezzo, qta, unita) {
+  if (!prezzo || !qta) return null;
+  let qtaBase = qta, unitaBase = unita;
+  if (unita === 'g') { qtaBase = qta / 1000; unitaBase = 'kg'; }
+  if (unita === 'mL') { qtaBase = qta / 1000; unitaBase = 'L'; }
+  if (qtaBase <= 0) return null;
+  return { valore: prezzo / qtaBase, unita: unitaBase };
+}
+function pzAggiorna() {
+  const a = pzNormalizza(parseFloat(document.getElementById('pzA-prezzo').value), parseFloat(document.getElementById('pzA-qta').value), document.getElementById('pzA-unita').value);
+  const b = pzNormalizza(parseFloat(document.getElementById('pzB-prezzo').value), parseFloat(document.getElementById('pzB-qta').value), document.getElementById('pzB-unita').value);
+  document.getElementById('pzA-result').innerText = a ? `€${a.valore.toFixed(3)} / ${a.unita}` : '';
+  document.getElementById('pzB-result').innerText = b ? `€${b.valore.toFixed(3)} / ${b.unita}` : '';
+  const verdict = document.getElementById('pz-calc-verdict');
+  if (a && b && a.unita === b.unita) {
+    if (a.valore < b.valore) verdict.innerText = `✅ Offerta A più economica (${((1 - a.valore/b.valore)*100).toFixed(1)}% in meno)`;
+    else if (b.valore < a.valore) verdict.innerText = `✅ Offerta B più economica (${((1 - b.valore/a.valore)*100).toFixed(1)}% in meno)`;
+    else verdict.innerText = `= Stesso prezzo unitario`;
+  } else if (a && b) {
+    verdict.innerText = `⚠️ Unità non comparabili tra loro`;
+  } else {
+    verdict.innerText = '';
+  }
+}
+['pzA-prezzo','pzA-qta','pzA-unita','pzB-prezzo','pzB-qta','pzB-unita'].forEach(id => {
+  document.getElementById(id).addEventListener('input', pzAggiorna);
+  document.getElementById(id).addEventListener('change', pzAggiorna);
+});
+</script>
+
 {% if risultati is not none %}
 
 {% if da_cache %}

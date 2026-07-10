@@ -30,7 +30,7 @@
     <select class="form-input" name="ricetta_id" required>
       <option value="">— Seleziona ricetta —</option>
       {% for r in ricette %}
-      <option value="{{ r.id }}">{{ r.nome }} ({{ r.volume_target_litri }}L)</option>
+      <option value="{{ r.id }}" {% if ricetta_id_preselect and r.id == ricetta_id_preselect %}selected{% endif %}>{{ r.nome }} ({{ r.volume_target_litri }}L)</option>
       {% endfor %}
     </select>
 

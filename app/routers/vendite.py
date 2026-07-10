@@ -19,17 +19,23 @@ def get_db():
 
 
 @router.get("/vendite", response_class=HTMLResponse)
-def lista_vendite(request: Request, db: Session = Depends(get_db)):
-    vendite = db.query(Vendita).order_by(Vendita.data.desc(), Vendita.id.desc()).all()
+def lista_vendite(request: Request, stato: str = None, db: Session = Depends(get_db)):
+    query = db.query(Vendita)
+    if stato:
+        query = query.filter(Vendita.stato == stato)
+    vendite = query.order_by(Vendita.data.desc(), Vendita.id.desc()).all()
     ricette = db.query(Ricetta).order_by(Ricetta.nome).all()
 
-    fatturato = sum(v.prezzo_euro or 0 for v in vendite)
-    litri = sum(v.quantita_litri or 0 for v in vendite)
-    n_clienti = len(set(v.cliente for v in vendite if v.cliente))
+    confermate = [v for v in vendite if (v.stato or "confermata") == "confermata"]
+    n_bozze = db.query(Vendita).filter(Vendita.stato == "bozza").count()
+
+    fatturato = sum(v.prezzo_euro or 0 for v in confermate)
+    litri = sum(v.quantita_litri or 0 for v in confermate)
+    n_clienti = len(set(v.cliente for v in confermate if v.cliente))
 
     from collections import defaultdict
     per_mese: dict = defaultdict(float)
-    for v in vendite:
+    for v in confermate:
         if v.data and len(v.data) >= 7:
             per_mese[v.data[:7]] += v.prezzo_euro or 0
     trend = sorted(per_mese.items())[-6:]
@@ -42,6 +48,8 @@ def lista_vendite(request: Request, db: Session = Depends(get_db)):
         "n_clienti": n_clienti,
         "trend": trend,
         "oggi": date.today().isoformat(),
+        "n_bozze": n_bozze,
+        "stato_filtro": stato,
         "session": request.session,
     })
 
@@ -56,6 +64,7 @@ def crea_vendita(
     n_bottiglie: int = Form(None),
     prezzo_euro: float = Form(None),
     note: str = Form(""),
+    stato: str = Form("confermata"),
     db: Session = Depends(get_db),
 ):
     db.add(Vendita(
@@ -67,8 +76,18 @@ def crea_vendita(
         n_bottiglie=n_bottiglie,
         prezzo_euro=prezzo_euro,
         note=note.strip() or None,
+        stato=stato if stato in ("bozza", "confermata") else "confermata",
     ))
     db.commit()
+    return RedirectResponse("/vendite", status_code=303)
+
+
+@router.post("/vendite/{vid}/conferma")
+def conferma_vendita(vid: int, db: Session = Depends(get_db)):
+    v = db.query(Vendita).filter(Vendita.id == vid).first()
+    if v:
+        v.stato = "confermata"
+        db.commit()
     return RedirectResponse("/vendite", status_code=303)
 
 

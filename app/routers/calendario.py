@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from ..db import SessionLocal
@@ -77,6 +77,58 @@ def calendario(request: Request, mese: str = None, db: Session = Depends(get_db)
         "ricette": ricette,
         "session": request.session,
     })
+
+
+@router.get("/calendario/export.ics")
+def export_ics(db: Session = Depends(get_db)):
+    """Feed ICS sottoscrivibile (webcal) per sincronizzare gli eventi con Google Calendar
+    e altri client tramite 'Aggiungi da URL'."""
+    eventi = db.query(EventoCalendario).order_by(EventoCalendario.data).all()
+
+    def fmt_dt(d: str, o: str):
+        try:
+            if o:
+                dt = datetime.strptime(f"{d} {o}", "%Y-%m-%d %H:%M")
+                return dt.strftime("%Y%m%dT%H%M%S")
+            dt = datetime.strptime(d, "%Y-%m-%d")
+            return dt.strftime("%Y%m%d")
+        except Exception:
+            return datetime.now().strftime("%Y%m%dT%H%M%S")
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Gestionale Birrificio//Calendario//IT",
+        "CALSCALE:GREGORIAN",
+        "X-WR-CALNAME:Birrificio - Calendario",
+    ]
+    for e in eventi:
+        dtstart = fmt_dt(e.data, e.ora)
+        is_all_day = not e.ora
+        uid = f"evento-{e.id}@gestionale-birrificio"
+        lines.append("BEGIN:VEVENT")
+        lines.append(f"UID:{uid}")
+        if is_all_day:
+            lines.append(f"DTSTART;VALUE=DATE:{dtstart}")
+        else:
+            lines.append(f"DTSTART:{dtstart}")
+        summary = f"[{e.tipo}] {e.titolo}".replace("\n", " ")
+        lines.append(f"SUMMARY:{summary}")
+        if e.descrizione:
+            desc = e.descrizione.replace("\n", "\\n")
+            lines.append(f"DESCRIPTION:{desc}")
+        if e.responsabile:
+            lines.append(f"ORGANIZER;CN={e.responsabile}:MAILTO:noreply@example.com")
+        lines.append(f"STATUS:{'CONFIRMED' if not e.completato else 'CANCELLED'}")
+        lines.append("END:VEVENT")
+    lines.append("END:VCALENDAR")
+
+    ics_content = "\r\n".join(lines)
+    return Response(
+        content=ics_content,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=calendario_birrificio.ics"},
+    )
 
 
 @router.post("/calendario/evento")

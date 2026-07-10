@@ -89,6 +89,9 @@ class IngredienteRicetta(Base):
     yeast_form = Column(String, nullable=True)
     misc_type = Column(String, nullable=True)
     misc_use = Column(String, nullable=True)
+    numero_lotto = Column(String, nullable=True)
+    fornitore_lotto = Column(String, nullable=True)
+    data_scadenza_lotto = Column(String, nullable=True)
     ricetta = relationship("Ricetta", back_populates="ingredienti")
 
 
@@ -269,6 +272,7 @@ class Vendita(Base):
     n_bottiglie = Column(Integer, nullable=True)
     prezzo_euro = Column(Float, nullable=True)
     note = Column(Text, nullable=True)
+    stato = Column(String, default="confermata")  # bozza (provvisorio) / confermata
 
 
 # ── CALENDARIO / PRESENZE ─────────────────────────────────────────────────────

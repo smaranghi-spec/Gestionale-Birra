@@ -55,12 +55,18 @@ def salva_modifica(
     yeast_form: str = Form(None),
     misc_type: str = Form(None),
     misc_use: str = Form(None),
+    numero_lotto: str = Form(None),
+    fornitore_lotto: str = Form(None),
+    data_scadenza_lotto: str = Form(None),
     db: Session = Depends(get_db),
 ):
     ing = db.query(IngredienteRicetta).filter(IngredienteRicetta.id == ing_id).first()
     if not ing:
         return RedirectResponse("/ricette/html", status_code=303)
 
+    ing.numero_lotto = numero_lotto or None
+    ing.fornitore_lotto = fornitore_lotto or None
+    ing.data_scadenza_lotto = data_scadenza_lotto or None
     ing.nome = nome
     ing.categoria = categoria
     ing.quantita = quantita

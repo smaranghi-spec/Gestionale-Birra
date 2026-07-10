@@ -439,6 +439,42 @@
           <button type="submit" class="btn btn-primary" style="width:100%;">Aggiungi al diario</button>
         </form>
       </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;">🌡️ Inserimento massivo letture fermentazione</div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 12px;">Aggiungi più letture di temperatura/densità in un'unica volta (una riga per giorno).</p>
+        <form method="post" action="/cotte/{{ cotta.id }}/log-bulk" id="bulk-log-form">
+          <div id="bulk-rows-container">
+            <div class="bulk-log-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr auto;gap:6px;margin-bottom:6px;align-items:center;">
+              <input type="date" name="data_0" value="{{ oggi if oggi else '' }}" required style="padding:6px;font-size:12px;">
+              <input type="number" step="0.1" name="temp_0" placeholder="°C" style="padding:6px;font-size:12px;">
+              <input type="number" step="0.001" name="densita_0" placeholder="SG" style="padding:6px;font-size:12px;">
+              <input type="text" name="note_0" placeholder="Note" style="padding:6px;font-size:12px;">
+              <button type="button" onclick="this.closest('.bulk-log-row').remove()" style="background:none;border:1px solid #ddd;color:#c00;border-radius:4px;padding:5px 8px;cursor:pointer;font-size:11px;">✕</button>
+            </div>
+          </div>
+          <button type="button" class="btn-add-step" style="width:100%;margin-bottom:10px;" onclick="aggiungiRigaBulk()">+ Aggiungi riga</button>
+          <button type="submit" class="btn btn-primary" style="width:100%;">💾 Salva tutte le letture</button>
+        </form>
+      </div>
+      <script>
+        let bulkRowCount = 1;
+        function aggiungiRigaBulk() {
+          const container = document.getElementById('bulk-rows-container');
+          const row = document.createElement('div');
+          row.className = 'bulk-log-row';
+          row.style = 'display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr auto;gap:6px;margin-bottom:6px;align-items:center;';
+          row.innerHTML = `
+            <input type="date" name="data_${bulkRowCount}" style="padding:6px;font-size:12px;">
+            <input type="number" step="0.1" name="temp_${bulkRowCount}" placeholder="°C" style="padding:6px;font-size:12px;">
+            <input type="number" step="0.001" name="densita_${bulkRowCount}" placeholder="SG" style="padding:6px;font-size:12px;">
+            <input type="text" name="note_${bulkRowCount}" placeholder="Note" style="padding:6px;font-size:12px;">
+            <button type="button" onclick="this.closest('.bulk-log-row').remove()" style="background:none;border:1px solid #ddd;color:#c00;border-radius:4px;padding:5px 8px;cursor:pointer;font-size:11px;">✕</button>
+          `;
+          container.appendChild(row);
+          bulkRowCount++;
+        }
+      </script>
     </div>
   </div>
 </div>

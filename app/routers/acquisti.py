@@ -206,9 +206,41 @@ def aggiungi_riga(
     return RedirectResponse(f"/acquisti/{oid}?msg=Riga+aggiunta", status_code=303)
 
 
+@router.get("/acquisti/{oid}/conferma-review", response_class=HTMLResponse)
+def conferma_review(oid: int, request: Request, db: Session = Depends(get_db)):
+    """Mostra una tabella di revisione: righe già presenti in magazzino (aggiornamento quantità)
+    e righe nuove (con campi editabili prima della creazione definitiva dell'articolo)."""
+    ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
+    if not ordine or ordine.stato == "ricevuto":
+        return RedirectResponse(f"/acquisti/{oid}", status_code=303)
+
+    righe_info = []
+    for r in ordine.righe:
+        existing = db.query(InventarioItem).filter(
+            InventarioItem.nome.ilike(f"%{r.nome[:25]}%")
+        ).first()
+        righe_info.append({
+            "riga": r,
+            "existing": existing,
+        })
+
+    return templates.TemplateResponse(request, "acquisti_conferma_review.html", {
+        "ordine": ordine,
+        "righe_info": righe_info,
+        "categorie": ["consumabile", "non_consumabile", "ingrediente", "chimico", "packaging"],
+        "unita": UNITA,
+        "session": request.session,
+    })
+
+
 @router.post("/acquisti/{oid}/conferma")
-def conferma_ordine(oid: int, db: Session = Depends(get_db)):
-    """Segna ordine come 'ricevuto' e aggiunge tutto al magazzino."""
+def conferma_ordine(
+    oid: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Segna ordine come 'ricevuto' e aggiunge tutto al magazzino, usando eventuali
+    correzioni fatte nella pagina di revisione (nome/categoria/unità/soglia per riga nuova)."""
     ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
     if not ordine or ordine.stato == "ricevuto":
         return RedirectResponse(f"/acquisti/{oid}", status_code=303)
@@ -232,6 +264,52 @@ def conferma_ordine(oid: int, db: Session = Depends(get_db)):
                 unita=r.unita or "pz",
                 quantita=r.quantita or 0,
                 quantita_minima=0,
+                prezzo_unitario=r.prezzo_unitario,
+                fornitore=ordine.fornitore or None,
+                ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            ))
+
+    ordine.stato = "ricevuto"
+    db.commit()
+    return RedirectResponse(f"/acquisti/{oid}?msg=Ordine+ricevuto+e+magazzino+aggiornato", status_code=303)
+
+
+@router.post("/acquisti/{oid}/conferma-review")
+async def conferma_ordine_review(oid: int, request: Request, db: Session = Depends(get_db)):
+    """Conferma l'ordine applicando le correzioni fatte sui nuovi articoli nella pagina di revisione."""
+    ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
+    if not ordine or ordine.stato == "ricevuto":
+        return RedirectResponse(f"/acquisti/{oid}", status_code=303)
+
+    form = await request.form()
+
+    for r in ordine.righe:
+        existing = db.query(InventarioItem).filter(
+            InventarioItem.nome.ilike(f"%{r.nome[:25]}%")
+        ).first()
+        if existing:
+            existing.quantita = (existing.quantita or 0) + (r.quantita or 0)
+            existing.ultimo_aggiornamento = datetime.now().strftime("%Y-%m-%d %H:%M")
+            if ordine.fornitore and not existing.fornitore:
+                existing.fornitore = ordine.fornitore
+            if r.prezzo_unitario and not existing.prezzo_unitario:
+                existing.prezzo_unitario = r.prezzo_unitario
+        else:
+            nome_edit = (form.get(f"nome_{r.id}") or r.nome).strip() or r.nome
+            categoria_edit = form.get(f"categoria_{r.id}") or r.categoria or "consumabile"
+            if categoria_edit not in ["consumabile", "non_consumabile", "ingrediente", "chimico", "packaging"]:
+                categoria_edit = "consumabile"
+            unita_edit = form.get(f"unita_{r.id}") or r.unita or "pz"
+            try:
+                soglia_edit = float(form.get(f"soglia_{r.id}") or 0)
+            except ValueError:
+                soglia_edit = 0
+            db.add(InventarioItem(
+                nome=nome_edit,
+                categoria=categoria_edit,
+                unita=unita_edit,
+                quantita=r.quantita or 0,
+                quantita_minima=soglia_edit,
                 prezzo_unitario=r.prezzo_unitario,
                 fornitore=ordine.fornitore or None,
                 ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),

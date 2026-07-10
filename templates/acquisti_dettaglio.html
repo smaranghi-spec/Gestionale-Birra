@@ -141,9 +141,7 @@ select.form-mini { background:#0a0f1a; border:1px solid var(--border); border-ra
     <div style="font-weight:600;color:var(--text);margin-bottom:.3rem">✅ Conferma ricezione ordine</div>
     <div style="font-size:.8rem;color:var(--muted)">Segna l'ordine come ricevuto. Tutti gli articoli verranno aggiunti automaticamente al magazzino.</div>
   </div>
-  <form method="post" action="/acquisti/{{ ordine.id }}/conferma" onsubmit="return confirm('Confermare la ricezione? Gli articoli saranno aggiunti al magazzino.')">
-    <button type="submit" class="btn-green">📦 Conferma e aggiungi al magazzino</button>
-  </form>
+  <a href="/acquisti/{{ ordine.id }}/conferma-review" class="btn-green" style="text-decoration:none;display:inline-block;">📦 Rivedi e conferma ricezione</a>
 </div>
 {% endif %}
 {% endblock %}
