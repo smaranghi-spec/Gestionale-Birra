@@ -58,6 +58,7 @@ def run_migrations():
         "ALTER TABLE ingredienti_ricetta ADD COLUMN data_scadenza_lotto TEXT",
         "ALTER TABLE vendite ADD COLUMN stato TEXT DEFAULT 'confermata'",
         "CREATE TABLE IF NOT EXISTS nuovi_articoli_pending (id INTEGER PRIMARY KEY, ordine_id INTEGER, riga_id INTEGER, nome TEXT, categoria TEXT, unita TEXT, quantita REAL, prezzo_unitario REAL, note TEXT)",
+        "ALTER TABLE users ADD COLUMN reset_richiesto INTEGER DEFAULT 0",
     ]:
         try:
             conn.execute(sql)
@@ -71,7 +72,7 @@ run_migrations()
 
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
-EXEMPT = ("/login", "/register", "/birre", "/debug", "/static")
+EXEMPT = ("/login", "/register", "/birre", "/debug", "/static", "/recupera-password")
 READ_ONLY_PATHS = ("/", "/ricette/html", "/cotte", "/stili", "/catalogo",
                    "/strumenti", "/profili-acqua", "/prezzi", "/impianto",
                    "/tracciabilita", "/inventario")

@@ -16,6 +16,7 @@ class User(Base):
     ruolo = Column(String, default="birraio")   # admin / birraio
     is_active = Column(Boolean, default=True)
     created_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    reset_richiesto = Column(Boolean, default=False)
 
     @staticmethod
     def hash_pw(plain: str) -> str:

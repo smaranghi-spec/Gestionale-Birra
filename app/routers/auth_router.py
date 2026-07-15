@@ -216,3 +216,106 @@ def toggle_utente(uid: int, request: Request, db: Session = Depends(get_db)):
         u.is_active = not u.is_active
         db.commit()
     return RedirectResponse("/utenti", status_code=303)
+
+
+@router.post("/utenti/{uid}/reset-password")
+def admin_reset_password(
+    uid: int,
+    request: Request,
+    nuova_password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if request.session.get("ruolo") != "admin":
+        return RedirectResponse("/", status_code=303)
+    if len(nuova_password) < 6:
+        return RedirectResponse("/utenti?msg=Password+troppo+corta+(min+6+caratteri)", status_code=303)
+    u = db.query(User).filter(User.id == uid).first()
+    if not u:
+        return RedirectResponse("/utenti?msg=Utente+non+trovato", status_code=303)
+    u.password_hash = User.hash_pw(nuova_password)
+    u.reset_richiesto = False
+    db.commit()
+    return RedirectResponse(f"/utenti?msg=Password+reimpostata+per+{u.username}", status_code=303)
+
+
+@router.post("/utenti/{uid}/nega-reset")
+def nega_reset(uid: int, request: Request, db: Session = Depends(get_db)):
+    if request.session.get("ruolo") != "admin":
+        return RedirectResponse("/", status_code=303)
+    u = db.query(User).filter(User.id == uid).first()
+    if u:
+        u.reset_richiesto = False
+        db.commit()
+    return RedirectResponse("/utenti?msg=Richiesta+reset+annullata", status_code=303)
+
+
+@router.get("/recupera-password", response_class=HTMLResponse)
+def recupera_password_page(request: Request, inviato: str = None):
+    return templates.TemplateResponse(request, "recupera_password.html", {
+        "inviato": inviato == "1",
+        "errore": None,
+        "session": {},
+    })
+
+
+@router.post("/recupera-password")
+def recupera_password_submit(
+    request: Request,
+    username: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    u = db.query(User).filter(User.username == username, User.is_active == True).first()
+    if u:
+        u.reset_richiesto = True
+        db.commit()
+    return RedirectResponse("/recupera-password?inviato=1", status_code=303)
+
+
+@router.get("/cambia-password", response_class=HTMLResponse)
+def cambia_password_page(request: Request, msg: str = None):
+    if not request.session.get("user_id"):
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(request, "cambia_password.html", {
+        "errore": None,
+        "msg": msg,
+        "session": request.session,
+    })
+
+
+@router.post("/cambia-password")
+def cambia_password_submit(
+    request: Request,
+    password_attuale: str = Form(...),
+    nuova_password: str = Form(...),
+    conferma_password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    uid = request.session.get("user_id")
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+    u = db.query(User).filter(User.id == uid).first()
+    if not u:
+        return RedirectResponse("/login", status_code=303)
+
+    if not u.check_pw(password_attuale):
+        return templates.TemplateResponse(request, "cambia_password.html", {
+            "errore": "La password attuale non è corretta.",
+            "msg": None,
+            "session": request.session,
+        })
+    if nuova_password != conferma_password:
+        return templates.TemplateResponse(request, "cambia_password.html", {
+            "errore": "La nuova password e la conferma non coincidono.",
+            "msg": None,
+            "session": request.session,
+        })
+    if len(nuova_password) < 6:
+        return templates.TemplateResponse(request, "cambia_password.html", {
+            "errore": "La password deve essere di almeno 6 caratteri.",
+            "msg": None,
+            "session": request.session,
+        })
+
+    u.password_hash = User.hash_pw(nuova_password)
+    db.commit()
+    return RedirectResponse("/cambia-password?msg=Password+aggiornata+con+successo", status_code=303)

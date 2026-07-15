@@ -111,9 +111,30 @@
               {% if u.is_active %}Disabilita{% else %}Abilita{% endif %}
             </button>
           </form>
+          <!-- Reset password -->
+          <button type="button" class="btn btn-ghost btn-xs"
+            onclick="toggleReset('reset-{{ u.id }}')"
+            style="color:var(--amber);">🔑 Reset pwd</button>
+        </div>
+        <!-- Pannello reset password (nascosto di default) -->
+        <div id="reset-{{ u.id }}" style="display:none;margin-top:8px;background:var(--panel);border:1px solid var(--amber);border-radius:8px;padding:10px;text-align:left;">
+          <div style="font-size:11px;font-weight:600;color:var(--amber);margin-bottom:6px;">Imposta nuova password per <strong>{{ u.username }}</strong></div>
+          <form method="post" action="/utenti/{{ u.id }}/reset-password" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <input type="password" name="nuova_password" placeholder="Nuova password (min 6 car.)" required minlength="6"
+              style="flex:1;min-width:160px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;">
+            <button type="submit" class="btn btn-primary btn-xs">Salva</button>
+          </form>
+          {% if u.reset_richiesto %}
+          <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--amber);">⚠️ Utente ha richiesto il reset</span>
+            <form method="post" action="/utenti/{{ u.id }}/nega-reset" style="display:inline;">
+              <button type="submit" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;">Annulla richiesta</button>
+            </form>
+          </div>
+          {% endif %}
         </div>
         {% else %}
-          <span style="font-size:11px;color:var(--muted);">—</span>
+          <a href="/cambia-password" class="btn btn-ghost btn-xs" style="color:var(--amber);">🔑 Cambia pwd</a>
         {% endif %}
       </td>
     </tr>
@@ -124,6 +145,22 @@
   </table>
 </div>
 
+<!-- Banner richieste reset pendenti -->
+{% set n_reset = utenti|selectattr('reset_richiesto')|list|length %}
+{% if n_reset > 0 %}
+<div class="card" style="margin-top:16px;padding:14px 18px;border-left:3px solid var(--amber);background:var(--amber-dim);">
+  <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:8px;">🔔 {{ n_reset }} richiesta/e di reset password in attesa</div>
+  <div style="font-size:13px;color:var(--text);">
+    {% for u in utenti if u.reset_richiesto %}
+    <span style="margin-right:12px;">
+      👤 <strong>{{ u.username }}</strong>
+      — clicca <em>🔑 Reset pwd</em> nella riga per impostare una nuova password.
+    </span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- Nota ruoli -->
 <div class="card" style="margin-top:16px;padding:16px;border-left:3px solid var(--amber);">
   <div style="font-size:13px;font-weight:600;margin-bottom:8px;">ℹ️ Livelli di accesso</div>
@@ -133,5 +170,12 @@
     <div><span class="badge badge-gray" style="margin-right:6px;">Registrato</span>Solo lettura — può diventare socio</div>
   </div>
 </div>
+
+<script>
+function toggleReset(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
 
 {% endblock %}
