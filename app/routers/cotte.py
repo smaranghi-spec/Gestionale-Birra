@@ -175,6 +175,7 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             "misure_sg": misure_sg,
             "misure_temp": misure_temp,
             "degustazioni": degustazioni,
+            "session": request.session,
         },
     )
 
