@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Schede di Degustazione{% endblock %}
+{% block content %}
+
+<style>
+.deg-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.deg-cotta-block {
+  margin-bottom: 32px;
+}
+.deg-cotta-titolo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-left: 4px solid var(--amber);
+  padding-left: 14px;
+  margin-bottom: 14px;
+}
+.deg-cotta-nome {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.deg-cotta-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+.deg-cotta-link {
+  font-size: 12px;
+  color: var(--amber);
+  text-decoration: none;
+}
+.deg-cotta-link:hover { text-decoration: underline; }
+.deg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.ub-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.ub-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.ub-badge-totale {
+  background: var(--amber);
+  color: #000;
+  border-radius: 20px;
+  padding: 3px 11px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.ub-sezione-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+.ub-score-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.ub-score-pill {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 12px;
+}
+.ub-score-pill strong { color: var(--amber); }
+.ub-score-label { color: var(--muted); font-size: 11px; }
+.ub-score-parziale {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.deg-scores { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.deg-score { text-align: center; }
+.dsv { font-size: 16px; font-weight: 700; color: var(--amber); }
+.dsl { font-size: 11px; color: var(--muted); }
+.deg-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.deg-stats-bar {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.deg-stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 20px;
+  text-align: center;
+  min-width: 90px;
+}
+.deg-stat-num { font-size: 24px; font-weight: 800; color: var(--amber); }
+.deg-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+</style>
+
+<div class="deg-page-header">
+  <div>
+    <h1 style="font-size:22px;font-weight:800;margin:0 0 4px;">🍷 Schede di Degustazione</h1>
+    <p style="font-size:13px;color:var(--muted);margin:0;">Tutte le valutazioni organizzate per cotta — Scheda Unionbirrai UBT</p>
+  </div>
+</div>
+
+{% if cottas %}
+
+{% set tot_schede = cottas | map(attribute='degustazioni') | map('list') | map('length') | sum %}
+{% set tot_cotte = cottas | length %}
+
+<div class="deg-stats-bar">
+  <div class="deg-stat">
+    <div class="deg-stat-num">{{ tot_schede }}</div>
+    <div class="deg-stat-lbl">Schede totali</div>
+  </div>
+  <div class="deg-stat">
+    <div class="deg-stat-num">{{ tot_cotte }}</div>
+    <div class="deg-stat-lbl">Cotte valutate</div>
+  </div>
+  {% if tot_schede > 0 %}
+  {% set all_voti = [] %}
+  {% for c in cottas %}{% for d in c.degustazioni %}{% if d.voto is not none and (d.limpidezza is not none or d.corpo is not none) %}{% set _ = all_voti.append(d.voto) %}{% endif %}{% endfor %}{% endfor %}
+  {% if all_voti %}
+  <div class="deg-stat">
+    <div class="deg-stat-num">{{ (all_voti | sum / all_voti | length) | round(1) }}</div>
+    <div class="deg-stat-lbl">Media UBT /50</div>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% for cotta in cottas %}
+<div class="deg-cotta-block">
+  <div class="deg-cotta-titolo">
+    <div>
+      <div class="deg-cotta-nome">{{ cotta.nome }}</div>
+      <div class="deg-cotta-meta">
+        {% if cotta.codice %}<span style="font-weight:600;">{{ cotta.codice }}</span> &nbsp;·&nbsp;{% endif %}
+        {% if cotta.ricetta %}<span>{{ cotta.ricetta.nome }}</span> &nbsp;·&nbsp;{% endif %}
+        {% if cotta.data_brew %}<span>🗓 {{ cotta.data_brew }}</span> &nbsp;·&nbsp;{% endif %}
+        <span class="badge badge-gray">{{ cotta.stato }}</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <span style="font-size:12px;color:var(--muted);">{{ cotta.degustazioni|length }} scheda{% if cotta.degustazioni|length != 1 %}e{% endif %}</span>
+      <a href="/cotte/{{ cotta.id }}#degustazioni" class="deg-cotta-link btn btn-ghost btn-sm">+ Aggiungi →</a>
+    </div>
+  </div>
+
+  <div class="deg-grid">
+    {% for d in cotta.degustazioni %}
+    {% set is_ub = d.limpidezza is not none or d.corpo is not none %}
+    <div class="ub-card">
+      <div class="ub-card-header">
+        <div>
+          <strong>{{ d.degustatore or 'Anonimo' }}</strong>
+          <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ d.data }}</span>
+        </div>
+        {% if d.voto is not none %}
+          {% if is_ub %}
+          <span class="ub-badge-totale">{{ '%.1f'|format(d.voto) }} / 50</span>
+          {% else %}
+          <span class="badge badge-amber">⭐ {{ '%.1f'|format(d.voto) }}/10</span>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {% if is_ub %}
+        <div class="ub-sezione-label">👁 Esame Visivo</div>
+        <div class="ub-score-row">
+          {% for v,lbl in [(d.limpidezza,'Limpidezza'),(d.colore,'Colore'),(d.schiuma,'Schiuma')] %}
+          {% if v is not none %}<div class="ub-score-pill"><strong>{{ v }}</strong><span class="ub-score-label">/5 {{ lbl }}</span></div>{% endif %}
+          {% endfor %}
+          <div class="ub-score-parziale">{{ ((d.limpidezza or 0)+(d.colore or 0)+(d.schiuma or 0))|round(1) }}/15</div>
+        </div>
+
+        <div class="ub-sezione-label">👃 Esame Olfattivo</div>
+        <div class="ub-score-row">
+          {% for v,lbl in [(d.intensita_olfattiva,'Intensità'),(d.finezza_olfattiva,'Finezza'),(d.complessita_olfattiva,'Complessità')] %}
+          {% if v is not none %}<div class="ub-score-pill"><strong>{{ v }}</strong><span class="ub-score-label">/5 {{ lbl }}</span></div>{% endif %}
+          {% endfor %}
+          <div class="ub-score-parziale">{{ ((d.intensita_olfattiva or 0)+(d.finezza_olfattiva or 0)+(d.complessita_olfattiva or 0))|round(1) }}/15</div>
+        </div>
+
+        <div class="ub-sezione-label">👅 Esame Gusto-Olfattivo</div>
+        <div class="ub-score-row">
+          {% for v,lbl in [(d.corpo,'Corpo'),(d.equilibrio,'Equilibrio'),(d.persistenza_gusto_olfattiva,'PGO')] %}
+          {% if v is not none %}<div class="ub-score-pill"><strong>{{ v }}</strong><span class="ub-score-label">/5 {{ lbl }}</span></div>{% endif %}
+          {% endfor %}
+          <div class="ub-score-parziale">{{ ((d.corpo or 0)+(d.equilibrio or 0)+(d.persistenza_gusto_olfattiva or 0))|round(1) }}/15</div>
+        </div>
+
+        {% if d.impressione_generale is not none %}
+        <div class="ub-sezione-label">⭐ Impressione Generale</div>
+        <div class="ub-score-row">
+          <div class="ub-score-pill"><strong>{{ d.impressione_generale }}</strong><span class="ub-score-label">/5 Armonia</span></div>
+        </div>
+        {% endif %}
+
+      {% else %}
+        <div class="deg-scores">
+          {% if d.aroma %}<div class="deg-score"><div class="dsv">{{ d.aroma }}</div><div class="dsl">👃 Aroma</div></div>{% endif %}
+          {% if d.gusto %}<div class="deg-score"><div class="dsv">{{ d.gusto }}</div><div class="dsl">👅 Gusto</div></div>{% endif %}
+          {% if d.aspetto %}<div class="deg-score"><div class="dsv">{{ d.aspetto }}</div><div class="dsl">👁 Aspetto</div></div>{% endif %}
+          {% if d.sensazione %}<div class="deg-score"><div class="dsv">{{ d.sensazione }}</div><div class="dsl">🫦 Corpo</div></div>{% endif %}
+        </div>
+      {% endif %}
+
+      {% if d.note %}<p style="font-size:12px;color:var(--muted);margin:8px 0 0;font-style:italic;">{{ d.note }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="deg-empty">
+  <div style="font-size:48px;margin-bottom:12px;">🍷</div>
+  <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Nessuna scheda di degustazione</div>
+  <p style="font-size:13px;">Vai alla scheda di una cotta e compila la prima scheda UBT.</p>
+  <a href="/cotte" class="btn btn-primary" style="margin-top:12px;">🍺 Vai alle cotte</a>
+</div>
+{% endif %}
+
+{% endblock %}

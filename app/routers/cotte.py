@@ -481,6 +481,27 @@ def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/cotte", status_code=303)
 
 
+@router.get("/degustazioni", response_class=HTMLResponse)
+def lista_degustazioni(request: Request, db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    cottas = (
+        db.query(Cotta)
+        .options(joinedload(Cotta.degustazioni), joinedload(Cotta.ricetta))
+        .join(Degustazione, Degustazione.cotta_id == Cotta.id)
+        .distinct()
+        .order_by(Cotta.data_brew.desc(), Cotta.id.desc())
+        .all()
+    )
+    # Ordina le degustazioni di ciascuna cotta per data desc
+    for c in cottas:
+        c.degustazioni.sort(key=lambda d: d.data, reverse=True)
+    return templates.TemplateResponse("degustazioni.html", {
+        "request": request,
+        "cottas": cottas,
+        "session": request.session,
+    })
+
+
 @router.post("/cotte/{cotta_id}/degustazioni")
 def aggiungi_degustazione(
     cotta_id: int,
