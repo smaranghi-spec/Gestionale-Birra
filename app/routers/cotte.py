@@ -486,25 +486,44 @@ def aggiungi_degustazione(
     cotta_id: int,
     data: str = Form(""),
     degustatore: str = Form(""),
-    aroma: float = Form(0),
-    gusto: float = Form(0),
-    aspetto: float = Form(0),
-    sensazione: float = Form(0),
+    # Esame Visivo
+    limpidezza: float = Form(0),
+    colore: float = Form(0),
+    schiuma: float = Form(0),
+    # Esame Olfattivo
+    intensita_olfattiva: float = Form(0),
+    finezza_olfattiva: float = Form(0),
+    complessita_olfattiva: float = Form(0),
+    # Esame Gusto-Olfattivo
+    corpo: float = Form(0),
+    equilibrio: float = Form(0),
+    persistenza_gusto_olfattiva: float = Form(0),
+    # Impressione Generale
+    impressione_generale: float = Form(0),
     note: str = Form(""),
     db: Session = Depends(get_db),
 ):
     from datetime import date as _date
-    punteggio = round((aroma + gusto + aspetto + sensazione) / 4, 1) if any([aroma, gusto, aspetto, sensazione]) else None
+    ub_fields = [limpidezza, colore, schiuma, intensita_olfattiva, finezza_olfattiva,
+                 complessita_olfattiva, corpo, equilibrio, persistenza_gusto_olfattiva,
+                 impressione_generale]
+    totale_ub = round(sum(ub_fields), 1)
     d = Degustazione(
         cotta_id=cotta_id,
         data=data or _date.today().isoformat(),
         degustatore=degustatore or None,
-        aroma=aroma or None,
-        gusto=gusto or None,
-        aspetto=aspetto or None,
-        sensazione=sensazione or None,
+        limpidezza=limpidezza or None,
+        colore=colore or None,
+        schiuma=schiuma or None,
+        intensita_olfattiva=intensita_olfattiva or None,
+        finezza_olfattiva=finezza_olfattiva or None,
+        complessita_olfattiva=complessita_olfattiva or None,
+        corpo=corpo or None,
+        equilibrio=equilibrio or None,
+        persistenza_gusto_olfattiva=persistenza_gusto_olfattiva or None,
+        impressione_generale=impressione_generale or None,
         note=note or None,
-        voto=punteggio,
+        voto=totale_ub if totale_ub > 0 else None,
     )
     db.add(d)
     db.commit()

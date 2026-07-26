@@ -499,11 +499,57 @@
 
 <!-- ── DEGUSTAZIONE ─────────────────────────────────────── -->
 {% if cotta.stato in ['pronta','maturazione','imbottigliamento','condizionamento','archiviata'] %}
+<style>
+.ub-sezione {
+  margin-bottom: 18px;
+}
+.ub-sezione-titolo {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--amber);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ub-sezione-max { font-size: 11px; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.ub-criteri { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.ub-criterio label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.ub-criterio input[type=range] { width: 100%; accent-color: var(--amber); }
+.ub-val { text-align: center; font-size: 14px; font-weight: 700; color: var(--amber); }
+.ub-parziale { font-size: 11px; color: var(--muted); }
+.ub-totale-box {
+  background: var(--panel);
+  border: 2px solid var(--amber);
+  border-radius: 10px;
+  padding: 14px 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.ub-totale-num { font-size: 32px; font-weight: 800; color: var(--amber); line-height: 1; }
+.ub-totale-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+/* Schede salvate */
+.ub-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.ub-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.ub-score-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.ub-score-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; }
+.ub-score-pill strong { color: var(--amber); }
+.ub-score-label { color: var(--muted); font-size: 11px; }
+.ub-sezione-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-top: 8px; margin-bottom: 4px; }
+.ub-badge-totale { background: var(--amber); color: #000; border-radius: 20px; padding: 4px 12px; font-size: 14px; font-weight: 800; }
+.ub-giudizio { font-size: 12px; color: var(--muted); font-style: italic; }
+</style>
+
 <div id="stab-deg" class="stab-panel">
   <div class="card" style="margin-bottom:14px;">
-    <h3 style="font-size:14px;margin-bottom:14px;">🍷 Nuova scheda di degustazione</h3>
-    <form method="post" action="/cotte/{{ cotta.id }}/degustazioni">
-      <div class="form-grid">
+    <h3 style="font-size:14px;margin-bottom:4px;">🍷 Nuova scheda di degustazione</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Scheda ufficiale Unionbirrai UBT — 50 punti totali</p>
+    <form method="post" action="/cotte/{{ cotta.id }}/degustazioni" id="ub-form">
+      <div class="form-grid" style="margin-bottom:16px;">
         <div class="form-row">
           <label>Data</label>
           <input type="date" name="data" value="{{ oggi }}">
@@ -513,47 +559,173 @@
           <input type="text" name="degustatore" placeholder="{{ session.nome or 'Anonimo' }}">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
-        {% for campo,lbl in [('aroma','👃 Aroma'),('gusto','👅 Gusto'),('aspetto','👁 Aspetto'),('sensazione','🫦 Corposità')] %}
-        <div>
-          <label>{{ lbl }}</label>
-          <input type="range" name="{{ campo }}" min="0" max="10" step="0.5" value="7"
-            oninput="document.getElementById('{{ campo }}-val').textContent=this.value"
-            style="width:100%;accent-color:var(--amber);">
-          <div style="text-align:center;font-size:13px;color:var(--amber);font-weight:700;" id="{{ campo }}-val">7</div>
+
+      <!-- Totale live -->
+      <div class="ub-totale-box">
+        <div class="ub-totale-num" id="ub-tot">0</div>
+        <div class="ub-totale-sub">/ 50 punti totali &nbsp;|&nbsp; <span id="ub-giudizio-live" class="ub-giudizio">—</span></div>
+      </div>
+
+      <!-- 1. Esame Visivo -->
+      <div class="ub-sezione">
+        <div class="ub-sezione-titolo">
+          👁 Esame Visivo
+          <span class="ub-sezione-max">parziale: <span id="p-visivo">0</span> / 15</span>
         </div>
-        {% endfor %}
+        <div class="ub-criteri">
+          {% for campo,lbl,desc in [
+            ('limpidezza','Limpidezza','Brillante→velata→torbida'),
+            ('colore','Colore','Tipico dello stile'),
+            ('schiuma','Schiuma','Persistenza e tessitura')
+          ] %}
+          <div class="ub-criterio" data-sezione="visivo">
+            <label>{{ lbl }} <span class="ub-parziale">{{ desc }}</span></label>
+            <input type="range" name="{{ campo }}" min="0" max="5" step="0.5" value="0"
+              oninput="ubUpdate(this)" data-id="{{ campo }}" style="width:100%;accent-color:var(--amber);">
+            <div class="ub-val" id="v-{{ campo }}">0</div>
+          </div>
+          {% endfor %}
+        </div>
       </div>
-      <div class="form-row">
-        <label>Note dettagliate</label>
-        <textarea name="note" rows="3" placeholder="Descrivi aspetto, aroma, gusto, retrogusto, carbonatazione…"></textarea>
+
+      <!-- 2. Esame Olfattivo -->
+      <div class="ub-sezione">
+        <div class="ub-sezione-titolo">
+          👃 Esame Olfattivo
+          <span class="ub-sezione-max">parziale: <span id="p-olfattivo">0</span> / 15</span>
+        </div>
+        <div class="ub-criteri">
+          {% for campo,lbl,desc in [
+            ('intensita_olfattiva','Intensità','Quanto si percepisce'),
+            ('finezza_olfattiva','Finezza','Qualità degli aromi'),
+            ('complessita_olfattiva','Complessità','Varietà e stratificazione')
+          ] %}
+          <div class="ub-criterio" data-sezione="olfattivo">
+            <label>{{ lbl }} <span class="ub-parziale">{{ desc }}</span></label>
+            <input type="range" name="{{ campo }}" min="0" max="5" step="0.5" value="0"
+              oninput="ubUpdate(this)" data-id="{{ campo }}" style="width:100%;accent-color:var(--amber);">
+            <div class="ub-val" id="v-{{ campo }}">0</div>
+          </div>
+          {% endfor %}
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm">Salva scheda degustazione</button>
+
+      <!-- 3. Esame Gusto-Olfattivo -->
+      <div class="ub-sezione">
+        <div class="ub-sezione-titolo">
+          👅 Esame Gusto-Olfattivo
+          <span class="ub-sezione-max">parziale: <span id="p-gusto">0</span> / 15</span>
+        </div>
+        <div class="ub-criteri">
+          {% for campo,lbl,desc in [
+            ('corpo','Corpo','Struttura in bocca'),
+            ('equilibrio','Equilibrio','Bilanciamento dei sapori'),
+            ('persistenza_gusto_olfattiva','PGO','Persistenza gusto-olfattiva')
+          ] %}
+          <div class="ub-criterio" data-sezione="gusto">
+            <label>{{ lbl }} <span class="ub-parziale">{{ desc }}</span></label>
+            <input type="range" name="{{ campo }}" min="0" max="5" step="0.5" value="0"
+              oninput="ubUpdate(this)" data-id="{{ campo }}" style="width:100%;accent-color:var(--amber);">
+            <div class="ub-val" id="v-{{ campo }}">0</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 4. Impressione Generale -->
+      <div class="ub-sezione">
+        <div class="ub-sezione-titolo">
+          ⭐ Impressione Generale
+          <span class="ub-sezione-max">parziale: <span id="p-impressione">0</span> / 5</span>
+        </div>
+        <div class="ub-criteri" style="max-width:200px;">
+          <div class="ub-criterio" data-sezione="impressione">
+            <label>Armonia complessiva <span class="ub-parziale">Giudizio finale</span></label>
+            <input type="range" name="impressione_generale" min="0" max="5" step="0.5" value="0"
+              oninput="ubUpdate(this)" data-id="impressione_generale" style="width:100%;accent-color:var(--amber);">
+            <div class="ub-val" id="v-impressione_generale">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom:14px;">
+        <label>Note descrittive</label>
+        <textarea name="note" rows="3" placeholder="Descrivi colore, schiuma, profumi, sapori, retrogusto, carbonatazione, difetti…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">💾 Salva scheda di degustazione</button>
     </form>
   </div>
 
   {% if degustazioni %}
   <div class="card">
-    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">📊 Schede salvate ({{ degustazioni|length }})</div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px;">📊 Schede salvate ({{ degustazioni|length }})</div>
     {% for d in degustazioni %}
-    <div class="deg-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+    {% set is_ub = d.limpidezza is not none or d.corpo is not none %}
+    <div class="ub-card">
+      <div class="ub-card-header">
         <div>
-          <strong style="color:var(--text);">{{ d.degustatore or 'Anonimo' }}</strong>
+          <strong>{{ d.degustatore or 'Anonimo' }}</strong>
           <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ d.data }}</span>
         </div>
-        {% if d.voto %}
-        <span class="badge badge-amber">⭐ {{ '%.1f'|format(d.voto) }}/10</span>
+        {% if d.voto is not none %}
+          {% if is_ub %}
+          <span class="ub-badge-totale">{{ '%.1f'|format(d.voto) }} / 50</span>
+          {% else %}
+          <span class="badge badge-amber">⭐ {{ '%.1f'|format(d.voto) }}/10</span>
+          {% endif %}
         {% endif %}
       </div>
-      <div class="deg-scores">
-        {% if d.aroma %}<div class="deg-score"><div class="dsv">{{ d.aroma }}</div><div class="dsl">👃 Aroma</div></div>{% endif %}
-        {% if d.gusto %}<div class="deg-score"><div class="dsv">{{ d.gusto }}</div><div class="dsl">👅 Gusto</div></div>{% endif %}
-        {% if d.aspetto %}<div class="deg-score"><div class="dsv">{{ d.aspetto }}</div><div class="dsl">👁 Aspetto</div></div>{% endif %}
-        {% if d.sensazione %}<div class="deg-score"><div class="dsv">{{ d.sensazione }}</div><div class="dsl">🫦 Corpo</div></div>{% endif %}
-      </div>
-      {% if d.note %}<p style="font-size:13px;color:var(--muted);margin:0;font-style:italic;">{{ d.note }}</p>{% endif %}
-      <form method="post" action="/cotte/{{ cotta.id }}/degustazioni/{{ d.id }}/elimina" style="margin-top:8px;">
+
+      {% if is_ub %}
+        <!-- Formato Unionbirrai UBT -->
+        <div class="ub-sezione-label">👁 Esame Visivo</div>
+        <div class="ub-score-row">
+          {% for v,lbl in [(d.limpidezza,'Limpidezza'),(d.colore,'Colore'),(d.schiuma,'Schiuma')] %}
+          {% if v is not none %}<div class="ub-score-pill"><strong>{{ v }}</strong><span class="ub-score-label">/5 {{ lbl }}</span></div>{% endif %}
+          {% endfor %}
+          <div class="ub-score-pill" style="background:var(--panel);">
+            <strong>{{ ((d.limpidezza or 0)+(d.colore or 0)+(d.schiuma or 0))|round(1) }}</strong>
+            <span class="ub-score-label">/15</span>
+          </div>
+        </div>
+        <div class="ub-sezione-label">👃 Esame Olfattivo</div>
+        <div class="ub-score-row">
+          {% for v,lbl in [(d.intensita_olfattiva,'Intensità'),(d.finezza_olfattiva,'Finezza'),(d.complessita_olfattiva,'Complessità')] %}
+          {% if v is not none %}<div class="ub-score-pill"><strong>{{ v }}</strong><span class="ub-score-label">/5 {{ lbl }}</span></div>{% endif %}
+          {% endfor %}
+          <div class="ub-score-pill" style="background:var(--panel);">
+            <strong>{{ ((d.intensita_olfattiva or 0)+(d.finezza_olfattiva or 0)+(d.complessita_olfattiva or 0))|round(1) }}</strong>
+            <span class="ub-score-label">/15</span>
+          </div>
+        </div>
+        <div class="ub-sezione-label">👅 Esame Gusto-Olfattivo</div>
+        <div class="ub-score-row">
+          {% for v,lbl in [(d.corpo,'Corpo'),(d.equilibrio,'Equilibrio'),(d.persistenza_gusto_olfattiva,'PGO')] %}
+          {% if v is not none %}<div class="ub-score-pill"><strong>{{ v }}</strong><span class="ub-score-label">/5 {{ lbl }}</span></div>{% endif %}
+          {% endfor %}
+          <div class="ub-score-pill" style="background:var(--panel);">
+            <strong>{{ ((d.corpo or 0)+(d.equilibrio or 0)+(d.persistenza_gusto_olfattiva or 0))|round(1) }}</strong>
+            <span class="ub-score-label">/15</span>
+          </div>
+        </div>
+        <div class="ub-sezione-label">⭐ Impressione Generale</div>
+        <div class="ub-score-row">
+          {% if d.impressione_generale is not none %}
+          <div class="ub-score-pill"><strong>{{ d.impressione_generale }}</strong><span class="ub-score-label">/5 Armonia</span></div>
+          {% endif %}
+        </div>
+      {% else %}
+        <!-- Formato legacy -->
+        <div class="deg-scores">
+          {% if d.aroma %}<div class="deg-score"><div class="dsv">{{ d.aroma }}</div><div class="dsl">👃 Aroma</div></div>{% endif %}
+          {% if d.gusto %}<div class="deg-score"><div class="dsv">{{ d.gusto }}</div><div class="dsl">👅 Gusto</div></div>{% endif %}
+          {% if d.aspetto %}<div class="deg-score"><div class="dsv">{{ d.aspetto }}</div><div class="dsl">👁 Aspetto</div></div>{% endif %}
+          {% if d.sensazione %}<div class="deg-score"><div class="dsv">{{ d.sensazione }}</div><div class="dsl">🫦 Corpo</div></div>{% endif %}
+        </div>
+      {% endif %}
+
+      {% if d.note %}<p style="font-size:13px;color:var(--muted);margin:8px 0 0;font-style:italic;">{{ d.note }}</p>{% endif %}
+      <form method="post" action="/cotte/{{ cotta.id }}/degustazioni/{{ d.id }}/elimina" style="margin-top:10px;">
         <button class="btn btn-danger btn-xs" onclick="return confirm('Eliminare scheda?')">🗑 Elimina</button>
       </form>
     </div>
@@ -561,6 +733,49 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+const UB_SEZIONI = {
+  visivo: ['limpidezza','colore','schiuma'],
+  olfattivo: ['intensita_olfattiva','finezza_olfattiva','complessita_olfattiva'],
+  gusto: ['corpo','equilibrio','persistenza_gusto_olfattiva'],
+  impressione: ['impressione_generale'],
+};
+const UB_GIUDIZI = [
+  [0, 10, 'Non valutabile'],
+  [10, 20, 'Mediocre'],
+  [20, 30, 'Sufficiente'],
+  [30, 37, 'Buono'],
+  [37, 44, 'Molto buono'],
+  [44, 48, 'Eccellente'],
+  [48, 51, 'Eccezionale'],
+];
+function ubUpdate(el) {
+  const id = el.dataset.id;
+  document.getElementById('v-' + id).textContent = el.value;
+  // aggiorna parziali
+  for (const [sez, campi] of Object.entries(UB_SEZIONI)) {
+    const tot = campi.reduce((s, c) => {
+      const r = document.querySelector('input[name="' + c + '"]');
+      return s + (r ? parseFloat(r.value) : 0);
+    }, 0);
+    const el2 = document.getElementById('p-' + sez);
+    if (el2) el2.textContent = tot.toFixed(1).replace('.0','');
+  }
+  // totale
+  const totale = Object.values(UB_SEZIONI).flat().reduce((s, c) => {
+    const r = document.querySelector('input[name="' + c + '"]');
+    return s + (r ? parseFloat(r.value) : 0);
+  }, 0);
+  document.getElementById('ub-tot').textContent = totale.toFixed(1).replace('.0','');
+  // giudizio
+  let giudizio = '—';
+  for (const [min, max, lbl] of UB_GIUDIZI) {
+    if (totale >= min && totale < max) { giudizio = lbl; break; }
+  }
+  document.getElementById('ub-giudizio-live').textContent = giudizio;
+}
+</script>
 {% endif %}
 
 <!-- ── Azioni pericolose ─────────────────────────────────── -->
