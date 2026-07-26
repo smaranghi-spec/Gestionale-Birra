@@ -504,7 +504,7 @@ def aggiungi_degustazione(
         aspetto=aspetto or None,
         sensazione=sensazione or None,
         note=note or None,
-        punteggio=punteggio,
+        voto=punteggio,
     )
     db.add(d)
     db.commit()
