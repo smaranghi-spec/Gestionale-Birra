@@ -87,20 +87,23 @@ def run_migrations():
                     conn.rollback()
 
         # Tabelle aggiuntive create se non esistono
+        # Usa sintassi compatibile con SQLite e PostgreSQL
+        is_pg = engine.dialect.name == "postgresql"
+        pk_type = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
         extra_tables = [
             ("prodotti_finiti",
-             "id SERIAL PRIMARY KEY, cotta_id INTEGER REFERENCES cotte(id), "
+             f"id {pk_type}, cotta_id INTEGER REFERENCES cotte(id), "
              "nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, "
              "tipo_packaging TEXT DEFAULT 'bottiglia', n_pezzi_iniziali INTEGER DEFAULT 0, "
              "n_pezzi_disponibili INTEGER DEFAULT 0, data_imbottigliamento TEXT, "
              "data_scadenza TEXT, prezzo_vendita REAL, note TEXT, "
              "stato TEXT DEFAULT 'disponibile', created_at TEXT"),
             ("costi_fissi",
-             "id SERIAL PRIMARY KEY, categoria TEXT NOT NULL, descrizione TEXT NOT NULL, "
+             f"id {pk_type}, categoria TEXT NOT NULL, descrizione TEXT NOT NULL, "
              "importo REAL DEFAULT 0, periodicita TEXT DEFAULT 'mensile', "
              "attivo INTEGER DEFAULT 1, note TEXT"),
             ("nuovi_articoli_pending",
-             "id SERIAL PRIMARY KEY, ordine_id INTEGER, riga_id INTEGER, "
+             f"id {pk_type}, ordine_id INTEGER, riga_id INTEGER, "
              "nome TEXT, categoria TEXT, unita TEXT, quantita REAL, "
              "prezzo_unitario REAL, note TEXT"),
         ]
