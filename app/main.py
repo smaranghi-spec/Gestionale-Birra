@@ -25,58 +25,92 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "birrificio-gestionale-2024-segreto")
 
 
 def run_migrations():
-    import sqlite3
-    conn = sqlite3.connect("./gestionale_birra.db")
-    for sql in [
-        "ALTER TABLE ingredienti_ricetta ADD COLUMN prezzo_unitario REAL",
-        "ALTER TABLE ricette ADD COLUMN pubblica INTEGER DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN nome TEXT DEFAULT ''",
-        "ALTER TABLE users ADD COLUMN ruolo TEXT DEFAULT 'birraio'",
-        # InventarioItem — lotto, scadenza, specifiche
-        "ALTER TABLE inventario ADD COLUMN tipo_ingrediente TEXT",
-        "ALTER TABLE inventario ADD COLUMN numero_lotto TEXT",
-        "ALTER TABLE inventario ADD COLUMN data_scadenza TEXT",
-        "ALTER TABLE inventario ADD COLUMN alfa_acidi REAL",
-        "ALTER TABLE inventario ADD COLUMN ibu_teorici REAL",
-        "ALTER TABLE inventario ADD COLUMN attenuazione REAL",
-        "ALTER TABLE inventario ADD COLUMN flocculazione TEXT",
-        "ALTER TABLE inventario ADD COLUMN resa_estratto REAL",
-        "ALTER TABLE inventario ADD COLUMN colore_ebc REAL",
-        "ALTER TABLE cotte ADD COLUMN temp_ambiente REAL",
-        "ALTER TABLE cotte ADD COLUMN acqua_totale_litri REAL",
-        "ALTER TABLE cotte ADD COLUMN pressione_bar REAL",
-        "ALTER TABLE cotte ADD COLUMN note_ferm TEXT",
-        "ALTER TABLE cotte ADD COLUMN note_cond TEXT",
-        "ALTER TABLE cotte ADD COLUMN note_imbott TEXT",
-        # ProdottoFinito
-        "CREATE TABLE IF NOT EXISTS prodotti_finiti (id INTEGER PRIMARY KEY, cotta_id INTEGER REFERENCES cotte(id), nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, tipo_packaging TEXT DEFAULT 'bottiglia', n_pezzi_iniziali INTEGER DEFAULT 0, n_pezzi_disponibili INTEGER DEFAULT 0, data_imbottigliamento TEXT, data_scadenza TEXT, prezzo_vendita REAL, note TEXT, stato TEXT DEFAULT 'disponibile', created_at TEXT)",
-        # CostoFisso
-        "CREATE TABLE IF NOT EXISTS costi_fissi (id INTEGER PRIMARY KEY, categoria TEXT NOT NULL, descrizione TEXT NOT NULL, importo REAL DEFAULT 0, periodicita TEXT DEFAULT 'mensile', attivo INTEGER DEFAULT 1, note TEXT)",
-        "ALTER TABLE ordini_acquisto ADD COLUMN acquirente TEXT",
-        "ALTER TABLE ingredienti_ricetta ADD COLUMN numero_lotto TEXT",
-        "ALTER TABLE ingredienti_ricetta ADD COLUMN fornitore_lotto TEXT",
-        "ALTER TABLE ingredienti_ricetta ADD COLUMN data_scadenza_lotto TEXT",
-        "ALTER TABLE vendite ADD COLUMN stato TEXT DEFAULT 'confermata'",
-        "CREATE TABLE IF NOT EXISTS nuovi_articoli_pending (id INTEGER PRIMARY KEY, ordine_id INTEGER, riga_id INTEGER, nome TEXT, categoria TEXT, unita TEXT, quantita REAL, prezzo_unitario REAL, note TEXT)",
-        "ALTER TABLE users ADD COLUMN reset_richiesto INTEGER DEFAULT 0",
-        # Scheda degustazione Unionbirrai UBT
-        "ALTER TABLE degustazioni ADD COLUMN limpidezza REAL",
-        "ALTER TABLE degustazioni ADD COLUMN colore REAL",
-        "ALTER TABLE degustazioni ADD COLUMN schiuma REAL",
-        "ALTER TABLE degustazioni ADD COLUMN intensita_olfattiva REAL",
-        "ALTER TABLE degustazioni ADD COLUMN finezza_olfattiva REAL",
-        "ALTER TABLE degustazioni ADD COLUMN complessita_olfattiva REAL",
-        "ALTER TABLE degustazioni ADD COLUMN corpo REAL",
-        "ALTER TABLE degustazioni ADD COLUMN equilibrio REAL",
-        "ALTER TABLE degustazioni ADD COLUMN persistenza_gusto_olfattiva REAL",
-        "ALTER TABLE degustazioni ADD COLUMN impressione_generale REAL",
-    ]:
+    """Aggiunge colonne mancanti in modo sicuro, compatibile con SQLite e PostgreSQL."""
+    from sqlalchemy import text, inspect as sa_inspect
+    inspector = sa_inspect(engine)
+
+    def column_exists(table, col):
         try:
-            conn.execute(sql)
+            cols = [c["name"] for c in inspector.get_columns(table)]
+            return col in cols
         except Exception:
-            pass
-    conn.commit()
-    conn.close()
+            return False
+
+    def table_exists(table):
+        return inspector.has_table(table)
+
+    alterations = [
+        ("ingredienti_ricetta", "prezzo_unitario", "REAL"),
+        ("ricette", "pubblica", "INTEGER DEFAULT 0"),
+        ("users", "nome", "TEXT DEFAULT ''"),
+        ("users", "ruolo", "TEXT DEFAULT 'birraio'"),
+        ("users", "reset_richiesto", "INTEGER DEFAULT 0"),
+        ("inventario", "tipo_ingrediente", "TEXT"),
+        ("inventario", "numero_lotto", "TEXT"),
+        ("inventario", "data_scadenza", "TEXT"),
+        ("inventario", "alfa_acidi", "REAL"),
+        ("inventario", "ibu_teorici", "REAL"),
+        ("inventario", "attenuazione", "REAL"),
+        ("inventario", "flocculazione", "TEXT"),
+        ("inventario", "resa_estratto", "REAL"),
+        ("inventario", "colore_ebc", "REAL"),
+        ("cotte", "temp_ambiente", "REAL"),
+        ("cotte", "acqua_totale_litri", "REAL"),
+        ("cotte", "pressione_bar", "REAL"),
+        ("cotte", "note_ferm", "TEXT"),
+        ("cotte", "note_cond", "TEXT"),
+        ("cotte", "note_imbott", "TEXT"),
+        ("ordini_acquisto", "acquirente", "TEXT"),
+        ("ingredienti_ricetta", "numero_lotto", "TEXT"),
+        ("ingredienti_ricetta", "fornitore_lotto", "TEXT"),
+        ("ingredienti_ricetta", "data_scadenza_lotto", "TEXT"),
+        ("vendite", "stato", "TEXT DEFAULT 'confermata'"),
+        ("degustazioni", "limpidezza", "REAL"),
+        ("degustazioni", "colore", "REAL"),
+        ("degustazioni", "schiuma", "REAL"),
+        ("degustazioni", "intensita_olfattiva", "REAL"),
+        ("degustazioni", "finezza_olfattiva", "REAL"),
+        ("degustazioni", "complessita_olfattiva", "REAL"),
+        ("degustazioni", "corpo", "REAL"),
+        ("degustazioni", "equilibrio", "REAL"),
+        ("degustazioni", "persistenza_gusto_olfattiva", "REAL"),
+        ("degustazioni", "impressione_generale", "REAL"),
+    ]
+
+    with engine.connect() as conn:
+        for table, col, col_type in alterations:
+            if table_exists(table) and not column_exists(table, col):
+                try:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+
+        # Tabelle aggiuntive create se non esistono
+        extra_tables = [
+            ("prodotti_finiti",
+             "id SERIAL PRIMARY KEY, cotta_id INTEGER REFERENCES cotte(id), "
+             "nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, "
+             "tipo_packaging TEXT DEFAULT 'bottiglia', n_pezzi_iniziali INTEGER DEFAULT 0, "
+             "n_pezzi_disponibili INTEGER DEFAULT 0, data_imbottigliamento TEXT, "
+             "data_scadenza TEXT, prezzo_vendita REAL, note TEXT, "
+             "stato TEXT DEFAULT 'disponibile', created_at TEXT"),
+            ("costi_fissi",
+             "id SERIAL PRIMARY KEY, categoria TEXT NOT NULL, descrizione TEXT NOT NULL, "
+             "importo REAL DEFAULT 0, periodicita TEXT DEFAULT 'mensile', "
+             "attivo INTEGER DEFAULT 1, note TEXT"),
+            ("nuovi_articoli_pending",
+             "id SERIAL PRIMARY KEY, ordine_id INTEGER, riga_id INTEGER, "
+             "nome TEXT, categoria TEXT, unita TEXT, quantita REAL, "
+             "prezzo_unitario REAL, note TEXT"),
+        ]
+        for tname, tcols in extra_tables:
+            if not table_exists(tname):
+                try:
+                    conn.execute(text(f"CREATE TABLE {tname} ({tcols})"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
 
 
 run_migrations()
