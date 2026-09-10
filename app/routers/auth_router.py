@@ -72,6 +72,8 @@ def logout(request: Request):
 
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request, db: Session = Depends(get_db)):
+    if request.session.get("ruolo") != "admin":
+        return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse(request, "register.html", {
         "errore": None,
         "successo": False,
@@ -87,6 +89,8 @@ def register(
     nome: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    if request.session.get("ruolo") != "admin":
+        return RedirectResponse("/login", status_code=303)
     from datetime import datetime
     if db.query(User).filter(User.username == username).first():
         return templates.TemplateResponse(request, "register.html", {

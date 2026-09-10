@@ -51,12 +51,7 @@
   {% endif %}
 
   <div class="card">
-    {% if not primo_accesso %}
-    <div class="tabs" id="tabs">
-      <button class="tab active" onclick="showTab('login', this)">🔑 Accedi</button>
-      <button class="tab" onclick="showTab('reg', this)">📝 Registrati</button>
-    </div>
-    {% endif %}
+
 
     <!-- LOGIN -->
     <div id="tab-login" class="tab-panel active">
@@ -88,27 +83,7 @@
       </form>
     </div>
 
-    <!-- REGISTER inline -->
-    {% if not primo_accesso %}
-    <div id="tab-reg" class="tab-panel">
-      <form method="post" action="/register">
-        <div class="form-row">
-          <label>Nome visualizzato</label>
-          <input type="text" name="nome" placeholder="Il tuo nome" required>
-        </div>
-        <div class="form-row">
-          <label>Username</label>
-          <input type="text" name="username" placeholder="username" required>
-        </div>
-        <div class="form-row">
-          <label>Password</label>
-          <input type="password" name="password" placeholder="••••••••" required minlength="6">
-        </div>
-        <button type="submit" class="btn btn-reg">Crea account →</button>
-      </form>
-      <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted);">La registrazione richiede approvazione admin se gli account già esistono.</div>
-    </div>
-    {% endif %}
+
   </div>
 
   <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted);">
