@@ -43,19 +43,14 @@
     <p>Accedi per gestire il tuo birrificio</p>
   </div>
 
-  {% if primo_accesso %}
-  <div class="primo">
-    🎉 <strong>Benvenuto!</strong> Nessun utente registrato.<br>
-    <a href="/register" style="color:inherit;text-decoration:underline;font-weight:600;margin-top:6px;display:inline-block;">→ Crea il primo account amministratore</a>
-  </div>
-  {% endif %}
+
 
   <div class="card">
 
 
     <!-- LOGIN -->
     <div id="tab-login" class="tab-panel active">
-      <h2 style="{% if primo_accesso %}display:block{% else %}display:none{% endif %}">Accedi</h2>
+      <h2>Accedi</h2>
 
       {% if errore %}
       <div class="alert">{{ errore }}</div>
@@ -82,10 +77,7 @@
 
   </div>
 
-  <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted);">
-    Primo accesso? → <a href="/debug/seed-admin" style="color:var(--amber);">/debug/seed-admin</a>
-    (admin / admin123)
-  </div>
+
 </div>
 <script>
 function showTab(id, btn) {
