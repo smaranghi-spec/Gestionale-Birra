@@ -55,13 +55,7 @@ def login(
     return RedirectResponse("/", status_code=303)
 
 
-@router.post("/login-ospite")
-def login_ospite(request: Request):
-    request.session["user_id"] = 0
-    request.session["username"] = "ospite"
-    request.session["nome"] = "Ospite"
-    request.session["ruolo"] = "ospite"
-    return RedirectResponse("/", status_code=303)
+
 
 
 @router.get("/logout")
