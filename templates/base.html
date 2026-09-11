@@ -253,7 +253,7 @@
       <a href="/soci">👥</a>
       <a href="/attrezzature">🔩</a>
       <a href="/birre" target="_blank">🌐</a>
-      {% if session and session.ruolo == 'admin' %}<a href="/amministrazione">🔑 Admin</a>{% endif %}
+      {% if session and session.ruolo == 'admin' %}<a href="/utenti" style="color:var(--amber); font-weight:bold;">🔑 Gestione Utenti</a>{% endif %}
     </div>
     <div class="navbar-user">
       {% if session and session.nome %}

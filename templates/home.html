@@ -65,6 +65,9 @@
     <a href="/calendario" class="quick-link"><span class="qi">📅</span>Calendario</a>
     <a href="/pulizie" class="quick-link"><span class="qi">🧹</span>Pulizie</a>
     <a href="/impianto" class="quick-link"><span class="qi">⚙️</span>Impianto</a>
+    {% if session.ruolo == 'admin' %}
+    <a href="/utenti" class="quick-link" style="border: 1px solid var(--amber);"><span class="qi">🔑</span>Utenti</a>
+    {% endif %}
   </div>
 </div>
 
@@ -160,6 +163,9 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
       <a href="/soci" class="btn btn-ghost btn-xs">Soci</a>
       <a href="/calendario" class="btn btn-ghost btn-xs">Calendario</a>
+      {% if session.ruolo == 'admin' %}
+      <a href="/utenti" class="btn btn-ghost btn-xs" style="color:var(--amber); border-color:var(--amber);">🔑 Utenti e Password</a>
+      {% endif %}
     </div>
   </div>
 
