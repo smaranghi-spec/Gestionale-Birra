@@ -81,6 +81,7 @@ def get_notifiche(request: Request, db: Session = Depends(get_db)):
                         "link": f"/cotte/{cotta.id}",
                         "colore": "var(--blue)"
                     })
+            except ValueError:
                 pass
 
     # 4. Controllo Backup
