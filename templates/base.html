@@ -256,6 +256,17 @@
       {% if session and session.ruolo == 'admin' %}<a href="/utenti" style="color:var(--amber); font-weight:bold;">🔑 Gestione Utenti</a>{% endif %}
     </div>
     <div class="navbar-user">
+      <div style="position:relative; margin-right:8px; cursor:pointer;" onclick="toggleNotifiche()">
+        <span style="font-size:18px;">🔔</span>
+        <span id="badge-notifiche" style="display:none; position:absolute; top:-2px; right:-6px; background:var(--red); color:#fff; font-size:10px; font-weight:bold; border-radius:10px; padding:2px 5px; line-height:1;">0</span>
+        <!-- Menu a tendina -->
+        <div id="menu-notifiche" style="display:none; position:absolute; top:36px; right:-10px; width:320px; background:var(--card); border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.8); padding:12px; z-index:999; cursor:default;" onclick="event.stopPropagation()">
+          <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:6px;">NOTIFICHE E AVVISI</div>
+          <div id="lista-notifiche" style="max-height:300px; overflow-y:auto; font-size:13px; display:flex; flex-direction:column; gap:8px;">
+            <div style="text-align:center; padding:10px; color:var(--muted);">Nessuna notifica.</div>
+          </div>
+        </div>
+      </div>
       {% if session and session.nome %}
         <span class="user-badge">
           {% if session.ruolo == 'ospite' %}👁
@@ -337,6 +348,39 @@ function closeMM() {
   document.getElementById('mobile-menu').classList.remove('open');
   document.getElementById('hamburger-btn').textContent = '☰';
 }
+
+function toggleNotifiche() {
+  const m = document.getElementById('menu-notifiche');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+  const m = document.getElementById('menu-notifiche');
+  if (m) m.style.display = 'none';
+});
+
+async function caricaNotifiche() {
+  try {
+    const res = await fetch('/api/notifiche');
+    const data = await res.json();
+    const nots = data.notifiche || [];
+    const badge = document.getElementById('badge-notifiche');
+    const lista = document.getElementById('lista-notifiche');
+    if (nots.length > 0) {
+      badge.textContent = nots.length;
+      badge.style.display = 'block';
+      lista.innerHTML = nots.map(n => `
+        <a href="${n.link}" style="display:block; padding:10px; background:rgba(255,255,255,0.03); border-left:3px solid ${n.colore}; border-radius:6px; text-decoration:none; color:inherit;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:2px; color:${n.colore}">${n.titolo}</div>
+          <div style="font-size:12px; color:var(--muted);">${n.messaggio}</div>
+        </a>
+      `).join('');
+    } else {
+      badge.style.display = 'none';
+      lista.innerHTML = '<div style="text-align:center; padding:10px; color:var(--muted);">Nessuna notifica.</div>';
+    }
+  } catch(e) { console.error('Errore caricamento notifiche'); }
+}
+document.addEventListener('DOMContentLoaded', caricaNotifiche);
 </script>
 
 <div class="page">

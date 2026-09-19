@@ -15,7 +15,7 @@ from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 from .routers import prezzi, fattura, brewmonk, soci
 from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
-from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario
+from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard
 
 Base.metadata.create_all(bind=engine)
 
@@ -196,7 +196,8 @@ app.include_router(prodotti_finiti.router)
 app.include_router(costi_fissi.router)
 app.include_router(export_db.router)
 app.include_router(api_inventario.router)
-
+app.include_router(api_notifiche.router)
+app.include_router(dashboard.router)
 
 @app.get("/amministrazione", response_class=HTMLResponse)
 def amministrazione(request: Request):

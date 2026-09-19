@@ -7,7 +7,10 @@
     <h1 style="font-size:22px;margin:0 0 4px;">🍺 Magazzino Prodotti Finiti</h1>
     <p style="color:var(--muted);margin:0;">Lotti imbottigliati, fusti e disponibilità</p>
   </div>
-  <a href="#nuovo-lotto" class="btn btn-primary" onclick="document.getElementById('panel-nuovo').style.display='block'">+ Nuovo lotto</a>
+  <div style="display:flex;gap:8px;">
+    <button type="button" class="btn btn-ghost" onclick="avviaScannerQR()">📷 Scansiona QR</button>
+    <a href="#nuovo-lotto" class="btn btn-primary" onclick="document.getElementById('panel-nuovo').style.display='block'">+ Nuovo lotto</a>
+  </div>
 </div>
 
 <!-- Stats -->
@@ -133,6 +136,7 @@
           <form method="post" action="/magazzino-finiti/{{ p.id }}/elimina">
             <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare?')">✕</button>
           </form>
+          <a href="/etichetta/{{ p.id }}" target="_blank" class="btn btn-primary btn-xs" title="Stampa Etichetta">🏷️</a>
         </div>
       </td>
     </tr>
@@ -147,4 +151,37 @@
   Imbottiglia una cotta oppure aggiungi un lotto manualmente.</p>
 </div>
 {% endif %}
+
+{% include 'scanner.html' %}
+<script>
+function avviaScannerQR() {
+  openScanner((testo) => {
+    // Cerchiamo la riga col lotto corrispondente
+    let trovato = false;
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      const codeCell = tr.querySelector('td code');
+      if (codeCell && codeCell.textContent.trim() === testo) {
+        tr.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
+        tr.scrollIntoView({behavior: 'smooth', block: 'center'});
+        
+        // Fai un piccolo effetto visivo
+        setTimeout(() => { tr.style.backgroundColor = ''; }, 2000);
+        trovato = true;
+        
+        // Seleziona l'input di scarico
+        const inputScarico = tr.querySelector('input[name="delta"]');
+        if (inputScarico) {
+          inputScarico.focus();
+          inputScarico.value = 1; // Imposta a 1 di default per scarico rapido
+        }
+      }
+    });
+    
+    if(!trovato) {
+      alert("Lotto non trovato: " + testo);
+    }
+  });
+}
+</script>
+
 {% endblock %}

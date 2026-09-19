@@ -1,0 +1,45 @@
+<!-- Modal Scanner -->
+<div id="scanner-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:var(--card); padding:20px; border-radius:12px; width:90%; max-width:500px; text-align:center; position:relative;">
+    <button onclick="closeScanner()" style="position:absolute; top:10px; right:15px; background:none; border:none; color:var(--text); font-size:20px; cursor:pointer;">✕</button>
+    <h3 style="margin-top:0;">📷 Scansiona Codice</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:15px;">Inquadra il codice a barre o QR code</p>
+    <div id="reader" style="width:100%; border-radius:8px; overflow:hidden;"></div>
+    <div style="margin-top:15px; font-size:12px; color:var(--muted);" id="scanner-status">Inizializzazione fotocamera...</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+let html5QrcodeScanner = null;
+let currentScanCallback = null;
+
+function openScanner(onScanSuccess) {
+  document.getElementById('scanner-modal').style.display = 'flex';
+  currentScanCallback = onScanSuccess;
+  
+  if (!html5QrcodeScanner) {
+    html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: {width: 250, height: 250}, aspectRatio: 1.0 },
+      /* verbose= */ false);
+  }
+  
+  html5QrcodeScanner.render((decodedText, decodedResult) => {
+    // on success
+    html5QrcodeScanner.clear();
+    document.getElementById('scanner-modal').style.display = 'none';
+    if (currentScanCallback) currentScanCallback(decodedText);
+  }, (error) => {
+    // on error/scanning
+    document.getElementById('scanner-status').innerText = "In attesa di un codice valido...";
+  });
+}
+
+function closeScanner() {
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear();
+  }
+  document.getElementById('scanner-modal').style.display = 'none';
+}
+</script>

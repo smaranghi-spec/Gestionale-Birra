@@ -24,6 +24,7 @@
 <form method="get" action="/inventario" style="margin-bottom:14px;display:flex;gap:8px;">
   {% if ricetta_id %}<input type="hidden" name="ricetta_id" value="{{ ricetta_id }}">{% endif %}
   <input type="text" name="q" value="{{ q }}" placeholder="🔍 Cerca articolo…" style="flex:1;max-width:320px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+  <button type="button" class="btn btn-primary btn-sm" onclick="avviaScannerInventario()" title="Scansiona Codice a Barre / QR">📷</button>
   <button type="submit" class="btn btn-ghost btn-sm">Filtra</button>
   {% if q or ricetta_id %}<a href="/inventario" class="btn btn-ghost btn-sm">Reset</a>{% endif %}
 </form>
@@ -124,4 +125,18 @@
   </div>
 
 </div>
+
+{% include 'scanner.html' %}
+<script>
+function avviaScannerInventario() {
+  openScanner((testo) => {
+    const searchInput = document.querySelector('input[name="q"]');
+    if(searchInput) {
+      searchInput.value = testo;
+      searchInput.form.submit();
+    }
+  });
+}
+</script>
+
 {% endblock %}

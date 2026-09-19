@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Etichetta - {{ prodotto.nome }}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0; padding: 20px;
+    background: #f0f0f0;
+    display: flex;
+    justify-content: center;
+  }
+  .label-container {
+    width: 100mm;
+    height: 100mm; /* Quadrata, ma espandibile a seconda del design */
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 15mm;
+    box-sizing: border-box;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  h1 { margin: 0; font-size: 32px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  h2 { margin: 5px 0 15px 0; font-size: 16px; font-weight: 400; color: #555; text-transform: uppercase; letter-spacing: 2px; }
+  
+  .info-grid {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    padding: 10px 0;
+  }
+  .info-box { text-align: center; }
+  .info-val { font-size: 20px; font-weight: bold; }
+  .info-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  
+  .ingredients { font-size: 11px; line-height: 1.4; margin-bottom: 10px; text-align: justify; }
+  
+  .footer { display: flex; justify-content: space-between; align-items: flex-end; font-size: 10px; }
+  .footer-text p { margin: 2px 0; }
+  
+  #qrcode { width: 60px; height: 60px; }
+  
+  @media print {
+    body { background: none; padding: 0; }
+    .label-container { box-shadow: none; border: none; }
+    .no-print { display: none; }
+  }
+  .print-btn {
+    position: fixed; top: 20px; right: 20px;
+    background: #3fb950; color: white; border: none; padding: 10px 20px;
+    border-radius: 6px; font-weight: bold; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<button class="no-print print-btn" onclick="window.print()">🖨️ Stampa Etichetta</button>
+
+<div class="label-container">
+  
+  <div style="text-align: center;">
+    <h1>{{ prodotto.nome }}</h1>
+    <h2>{{ ricetta.stile if ricetta else 'Birra Artigianale' }}</h2>
+  </div>
+  
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-val">{{ ricetta.abv_stimato|round(1) if ricetta else (cotta.abv_reale|round(1) if cotta else 'N.D.') }}%</div>
+      <div class="info-lbl">ALC. VOL.</div>
+    </div>
+    <div class="info-box">
+      <div class="info-val">{{ prodotto.formato_ml }}</div>
+      <div class="info-lbl">ML</div>
+    </div>
+    <div class="info-box">
+      <div class="info-val">{{ ricetta.ibu_stimati|int if ricetta else 'N.D.' }}</div>
+      <div class="info-lbl">IBU</div>
+    </div>
+    <div class="info-box">
+      <div class="info-val">{{ ricetta.ebc_stimato|int if ricetta else 'N.D.' }}</div>
+      <div class="info-lbl">EBC</div>
+    </div>
+  </div>
+  
+  <div class="ingredients">
+    <strong>Ingredienti:</strong> {{ ingredienti | join(', ') }}.<br>
+    <em>Contiene glutine.</em>
+  </div>
+  
+  <div class="footer">
+    <div class="footer-text">
+      <p><strong>Prodotto e confezionato da:</strong> Podere Castelvieto</p>
+      <p><strong>Lotto:</strong> L-{{ prodotto.codice_lotto }}</p>
+      <p><strong>Da consumarsi pref. entro:</strong> {{ prodotto.data_scadenza if prodotto.data_scadenza else 'Vedi lotto' }}</p>
+    </div>
+    <div id="qrcode"></div>
+  </div>
+  
+</div>
+
+<script>
+  new QRCode(document.getElementById("qrcode"), {
+    text: "{{ prodotto.codice_lotto }}",
+    width: 60,
+    height: 60,
+    colorDark : "#000000",
+    colorLight : "#ffffff",
+    correctLevel : QRCode.CorrectLevel.L
+  });
+</script>
+
+</body>
+</html>
