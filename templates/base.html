@@ -349,6 +349,27 @@ function closeMM() {
   document.getElementById('hamburger-btn').textContent = '☰';
 }
 
+<!-- Backup Urgente Modal -->
+<div id="modal-backup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; justify-content:center; align-items:center;">
+  <div style="background:var(--card); padding:30px; border-radius:12px; width:90%; max-width:400px; text-align:center; border:2px solid var(--red); box-shadow:0 0 40px rgba(255,0,0,0.2);">
+    <div style="font-size:40px; margin-bottom:15px;">⚠️</div>
+    <h2 style="color:var(--red); margin-top:0;">Backup Obbligatorio!</h2>
+    <p style="color:var(--text); font-size:14px;">
+      Sono passati <strong id="giorni-backup">più di 30</strong> giorni dall'ultimo backup del database.<br><br>
+      Per prevenire perdite di dati, sei <strong>obbligato</strong> a scaricare il backup prima di poter continuare a usare il gestionale.
+    </p>
+    <a href="/admin/export-db" class="btn btn-danger" style="display:block; padding:12px; font-size:16px; margin-top:20px; font-weight:bold;" onclick="setTimeout(()=>document.getElementById('modal-backup').style.display='none', 2000)">
+      ⬇ SCARICA BACKUP ORA
+    </a>
+  </div>
+</div>
+
+<script>
+function toggleMobileMenu() {
+  const m = document.getElementById('mobile-menu');
+  m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+}
+
 function toggleNotifiche() {
   const m = document.getElementById('menu-notifiche');
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
@@ -362,6 +383,13 @@ async function caricaNotifiche() {
   try {
     const res = await fetch('/api/notifiche');
     const data = await res.json();
+    
+    // Controlla il backup
+    if (data.backup_urgente === true) {
+      document.getElementById('giorni-backup').textContent = data.giorni_da_backup;
+      document.getElementById('modal-backup').style.display = 'flex';
+    }
+
     const nots = data.notifiche || [];
     const badge = document.getElementById('badge-notifiche');
     const lista = document.getElementById('lista-notifiche');

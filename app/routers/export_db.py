@@ -23,6 +23,24 @@ def export_db(request: Request):
         return HTMLResponse("Database non trovato", status_code=404)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = f"gestionale_birra_{ts}.db"
+
+    # Aggiorna ultimo backup nel database
+    from .db import SessionLocal
+    from .models import Impostazioni
+    db = SessionLocal()
+    try:
+        imp = db.query(Impostazioni).filter(Impostazioni.chiave == "ultimo_backup").first()
+        if not imp:
+            imp = Impostazioni(chiave="ultimo_backup", valore=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            db.add(imp)
+        else:
+            imp.valore = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        db.commit()
+    except Exception as e:
+        pass
+    finally:
+        db.close()
+
     return FileResponse(
         DB_PATH,
         media_type="application/octet-stream",

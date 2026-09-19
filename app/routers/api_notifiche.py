@@ -81,7 +81,29 @@ def get_notifiche(request: Request, db: Session = Depends(get_db)):
                         "link": f"/cotte/{cotta.id}",
                         "colore": "var(--blue)"
                     })
-            except ValueError:
                 pass
 
-    return {"notifiche": notifiche}
+    # 4. Controllo Backup
+    from ..models import Impostazioni
+    backup_urgente = False
+    giorni_da_backup = 0
+    try:
+        imp = db.query(Impostazioni).filter(Impostazioni.chiave == "ultimo_backup").first()
+        if imp and imp.valore:
+            data_backup = datetime.strptime(imp.valore, "%Y-%m-%d %H:%M:%S")
+            giorni_da_backup = (oggi - data_backup).days
+        else:
+            # Mai fatto un backup
+            giorni_da_backup = 999
+        
+        if giorni_da_backup >= 30:
+            backup_urgente = True
+            
+    except Exception:
+        pass
+
+    return {
+        "notifiche": notifiche,
+        "backup_urgente": backup_urgente,
+        "giorni_da_backup": giorni_da_backup
+    }

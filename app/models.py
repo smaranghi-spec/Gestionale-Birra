@@ -512,4 +512,12 @@ class CostoFisso(Base):
     importo = Column(Float, nullable=False, default=0.0)
     periodicita = Column(String, default="mensile")    # mensile / annuale / per_cotta
     attivo = Column(Boolean, default=True)
+
+
+# ── IMPOSTAZIONI ──────────────────────────────────────────────────────────────
+
+class Impostazioni(Base):
+    __tablename__ = "impostazioni"
+    chiave = Column(String, primary_key=True, index=True)
+    valore = Column(String, nullable=True)
     note = Column(Text, nullable=True)

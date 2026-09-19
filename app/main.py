@@ -203,8 +203,23 @@ app.include_router(dashboard.router)
 def amministrazione(request: Request):
     if request.session.get("ruolo") != "admin":
         return RedirectResponse("/", status_code=303)
+        
+    from .db import SessionLocal
+    from .models import Impostazioni
+    db = SessionLocal()
+    ultimo_backup = "Mai effettuato"
+    try:
+        imp = db.query(Impostazioni).filter(Impostazioni.chiave == "ultimo_backup").first()
+        if imp and imp.valore:
+            ultimo_backup = imp.valore
+    except Exception:
+        pass
+    finally:
+        db.close()
+        
     return templates.TemplateResponse(request, "amministrazione.html", {
         "session": request.session,
+        "ultimo_backup": ultimo_backup
     })
 
 

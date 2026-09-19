@@ -17,6 +17,9 @@
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
       Scarica o ripristina il database SQLite completo. Il backup include tutte le ricette, cotte, inventario, soci e dati storici.
     </p>
+    <div style="font-size:12px; margin-bottom:12px; padding:8px; background:rgba(255,255,255,0.05); border-radius:6px;">
+      <strong>Ultimo backup effettuato:</strong> <span style="color:var(--amber);">{{ ultimo_backup }}</span>
+    </div>
     <a href="/admin/export-db" class="btn btn-primary" style="display:block;text-align:center;margin-bottom:10px;">
       ⬇ Scarica backup database
     </a>
