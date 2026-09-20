@@ -25,8 +25,8 @@ def export_db(request: Request):
     fname = f"gestionale_birra_{ts}.db"
 
     # Aggiorna ultimo backup nel database
-    from .db import SessionLocal
-    from .models import Impostazioni
+    from ..db import SessionLocal
+    from ..models import Impostazioni
     db = SessionLocal()
     try:
         imp = db.query(Impostazioni).filter(Impostazioni.chiave == "ultimo_backup").first()
