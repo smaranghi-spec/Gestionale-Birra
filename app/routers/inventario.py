@@ -190,23 +190,65 @@ def aggiungi_a_ricetta(
     ricetta_id: int = Form(...),
     quantita: float = Form(...),
     unita: str = Form("kg"),
+    time_min: int = Form(None),
+    note: str = Form(None),
     db: Session = Depends(get_db),
 ):
     item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
     if not item:
         return RedirectResponse("/inventario", status_code=303)
 
-    cat_map = {"ingrediente": "misc", "consumabile": "misc", "packaging": "misc", "chimico": "misc"}
+    # 1. Determina la categoria reale birraria (grain, hop, yeast, misc)
+    cat = "misc"
+    tipo = (item.tipo_ingrediente or "").lower()
+    nome_lower = (item.nome or "").lower()
+
+    if tipo in ("grain", "malto", "fermentabile") or "malto" in nome_lower or "grain" in nome_lower or "flaked" in nome_lower or "pilsner" in nome_lower:
+        cat = "grain"
+    elif tipo in ("hop", "luppolo") or "luppolo" in nome_lower or "hop" in nome_lower or "pellet" in nome_lower:
+        cat = "hop"
+    elif tipo in ("yeast", "lievito") or "lievito" in nome_lower or "yeast" in nome_lower:
+        cat = "yeast"
+    else:
+        cat_match = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.nome.ilike(f"%{item.nome[:15]}%")).first()
+        if cat_match:
+            cat = cat_match.categoria
+
+    # 2. Parametri tecnici da inventario o da catalogo
+    cat_match = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.nome.ilike(f"%{item.nome[:15]}%")).first()
+
+    color_srm = (item.colore_ebc / 1.97) if item.colore_ebc else (cat_match.color_srm if cat_match else (3.0 if cat == "grain" else None))
+    yield_pct = item.resa_estratto if item.resa_estratto is not None else (cat_match.yield_percent if cat_match else (75.0 if cat == "grain" else None))
+    alpha_acid = item.alfa_acidi if item.alfa_acidi is not None else (cat_match.alpha_acid if cat_match else (5.0 if cat == "hop" else None))
+    attenuation = item.attenuazione if item.attenuazione is not None else (cat_match.attenuation if cat_match else (75.0 if cat == "yeast" else None))
+
+    fermentable_type = cat_match.fermentable_type if cat_match else ("Grain" if cat == "grain" else None)
+    hop_use = cat_match.hop_use if cat_match else ("Boil" if cat == "hop" else None)
+    hop_form = cat_match.hop_form if cat_match else ("Pellet" if cat == "hop" else None)
+    yeast_type = cat_match.yeast_type if cat_match else ("Ale" if cat == "yeast" else None)
+    yeast_form = cat_match.yeast_form if cat_match else ("Secco" if cat == "yeast" else None)
+
     db.add(IngredienteRicetta(
         ricetta_id=ricetta_id,
         nome=item.nome,
-        categoria=cat_map.get(item.categoria, "misc"),
+        categoria=cat,
         quantita=quantita,
         unita=unita,
+        time_min=time_min,
+        note=note or None,
         prezzo_unitario=item.prezzo_unitario,
         numero_lotto=item.numero_lotto,
         fornitore_lotto=item.fornitore,
         data_scadenza_lotto=item.data_scadenza,
+        fermentable_type=fermentable_type,
+        yield_percent=yield_pct,
+        color_srm=color_srm,
+        alpha_acid=alpha_acid,
+        hop_use=hop_use,
+        hop_form=hop_form,
+        attenuation=attenuation,
+        yeast_type=yeast_type,
+        yeast_form=yeast_form,
     ))
     db.commit()
     return RedirectResponse(f"/ricette/{ricetta_id}?msg=Ingrediente+aggiunto", status_code=303)

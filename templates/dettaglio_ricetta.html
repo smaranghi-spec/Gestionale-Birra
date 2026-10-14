@@ -322,8 +322,184 @@
         {% endif %}
     </div>
 
-    <div class="card">
-        <h2>Ingredienti attuali</h2>
+    <div class="card" id="card-ingredienti">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+            <h2 style="margin:0;">Ingredienti della ricetta</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn" style="background:#2563eb;font-size:13px;padding:8px 14px;" onclick="toggleAddIngrediente()">
+                    ➕ Aggiungi ingrediente rapido
+                </button>
+                <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn" style="background:#4b5563;font-size:13px;padding:8px 14px;">
+                    📖 Catalogo
+                </a>
+                <a href="/inventario?ricetta_id={{ ricetta.id }}" class="btn" style="background:#059669;font-size:13px;padding:8px 14px;">
+                    📦 Magazzino
+                </a>
+            </div>
+        </div>
+
+        <!-- BOX AGGIUNTA RAPIDA -->
+        <div id="box-aggiungi-rapido" style="display:{% if not ingredienti %}block{% else %}none{% endif %};background:#faf6f0;border:2px dashed #d1c7bd;border-radius:10px;padding:18px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span style="font-weight:bold;color:#5a381e;font-size:15px;">✨ Aggiunta rapida ingrediente</span>
+                <button type="button" onclick="toggleAddIngrediente()" style="background:transparent;border:none;color:#888;font-size:16px;cursor:pointer;">✕ Chiudi</button>
+            </div>
+
+            <!-- Selezione Sorgente (Tabs) -->
+            <div style="display:flex;gap:8px;margin-bottom:14px;border-bottom:1px solid #e2d9cf;padding-bottom:10px;flex-wrap:wrap;">
+                <button type="button" id="tab-cat" class="tab-btn active" onclick="switchSorgente('catalogo')" style="padding:6px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;background:#8b5a2b;color:#fff;border:none;">
+                    📖 Da Catalogo (consigliato)
+                </button>
+                <button type="button" id="tab-inv" class="tab-btn" onclick="switchSorgente('inventario')" style="padding:6px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;background:#e8ded5;color:#5a381e;border:none;">
+                    📦 Da Magazzino (giacenze reali)
+                </button>
+                <button type="button" id="tab-man" class="tab-btn" onclick="switchSorgente('manuale')" style="padding:6px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;background:#e8ded5;color:#5a381e;border:none;">
+                    ✍️ Manuale
+                </button>
+            </div>
+
+            <form method="post" action="/ricette/{{ ricetta.id }}/aggiungi-ingrediente-rapido" id="form-rapido-ingrediente">
+                <input type="hidden" name="sorgente" id="input-sorgente" value="catalogo">
+
+                <!-- 1. Da Catalogo -->
+                <div id="panel-catalogo">
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+                        <div style="flex:2;min-width:240px;">
+                            <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Seleziona dal Catalogo:</label>
+                            <select name="catalogo_id" id="sel-catalogo" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;" onchange="onCatalogoSelected(this)">
+                                <option value="">-- Scegli un ingrediente dal catalogo --</option>
+                                <optgroup label="🌾 Malti & Fermentabili">
+                                    {% for ci in catalogo_items if ci.categoria == 'grain' %}
+                                    <option value="{{ ci.id }}" data-cat="grain" data-yield="{{ ci.yield_percent or 75 }}" data-srm="{{ ci.color_srm or 3 }}" data-unit="kg">
+                                        {{ ci.nome }} ({{ ci.color_srm or '?' }} SRM, resa {{ ci.yield_percent or '?' }}%)
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="🌿 Luppoli">
+                                    {% for ci in catalogo_items if ci.categoria == 'hop' %}
+                                    <option value="{{ ci.id }}" data-cat="hop" data-alpha="{{ ci.alpha_acid or 5 }}" data-form="{{ ci.hop_form or 'Pellet' }}" data-unit="g">
+                                        {{ ci.nome }} ({{ ci.alpha_acid or '?' }}% AA, {{ ci.hop_form or 'Pellet' }})
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="🧫 Lieviti">
+                                    {% for ci in catalogo_items if ci.categoria == 'yeast' %}
+                                    <option value="{{ ci.id }}" data-cat="yeast" data-atten="{{ ci.attenuation or 75 }}" data-unit="pz">
+                                        {{ ci.nome }} ({{ ci.attenuation or '?' }}% atten)
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="🧪 Misc & Additivi">
+                                    {% for ci in catalogo_items if ci.categoria == 'misc' %}
+                                    <option value="{{ ci.id }}" data-cat="misc" data-unit="g">
+                                        {{ ci.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div id="cat-preview" style="flex:1;min-width:180px;display:flex;align-items:center;font-size:12px;color:#666;">
+                            Seleziona per vedere le specifiche tecniche.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Da Magazzino -->
+                <div id="panel-inventario" style="display:none;">
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+                        <div style="flex:2;min-width:240px;">
+                            <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Seleziona dal Magazzino:</label>
+                            <select name="inventario_id" id="sel-inventario" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;" onchange="onInventarioSelected(this)">
+                                <option value="">-- Scegli da giacenza magazzino --</option>
+                                {% for ii in inventario_items %}
+                                <option value="{{ ii.id }}" data-tipo="{{ ii.tipo_ingrediente or '' }}" data-giacenza="{{ ii.quantita }}" data-unit="{{ ii.unita_misura or 'kg' }}" data-lotto="{{ ii.numero_lotto or '' }}" data-fornitore="{{ ii.fornitore or '' }}" data-scadenza="{{ ii.data_scadenza or '' }}" data-prezzo="{{ ii.prezzo_unitario or '' }}" data-alpha="{{ ii.alfa_acidi or '' }}" data-ebc="{{ ii.colore_ebc or '' }}" data-resa="{{ ii.resa_estratto or '' }}" data-atten="{{ ii.attenuazione or '' }}">
+                                    {{ ii.nome }} — Disp: {{ ii.quantita }} {{ ii.unita_misura or 'kg' }}{% if ii.numero_lotto %} (Lotto {{ ii.numero_lotto }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="inv-preview" style="flex:1;min-width:180px;display:flex;align-items:center;font-size:12px;color:#666;">
+                            Seleziona per verificare la giacenza.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Manuale -->
+                <div id="panel-manuale" style="display:none;">
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+                        <div style="flex:2;min-width:180px;">
+                            <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Nome ingrediente *:</label>
+                            <input type="text" name="nome_manuale" id="input-nome-manuale" placeholder="es. Pilsner Belga o Citra" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1;min-width:140px;">
+                            <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Categoria *:</label>
+                            <select name="categoria_manuale" id="sel-cat-manuale" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;" onchange="onCatManualeChanged(this.value)">
+                                <option value="grain">🌾 Malto / Grano</option>
+                                <option value="hop">🌿 Luppolo</option>
+                                <option value="yeast">🧫 Lievito</option>
+                                <option value="misc">🧪 Misc / Altro</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campi Comuni di Quantità, Unità, Minuti e Note -->
+                <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+                    <div style="flex:1;min-width:110px;">
+                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Quantità *:</label>
+                        <input type="number" step="0.001" min="0.001" name="quantita" id="input-quantita" required placeholder="es. 4.5" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+                    </div>
+                    <div style="flex:1;min-width:90px;">
+                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Unità:</label>
+                        <select name="unita" id="sel-unita" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;">
+                            <option value="kg">kg</option>
+                            <option value="g">g</option>
+                            <option value="l">l</option>
+                            <option value="ml">ml</option>
+                            <option value="pz">pz</option>
+                            <option value="oz">oz</option>
+                            <option value="lb">lb</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:120px;" id="box-time-min">
+                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Minuti bollitura:</label>
+                        <input type="number" name="time_min" id="input-time-min" placeholder="es. 60" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+                    </div>
+                    <div style="flex:2;min-width:180px;">
+                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Note / Momento aggiunta:</label>
+                        <input type="text" name="note" id="input-note" placeholder="es. Ammostamento, Dry Hop giorno 5..." style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn" style="background:#198754;padding:9px 18px;font-size:14px;border:none;cursor:pointer;white-space:nowrap;">
+                            ✓ Inserisci in Ricetta
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Parametri Tecnici Avanzati Opzionali -->
+                <details style="margin-top:12px;font-size:12px;color:#777;">
+                    <summary style="cursor:pointer;font-weight:bold;color:#8b5a2b;">⚙️ Personalizza parametri tecnici avanzati (opzionale)</summary>
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;background:#fff;padding:10px;border-radius:6px;border:1px solid #eee;">
+                        <div style="flex:1;min-width:100px;">
+                            <label style="display:block;font-size:11px;color:#555;">Resa Estratto (%)</label>
+                            <input type="number" step="0.1" name="param_resa" id="p-resa" placeholder="es. 78" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div style="flex:1;min-width:100px;">
+                            <label style="display:block;font-size:11px;color:#555;">Colore SRM</label>
+                            <input type="number" step="0.1" name="param_colore" id="p-colore" placeholder="es. 3.5" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div style="flex:1;min-width:100px;">
+                            <label style="display:block;font-size:11px;color:#555;">Alpha Acid (%)</label>
+                            <input type="number" step="0.1" name="param_alpha" id="p-alpha" placeholder="es. 12" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div style="flex:1;min-width:100px;">
+                            <label style="display:block;font-size:11px;color:#555;">Attenuazione (%)</label>
+                            <input type="number" step="0.1" name="param_atten" id="p-atten" placeholder="es. 75" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                    </div>
+                </details>
+            </form>
+        </div>
 
         {% if ingredienti %}
         <table>
@@ -1069,6 +1245,142 @@
                 <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
             `;
             container.appendChild(div);
+        }
+
+        function toggleAddIngrediente() {
+            const box = document.getElementById("box-aggiungi-rapido");
+            if (!box) return;
+            box.style.display = (box.style.display === "none" || box.style.display === "") ? "block" : "none";
+            if (box.style.display === "block") {
+                box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        }
+
+        function switchSorgente(sorgente) {
+            document.getElementById("input-sorgente").value = sorgente;
+            ["catalogo", "inventario", "manuale"].forEach(s => {
+                const panel = document.getElementById(`panel-${s}`);
+                const tab = document.getElementById(`tab-${s.substring(0, 3)}`);
+                if (panel) panel.style.display = (s === sorgente) ? "block" : "none";
+                if (tab) {
+                    if (s === sorgente) {
+                        tab.style.background = "#8b5a2b";
+                        tab.style.color = "#fff";
+                    } else {
+                        tab.style.background = "#e8ded5";
+                        tab.style.color = "#5a381e";
+                    }
+                }
+            });
+
+            const selCat = document.getElementById("sel-catalogo");
+            const selInv = document.getElementById("sel-inventario");
+            const inputMan = document.getElementById("input-nome-manuale");
+
+            if (sorgente === "catalogo") {
+                if (selCat) selCat.required = true;
+                if (selInv) selInv.required = false;
+                if (inputMan) inputMan.required = false;
+                if (selCat) onCatalogoSelected(selCat);
+            } else if (sorgente === "inventario") {
+                if (selCat) selCat.required = false;
+                if (selInv) selInv.required = true;
+                if (inputMan) inputMan.required = false;
+                if (selInv) onInventarioSelected(selInv);
+            } else {
+                if (selCat) selCat.required = false;
+                if (selInv) selInv.required = false;
+                if (inputMan) inputMan.required = true;
+                const manCat = document.getElementById("sel-cat-manuale");
+                if (manCat) onCatManualeChanged(manCat.value);
+            }
+        }
+
+        function onCatalogoSelected(select) {
+            if (!select) return;
+            const opt = select.options[select.selectedIndex];
+            if (!opt || !opt.value) return;
+            const cat = opt.dataset.cat || "grain";
+            const unit = opt.dataset.unit || (cat === "grain" ? "kg" : (cat === "hop" ? "g" : "pz"));
+            document.getElementById("sel-unita").value = unit;
+
+            const timeBox = document.getElementById("box-time-min");
+            const timeInput = document.getElementById("input-time-min");
+            const preview = document.getElementById("cat-preview");
+
+            // populate optional override fields
+            if (opt.dataset.yield) document.getElementById("p-resa").value = opt.dataset.yield;
+            if (opt.dataset.srm) document.getElementById("p-colore").value = opt.dataset.srm;
+            if (opt.dataset.alpha) document.getElementById("p-alpha").value = opt.dataset.alpha;
+            if (opt.dataset.atten) document.getElementById("p-atten").value = opt.dataset.atten;
+
+            if (cat === "hop") {
+                if (timeBox) timeBox.style.display = "block";
+                if (timeInput && !timeInput.value) timeInput.value = "60";
+                if (preview) preview.innerHTML = `🌿 <strong>Luppolo</strong>: ${opt.dataset.alpha || '?'}% Alpha Acid (${opt.dataset.form || 'Pellet'})`;
+            } else if (cat === "grain") {
+                if (timeBox) timeBox.style.display = "none";
+                if (timeInput) timeInput.value = "";
+                if (preview) preview.innerHTML = `🌾 <strong>Grano/Malto</strong>: Resa ${opt.dataset.yield || '?'}%, Colore ${opt.dataset.srm || '?'} SRM`;
+            } else if (cat === "yeast") {
+                if (timeBox) timeBox.style.display = "none";
+                if (timeInput) timeInput.value = "";
+                if (preview) preview.innerHTML = `🧫 <strong>Lievito</strong>: Attenuazione ${opt.dataset.atten || '?'}%`;
+            } else {
+                if (timeBox) timeBox.style.display = "block";
+                if (preview) preview.innerHTML = `🧪 <strong>Misc / Additivo</strong>`;
+            }
+        }
+
+        function onInventarioSelected(select) {
+            if (!select) return;
+            const opt = select.options[select.selectedIndex];
+            if (!opt || !opt.value) return;
+            const unit = opt.dataset.unit || "kg";
+            document.getElementById("sel-unita").value = unit;
+            const preview = document.getElementById("inv-preview");
+            const giacenza = opt.dataset.giacenza || "0";
+            const lotto = opt.dataset.lotto ? ` · Lotto ${opt.dataset.lotto}` : "";
+            const scad = opt.dataset.scadenza ? ` · Scad. ${opt.dataset.scadenza}` : "";
+            if (preview) {
+                preview.innerHTML = `📦 <strong>Disponibili:</strong> ${giacenza} ${unit}${lotto}${scad}`;
+            }
+
+            // check if hop/grain
+            const tipo = (opt.dataset.tipo || "").toLowerCase();
+            const text = (opt.text || "").toLowerCase();
+            const timeBox = document.getElementById("box-time-min");
+            const timeInput = document.getElementById("input-time-min");
+
+            if (tipo.includes("hop") || text.includes("luppolo") || text.includes("hop") || text.includes("pellet")) {
+                if (timeBox) timeBox.style.display = "block";
+                if (timeInput && !timeInput.value) timeInput.value = "60";
+            } else {
+                if (timeBox) timeBox.style.display = "none";
+                if (timeInput) timeInput.value = "";
+            }
+        }
+
+        function onCatManualeChanged(cat) {
+            const timeBox = document.getElementById("box-time-min");
+            const timeInput = document.getElementById("input-time-min");
+            const unitSel = document.getElementById("sel-unita");
+            if (cat === "hop") {
+                if (timeBox) timeBox.style.display = "block";
+                if (unitSel) unitSel.value = "g";
+                if (timeInput && !timeInput.value) timeInput.value = "60";
+            } else if (cat === "grain") {
+                if (timeBox) timeBox.style.display = "none";
+                if (timeInput) timeInput.value = "";
+                if (unitSel) unitSel.value = "kg";
+            } else if (cat === "yeast") {
+                if (timeBox) timeBox.style.display = "none";
+                if (timeInput) timeInput.value = "";
+                if (unitSel) unitSel.value = "pz";
+            } else {
+                if (timeBox) timeBox.style.display = "block";
+                if (unitSel) unitSel.value = "g";
+            }
         }
     </script>
 </body>
