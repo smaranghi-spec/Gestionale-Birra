@@ -55,6 +55,7 @@
   <a href="/cotte/{{ cotta.id }}/vai-produzione" class="btn btn-success btn-sm" title="Solo ricette da magazzino">▶ Vai in Produzione</a>
   <a href="/cotte/{{ cotta.id }}/imbottiglia" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);">🍾 Imbottiglia</a>
   {% endif %}
+  <a href="/cotte/{{ cotta.id }}/stampa" target="_blank" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);" title="Stampa Scheda di Cotta per sala produzione">🖨️ Scheda di Cotta</a>
   {% if cotta.ricetta_id %}
   <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" style="background:transparent;border:1px solid var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">🍺 Push BrewMonk</button>
   {% endif %}
@@ -168,6 +169,41 @@
 
 <!-- ── FERMENTAZIONE ─────────────────────────────────────── -->
 <div id="stab-ferm" class="stab-panel">
+
+  <!-- Banner Curva & Registrazione Rapida -->
+  <div class="card" style="margin-bottom:14px;padding:14px 16px;background:rgba(255,255,255,0.02);border:1px solid var(--border);">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+      <div>
+        <span style="font-size:14px;font-weight:700;color:var(--text);">📈 Monitoraggio Fermentazione</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">({{ misure_sg|length }} letture densità, {{ misure_temp|length }} temp)</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="showStab('grafici', document.querySelector('.stab[onclick*=\'grafici\']'))" style="color:var(--amber);border-color:var(--amber);">Visualizza Grafico Completo →</button>
+    </div>
+
+    <!-- Form rapido inserimento lettura densimetro/temperatura -->
+    <form method="post" action="/cotte/{{ cotta.id }}/log" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(48,54,61,0.5);">
+      <input type="hidden" name="tipo" value="misura">
+      <input type="hidden" name="descrizione" value="Lettura densimetro / temperatura">
+      <input type="hidden" name="fase" value="fermentazione">
+      <div style="flex:1;min-width:120px;">
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;">Valore *</label>
+        <input type="number" step="0.001" name="valore" placeholder="es. 1.020 o 20.5" required style="width:100%;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+      </div>
+      <div style="width:100px;">
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;">Unità</label>
+        <select name="unita" style="width:100%;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+          <option value="SG">SG (Densità)</option>
+          <option value="°C">°C (Temp)</option>
+        </select>
+      </div>
+      <div style="flex:1.5;min-width:140px;">
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;">Note (opzionale)</label>
+        <input type="text" name="note" placeholder="es. Krausen alto, odore fruttato..." style="width:100%;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:7px 14px;">➕ Aggiungi Lettura</button>
+    </form>
+  </div>
+
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
 
   <div class="form-section">
@@ -811,8 +847,12 @@ function ubUpdate(el) {
 function showStab(id, btn) {
   document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
-  document.getElementById('stab-' + id).classList.add('active');
+  const target = document.getElementById('stab-' + id);
+  if (target) target.classList.add('active');
   if (btn) btn.classList.add('active');
+  if (id === 'grafici' && window.fermentChartInstance) {
+    setTimeout(() => { window.fermentChartInstance.resize(); }, 60);
+  }
 }
 // ── LOG tipo toggle ───────────────────────────────────────
 function toggleVal() {
@@ -851,7 +891,7 @@ qPriming();
   if (fgStimata) annotations.fg = { type:'line', yScaleID:'ySG', yMin:fgStimata, yMax:fgStimata, borderColor:'#3fb950', borderWidth:2, borderDash:[6,4], label:{display:true,content:'FG stimata '+fgStimata,position:'end',backgroundColor:'rgba(63,185,80,.15)',color:'#3fb950',font:{size:11}} };
   if (ogReale) annotations.og = { type:'line', yScaleID:'ySG', yMin:ogReale, yMax:ogReale, borderColor:'#f59e0b', borderWidth:1, borderDash:[4,4] };
   const ctx = document.getElementById('fermentChart').getContext('2d');
-  new Chart(ctx, { type:'line', data:{labels:allLabels,datasets},
+  window.fermentChartInstance = new Chart(ctx, { type:'line', data:{labels:allLabels,datasets},
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false}, annotation:{annotations} },
       scales:{

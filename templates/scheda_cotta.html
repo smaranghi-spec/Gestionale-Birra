@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheda di Cotta — {{ cotta.nome }} ({{ cotta.codice or cotta.id }})</title>
+  <style>
+    :root {
+      --primary: #1f2937;
+      --secondary: #4b5563;
+      --border: #d1d5db;
+      --bg-alt: #f9fafb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #e5e7eb;
+      color: #111827;
+      font-size: 11pt;
+      line-height: 1.35;
+    }
+    .page-container {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: #fff;
+      padding: 16mm 18mm;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+    .no-print-bar {
+      max-width: 210mm;
+      margin: 0 auto 16px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .btn-print { background: #d97706; color: #fff; }
+    .btn-print:hover { background: #b45309; }
+    .btn-back { background: #fff; color: #374151; border-color: #d1d5db; }
+    .btn-back:hover { background: #f3f4f6; }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .brewery-title {
+      font-size: 18pt;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+      margin: 0 0 2px 0;
+    }
+    .sheet-title {
+      font-size: 11pt;
+      color: var(--secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .header-meta {
+      text-align: right;
+      font-size: 10pt;
+    }
+    .header-meta strong { font-size: 12pt; color: #b45309; }
+
+    /* Grid layout */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    /* Section styles */
+    .section-title {
+      font-size: 10pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid #374151;
+      padding-bottom: 3px;
+      margin: 10px 0 6px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .section-title span.badge {
+      font-size: 8.5pt;
+      background: #f3f4f6;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+      margin-bottom: 8px;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      text-align: left;
+    }
+    table.data-table th {
+      background: var(--bg-alt);
+      font-weight: 700;
+      color: #374151;
+    }
+    table.data-table td.center, table.data-table th.center { text-align: center; }
+    table.data-table td.right, table.data-table th.right { text-align: right; }
+    .cb {
+      width: 12px;
+      height: 12px;
+      border: 1px solid #4b5563;
+      display: inline-block;
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+    .blank-line {
+      display: inline-block;
+      width: 70px;
+      border-bottom: 1px solid #111;
+      margin-left: 4px;
+    }
+
+    /* Note and sign box */
+    .notes-box {
+      border: 1px dashed #9ca3af;
+      border-radius: 4px;
+      height: 60px;
+      padding: 6px;
+      font-size: 8.5pt;
+      color: #6b7280;
+    }
+    .sign-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 14px;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 9.5pt;
+    }
+
+    @media print {
+      body {
+        background: none;
+        padding: 0;
+        color: #000;
+      }
+      .page-container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .no-print { display: none !important; }
+      @page {
+        size: A4 portrait;
+        margin: 10mm 12mm;
+      }
+      table.data-table th {
+        background: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="no-print no-print-bar">
+  <a href="/cotte/{{ cotta.id }}" class="btn btn-back">← Torna alla Cotta</a>
+  <button onclick="window.print()" class="btn btn-print">🖨️ Stampa Scheda di Cotta</button>
+</div>
+
+<div class="page-container">
+  
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1 class="brewery-title">Podere Castelvieto</h1>
+      <div class="sheet-title">Scheda di Produzione / Brew Sheet</div>
+    </div>
+    <div class="header-meta">
+      <div>Lotto: <strong>{{ cotta.codice or ('L-' ~ cotta.id) }}</strong></div>
+      <div>Data Cotta: <strong>{{ cotta.data_brew or oggi }}</strong></div>
+      <div>Stato: <strong>{{ cotta.stato|upper }}</strong></div>
+    </div>
+  </div>
+
+  <!-- Info Cotta & Parametri Chiave -->
+  <div class="grid-2">
+    <div>
+      <div style="font-size:13pt;font-weight:800;margin-bottom:2px;">{{ cotta.nome }}</div>
+      <div style="font-size:10pt;color:#4b5563;margin-bottom:6px;">
+        Stile: <strong>{{ ricetta.stile.nome if (ricetta and ricetta.stile) else (ricetta.tipo if ricetta else 'Artigianale') }}</strong>
+        {% if ricetta and ricetta.versione %} · v{{ ricetta.versione }}{% endif %}
+      </div>
+      <div style="font-size:9pt;color:#374151;">
+        Birraio responsabile: <span class="blank-line" style="width:130px;"></span>
+      </div>
+    </div>
+
+    <div>
+      <table class="data-table" style="margin:0;">
+        <thead>
+          <tr>
+            <th>Parametro</th>
+            <th class="center">Target</th>
+            <th class="center">Rilevato</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>OG (Densità Iniziale)</strong></td>
+            <td class="center">{{ stats.og or '—' }}</td>
+            <td class="center"><strong>{{ cotta.og_reale or '1.____' }}</strong></td>
+          </tr>
+          <tr>
+            <td><strong>FG (Densità Finale)</strong></td>
+            <td class="center">{{ stats.fg or '—' }}</td>
+            <td class="center"><strong>{{ cotta.fg_reale or '1.____' }}</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Alcol Stimato (ABV)</strong></td>
+            <td class="center">{{ stats.abv or '—' }}%</td>
+            <td class="center">{{ cotta.abv_reale ~ '%' if cotta.abv_reale else '____%' }}</td>
+          </tr>
+          <tr>
+            <td><strong>Amaro / Colore</strong></td>
+            <td class="center">{{ stats.ibu or '—' }} IBU · {{ stats.ebc or '—' }} EBC</td>
+            <td class="center">Eff: {{ ricetta.efficienza or 75 }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Volumi Acqua & Rilevazioni Pentola -->
+  <div class="section-title">
+    <span>1. Volumi Acqua & Densità di Processo</span>
+    <span class="badge">Volume target finale: {{ vol_target }} L</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Acqua Ammostamento (Mash)</th>
+        <th>Acqua di Sparge (Lavaggio)</th>
+        <th>Totale Acqua</th>
+        <th>Pre-Boil Stimato</th>
+        <th>Pre-Boil Effettivo (L)</th>
+        <th>Densità Pre-Boil (SG)</th>
+        <th>In Fermentatore (L)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="center"><strong>{{ litri_mash }} L</strong></td>
+        <td class="center"><strong>{{ litri_sparge }} L</strong></td>
+        <td class="center">{{ tot_acqua }} L</td>
+        <td class="center">{{ litri_pre_boil }} L</td>
+        <td class="center" style="font-weight:bold;">{{ cotta.volume_pre_bollitura or '____ L' }}</td>
+        <td class="center" style="font-weight:bold;">1.____</td>
+        <td class="center" style="font-weight:bold;">{{ cotta.volume_post_bollitura or '____ L' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Ammostamento & Grani -->
+  <div class="grid-2" style="align-items:start;">
+    
+    <!-- Grani -->
+    <div>
+      <div class="section-title">
+        <span>2. Fermentabili & Malti</span>
+        <span class="badge">Tot: {{ tot_grani_kg }} kg</span>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:16px;"></th>
+            <th>Ingrediente</th>
+            <th class="right">Peso</th>
+            <th class="right">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in grani %}
+          <tr>
+            <td class="center"><span class="cb"></span></td>
+            <td><strong>{{ g.nome }}</strong></td>
+            <td class="right">{{ '%.2f'|format(g.quantita) }} kg</td>
+            <td class="right">{{ g.perc }}%</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="center" style="color:#6b7280;">Nessun fermentabile registrato</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mash Schedule -->
+    <div>
+      <div class="section-title">
+        <span>3. Profilo Ammostamento</span>
+        <span class="badge">pH Target: 5.2 - 5.5</span>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:16px;"></th>
+            <th>Fase / Step</th>
+            <th class="center">Temp.</th>
+            <th class="center">Durata</th>
+            <th class="center">pH letto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for step in mash_steps %}
+          <tr>
+            <td class="center"><span class="cb"></span></td>
+            <td><strong>{{ step.nome }}</strong></td>
+            <td class="center">{{ step.temp }}°C</td>
+            <td class="center">{{ step.tempo }} min</td>
+            <td class="center">____</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="font-size:8.5pt;color:#4b5563;margin-top:2px;">
+        Temp. mash misurata: <strong>{{ cotta.temp_mash_gradi ~ '°C' if cotta.temp_mash_gradi else '____°C' }}</strong> · 
+        pH mash effettivo: <strong>{{ cotta.ph_mash or '____' }}</strong>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bollitura & Luppoli -->
+  <div class="section-title">
+    <span>4. Luppoli & Aggiunte in Bollitura</span>
+    <span class="badge">Bollitura: 60 min</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width:16px;"></th>
+        <th>Luppolo / Ingrediente</th>
+        <th class="center">Fase / Uso</th>
+        <th class="center">Tempo (minuti)</th>
+        <th class="right">Quantità</th>
+        <th class="center">Alfa Acidi (%)</th>
+        <th>Note / Lotto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in luppoli %}
+      <tr>
+        <td class="center"><span class="cb"></span></td>
+        <td><strong>{{ l.nome }}</strong></td>
+        <td class="center">{{ l.hop_use }}</td>
+        <td class="center"><strong>{{ l.time_min }}'</strong></td>
+        <td class="right"><strong>{{ '%.0f'|format(l.quantita) }} g</strong></td>
+        <td class="center">{{ (l.alpha_acid ~ '%') if l.alpha_acid else '—' }}</td>
+        <td style="font-size:8pt;color:#4b5563;">{{ l.note or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="center" style="color:#6b7280;">Nessuna aggiunta in bollitura</td></tr>
+      {% endfor %}
+
+      {% for m in misc %}
+      <tr>
+        <td class="center"><span class="cb"></span></td>
+        <td><em>{{ m.nome }} (Spezia/Altro)</em></td>
+        <td class="center">Boil / Misc</td>
+        <td class="center">{{ m.time_min or 0 }}'</td>
+        <td class="right">{{ m.quantita }} {{ m.unita }}</td>
+        <td class="center">—</td>
+        <td style="font-size:8pt;color:#4b5563;">{{ m.note or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Lievito & Fermentazione -->
+  <div class="section-title">
+    <span>5. Inoculo Lievito & Diario di Fermentazione</span>
+  </div>
+  <div class="grid-2" style="margin-bottom:8px;">
+    <div>
+      <table class="data-table" style="margin:0;">
+        <thead>
+          <tr>
+            <th>Ceppo Lievito</th>
+            <th class="center">Dose</th>
+            <th class="center">Temp. Target</th>
+            <th class="center">Data/Ora Inoculo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for y in lieviti %}
+          <tr>
+            <td><strong>{{ y.nome }}</strong></td>
+            <td class="center">{{ y.quantita }} {{ y.unita }}</td>
+            <td class="center">{{ cotta.temp_fermentazione ~ '°C' if cotta.temp_fermentazione else '19-21°C' }}</td>
+            <td class="center">{{ cotta.data_inoculo or '____/__/__ __:__' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td><strong>Lievito Secco / Liquido</strong></td>
+            <td class="center">1 busta</td>
+            <td class="center">20°C</td>
+            <td class="center">____/__/__</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <table class="data-table" style="margin:0;">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Giorno</th>
+            <th class="center">SG Letta</th>
+            <th class="center">Temp (°C)</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>___/___</td><td class="center">G+1</td><td class="center">1.____</td><td class="center">___°C</td><td>Inizio krausen</td></tr>
+          <tr><td>___/___</td><td class="center">G+3</td><td class="center">1.____</td><td class="center">___°C</td><td>Piena attività</td></tr>
+          <tr><td>___/___</td><td class="center">G+7</td><td class="center">1.____</td><td class="center">___°C</td><td>Calo schiuma</td></tr>
+          <tr><td>___/___</td><td class="center">G+14</td><td class="center">1.____</td><td class="center">___°C</td><td>Verifica FG stabile</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Note Operative & Firma -->
+  <div class="section-title">
+    <span>6. Note Operative & Convalida</span>
+  </div>
+  <div class="notes-box">
+    {{ cotta.note_brew or 'Note operatore (es. schiumaggio, anomalie filtrazione, profumi mosto, tempo raffreddamento):' }}
+  </div>
+
+  <div class="sign-row">
+    <div>Operatore Brew Day: <span class="blank-line" style="width:140px;"></span></div>
+    <div>Controllo Qualità: <span class="blank-line" style="width:140px;"></span></div>
+    <div>Firma: <span class="blank-line" style="width:140px;"></span></div>
+  </div>
+
+</div>
+
+</body>
+</html>

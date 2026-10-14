@@ -87,8 +87,11 @@
         <div style="font-size:15px;font-weight:700;color:var(--text);">{{ c.nome }}</div>
         {% if c.codice %}<div style="font-size:11px;color:var(--muted);">{{ c.codice }}</div>{% endif %}
       </div>
-      <span class="badge" style="background:{{ stato_color.get(c.stato,'#9ca3af') }}20;
-        color:{{ stato_color.get(c.stato,'#9ca3af') }};font-size:10px;">{{ fasi_label[c.stato] }}</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span onclick="event.stopPropagation(); window.open('/cotte/{{ c.id }}/stampa', '_blank');" title="Stampa Scheda di Cotta A4" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid var(--amber);color:var(--amber);font-size:11px;">🖨️</span>
+        <span class="badge" style="background:{{ stato_color.get(c.stato,'#9ca3af') }}20;
+          color:{{ stato_color.get(c.stato,'#9ca3af') }};font-size:10px;">{{ fasi_label[c.stato] }}</span>
+      </div>
     </div>
     <div style="font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
       {% if c.ricetta %}<span>📋 {{ c.ricetta.nome }}</span>{% endif %}

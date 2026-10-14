@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, date
 from typing import Optional
 
@@ -133,12 +134,12 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     misure_sg = [
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
-        if e.tipo == "misura" and e.unita == "SG" and e.valore is not None
+        if (e.unita == "SG" or e.tipo in ("densita", "misura")) and e.valore is not None and e.unita != "°C"
     ]
     misure_temp = [
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
-        if e.tipo == "misura" and e.unita == "°C" and e.valore is not None
+        if (e.unita == "°C" or e.tipo in ("temperatura", "temp")) and e.valore is not None and e.unita != "SG"
     ]
 
     # Aggiungi OG al grafico come primo punto se disponibile e non già registrato
@@ -561,3 +562,124 @@ def elimina_degustazione(cotta_id: int, deg_id: int, db: Session = Depends(get_d
         db.delete(d)
         db.commit()
     return RedirectResponse(f"/cotte/{cotta_id}#degustazioni", status_code=303)
+
+
+@router.get("/cotte/{cotta_id}/stampa", response_class=HTMLResponse)
+def stampa_scheda_cotta(cotta_id: int, request: Request, db: Session = Depends(get_db)):
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta:
+        return RedirectResponse("/cotte", status_code=303)
+
+    ricetta = cotta.ricetta
+    ingredienti = ricetta.ingredienti if ricetta else []
+
+    grani = []
+    luppoli = []
+    lieviti = []
+    misc = []
+
+    tot_grani_kg = 0.0
+    for ing in ingredienti:
+        cat = (ing.categoria or "").lower()
+        q = ing.quantita or 0.0
+        u = (ing.unita or "").lower()
+
+        if cat in ("grain", "fermentabile", "malto"):
+            q_kg = q * 0.001 if u in ("g", "gr") else q
+            tot_grani_kg += q_kg
+            grani.append({
+                "nome": ing.nome,
+                "quantita": q_kg,
+                "unita": "kg",
+                "colore": ing.color_srm,
+                "note": ing.note or ""
+            })
+        elif cat in ("hop", "luppolo"):
+            q_g = q * 1000 if u == "kg" else q
+            luppoli.append({
+                "nome": ing.nome,
+                "quantita": q_g,
+                "unita": "g",
+                "time_min": ing.time_min if ing.time_min is not None else 0,
+                "alpha_acid": ing.alpha_acid,
+                "hop_use": ing.hop_use or "Boil",
+                "hop_form": ing.hop_form or "Pellet",
+                "note": ing.note or ""
+            })
+        elif cat in ("yeast", "lievito"):
+            lieviti.append({
+                "nome": ing.nome,
+                "quantita": q,
+                "unita": ing.unita or "bustina",
+                "attenuation": ing.attenuation,
+                "yeast_form": ing.yeast_form or "Secco",
+                "note": ing.note or ""
+            })
+        else:
+            misc.append({
+                "nome": ing.nome,
+                "quantita": q,
+                "unita": ing.unita or "",
+                "time_min": ing.time_min,
+                "note": ing.note or ""
+            })
+
+    for g in grani:
+        g["perc"] = round((g["quantita"] / tot_grani_kg * 100), 1) if tot_grani_kg > 0 else 0.0
+
+    luppoli.sort(key=lambda x: (x["time_min"] if x["time_min"] is not None else -1), reverse=True)
+
+    mash_steps = []
+    if ricetta and ricetta.profilo_mash and ricetta.profilo_mash.steps_json:
+        try:
+            raw_steps = json.loads(ricetta.profilo_mash.steps_json)
+            for s in raw_steps:
+                mash_steps.append({
+                    "nome": s.get("nome") or s.get("step_name") or "Step",
+                    "temp": s.get("temp_gradi") or s.get("temp") or s.get("step_temp") or "-",
+                    "tempo": s.get("durata_min") or s.get("durata") or s.get("step_time") or s.get("tempo") or "-"
+                })
+        except Exception:
+            pass
+
+    if not mash_steps:
+        mash_steps = [
+            {"nome": "Ammostamento (Saccarificazione)", "temp": 66, "tempo": 60},
+            {"nome": "Mash-Out", "temp": 77, "tempo": 10}
+        ]
+
+    vol_target = ricetta.volume_target_litri if (ricetta and ricetta.volume_target_litri) else 20.0
+    stats = {}
+    if ricetta:
+        from ..stats import calcola_stats
+        stats = calcola_stats(ricetta, ingredienti)
+
+    tot_grani_kg = round(tot_grani_kg, 2)
+    litri_mash = round(tot_grani_kg * 3.0, 1) if tot_grani_kg > 0 else round(vol_target * 0.7, 1)
+    assorbimento_grani = round(tot_grani_kg * 1.0, 1)
+    litri_pre_boil = round(vol_target * 1.25, 1)
+    litri_sparge = round(max(0, litri_pre_boil - (litri_mash - assorbimento_grani)), 1)
+    tot_acqua = round(litri_mash + litri_sparge, 1)
+
+    return templates.TemplateResponse(
+        request,
+        "scheda_cotta.html",
+        {
+            "cotta": cotta,
+            "ricetta": ricetta,
+            "vol_target": vol_target,
+            "grani": grani,
+            "tot_grani_kg": tot_grani_kg,
+            "luppoli": luppoli,
+            "lieviti": lieviti,
+            "misc": misc,
+            "mash_steps": mash_steps,
+            "stats": stats,
+            "litri_mash": litri_mash,
+            "litri_sparge": litri_sparge,
+            "litri_pre_boil": litri_pre_boil,
+            "tot_acqua": tot_acqua,
+            "oggi": date.today().strftime("%Y-%m-%d"),
+            "session": request.session,
+        }
+    )
