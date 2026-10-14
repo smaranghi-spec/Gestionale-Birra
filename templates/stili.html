@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Stili birra</title>
     <style>
         * { box-sizing: border-box; }
@@ -104,6 +105,23 @@
             margin-bottom: 16px;
             font-size: 14px;
         }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 768px) {
+            .topbar { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+            .container { margin: 14px auto 40px; padding: 0 10px; }
+            .card { padding: 16px 12px; border-radius: 8px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-grid .span2, .form-grid .span4 { grid-column: auto; }
+            table { min-width: 550px; font-size: 12px; }
+            input, select { font-size: 16px !important; min-height: 44px; }
+            .btn { min-height: 40px; }
+        }
     </style>
 </head>
 <body>
@@ -166,6 +184,7 @@
     <div class="card">
         <h2>Elenco stili</h2>
         {% if stili %}
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
@@ -199,6 +218,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p class="empty">Nessuno stile nel database. Importa gli stili BJCP o aggiungine uno manuale.</p>
         {% endif %}

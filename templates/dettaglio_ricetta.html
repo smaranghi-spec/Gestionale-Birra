@@ -2,12 +2,17 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ ricetta.nome }}</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
-            margin: 40px;
+            margin: 24px auto;
+            padding: 0 16px;
+            max-width: 1240px;
             background: #f7f3ee;
+            color: #222;
         }
 
         .card {
@@ -16,6 +21,7 @@
             border-radius: 10px;
             max-width: 1200px;
             margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
 
         h1, h2, h3 {
@@ -190,6 +196,62 @@
         .badge-pronta       { background: #d1e7dd; color: #0a3622; }
         .badge-archiviata   { background: #f8f9fa; color: #6c757d; }
         .n-cotte-badge { background: #f5e8d3; color: #7a4f1e; font-size: 12px; font-weight: bold; border-radius: 12px; padding: 3px 10px; margin-left: 8px; vertical-align: middle; }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                margin: 10px auto 40px;
+                padding: 0 10px;
+            }
+            .card {
+                padding: 14px 12px;
+                border-radius: 8px;
+                margin-bottom: 14px;
+            }
+            .toolbar {
+                gap: 6px;
+            }
+            .toolbar .btn, .toolbar a, .toolbar button {
+                flex: 1 1 calc(50% - 6px);
+                text-align: center;
+                padding: 9px 8px;
+                font-size: 12px;
+                min-height: 40px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .stats-box {
+                gap: 6px;
+            }
+            .stat {
+                flex: 1 1 calc(33.3% - 6px);
+                min-width: 85px;
+                padding: 8px;
+            }
+            .stat-value {
+                font-size: 18px;
+            }
+            .stat-label {
+                font-size: 11px;
+            }
+            table {
+                min-width: 600px;
+                font-size: 12px;
+            }
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+            .inline-input, .inline-select, .inline-note {
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -269,6 +331,7 @@
                 <strong>Stile corrente:</strong> {{ confronto_stile.nome }} · {{ confronto_stile.linea_guida }}
             </p>
 
+            <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -317,6 +380,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
         {% else %}
             <p style="margin-top:12px;">Nessuno stile assegnato.</p>
         {% endif %}
@@ -502,6 +566,7 @@
         </div>
 
         {% if ingredienti %}
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
@@ -585,6 +650,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
             <p>Nessun ingrediente presente.</p>
         {% endif %}

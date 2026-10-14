@@ -53,6 +53,7 @@
         <span class="badge badge-{% if cat=='consumabile' %}amber{% elif cat=='non_consumabile' %}blue{% else %}gray{% endif %}">{{ cat|replace('_',' ')|title }}</span>
         <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ cat_items|length }} articoli</span>
       </div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table class="tbl">
         <thead><tr><th>Articolo</th><th>Q.tà attuale</th><th>Soglia min.</th><th>Prezzo unit.</th><th>Fornitore</th><th>Aggiornato</th><th></th></tr></thead>
         <tbody>
@@ -89,6 +90,7 @@
         {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
     {% endif %}
     {% endfor %}
