@@ -38,6 +38,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -129,7 +132,11 @@ def crea_ricetta(
         )
         db.add(pm)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse("/ricette/html?msg=Errore+creazione+ricetta", status_code=303)
     return RedirectResponse(f"/ricette/{r.id}", status_code=303)
 
 
@@ -178,7 +185,8 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
     mash_steps = []
     if profilo_mash and profilo_mash.steps_json:
         try:
-            mash_steps = json.loads(profilo_mash.steps_json)
+            parsed = json.loads(profilo_mash.steps_json)
+            mash_steps = parsed if isinstance(parsed, list) else []
         except Exception:
             mash_steps = []
 
@@ -329,8 +337,12 @@ def aggiungi_ingrediente_rapido(
         )
 
     if ing:
-        db.add(ing)
-        db.commit()
+        try:
+            db.add(ing)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse(f"/ricette/{ricetta_id}?msg=Errore+nel+salvataggio+dell+ingrediente", status_code=303)
 
     return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
 
@@ -362,8 +374,11 @@ def salva_profilo_acqua(
     pa.na = na
     pa.cl = cl
     pa.so4 = so4
-    pa.hco3 = hco3
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(f"/ricette/{ricetta_id}?msg=Errore+salvataggio+profilo+acqua#profilo-acqua", status_code=303)
 
     return RedirectResponse(f"/ricette/{ricetta_id}#profilo-acqua", status_code=303)
 
@@ -420,7 +435,11 @@ async def salva_profilo_mash_full(
 
     pm.nome = nome_profilo
     pm.steps_json = json.dumps(steps, ensure_ascii=False)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(f"/ricette/{ricetta_id}?msg=Errore+salvataggio+profilo+mash#profilo-mash", status_code=303)
 
     return RedirectResponse(f"/ricette/{ricetta_id}#profilo-mash", status_code=303)
 
@@ -594,7 +613,11 @@ def salva_modifica_ricetta(
     ricetta.versione = versione
     ricetta.stile_id = stile_id if stile_id != 0 else None
     ricetta.note = note or None
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(f"/ricette/{ricetta_id}/modifica?error=Errore+salvataggio", status_code=303)
 
     return RedirectResponse(
         f"/ricette/{ricetta_id}/modifica?saved=true", status_code=303
@@ -605,9 +628,27 @@ def salva_modifica_ricetta(
 def elimina_ricetta(ricetta_id: int, db: Session = Depends(get_db)):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if ricetta:
-        db.delete(ricetta)
-        db.commit()
-    return RedirectResponse("/ricette/html", status_code=303)
+        cotte_collegate = db.query(Cotta).filter(Cotta.ricetta_id == ricetta_id).count()
+        if cotte_collegate > 0:
+            return RedirectResponse(
+                f"/ricette/html?msg=Impossibile+eliminare:+la+ricetta+è+collegata+a+{cotte_collegate}+cotte+storiche",
+                status_code=303,
+            )
+        try:
+            from ..models import CondivisioneRicetta
+            db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).delete(synchronize_session=False)
+            db.query(ProfiloAcqua).filter(ProfiloAcqua.ricetta_id == ricetta_id).delete(synchronize_session=False)
+            db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).delete(synchronize_session=False)
+            db.query(CondivisioneRicetta).filter(CondivisioneRicetta.ricetta_id == ricetta_id).delete(synchronize_session=False)
+            db.delete(ricetta)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse(
+                "/ricette/html?msg=Errore+durante+l+eliminazione+della+ricetta",
+                status_code=303,
+            )
+    return RedirectResponse("/ricette/html?msg=Ricetta+eliminata", status_code=303)
 
 
 @router.get("/ricette/{ricetta_id}/beerxml")
@@ -623,7 +664,7 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
     )
 
     # Calcola stats per OG/FG/IBU/colore
-    stats = calcola_stats(ingredienti, ricetta.volume_target_litri or 20.0, ricetta.efficienza or 75.0)
+    stats = calcola_stats(ricetta, ingredienti)
 
     root = Element("RECIPES")
     r_el = SubElement(root, "RECIPE")
@@ -732,13 +773,21 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
         SubElement(mash_el, "NAME").text = ricetta.profilo_mash.nome or "Singolo infuso"
         SubElement(mash_el, "VERSION").text = "1"
         steps_el = SubElement(mash_el, "MASH_STEPS")
-        for step in (ricetta.profilo_mash.steps if hasattr(ricetta.profilo_mash, "steps") else []):
-            s_el = SubElement(steps_el, "MASH_STEP")
-            SubElement(s_el, "NAME").text = step.nome or "Saccarificazione"
-            SubElement(s_el, "VERSION").text = "1"
-            SubElement(s_el, "TYPE").text = "Infusion"
-            SubElement(s_el, "STEP_TEMP").text = str(step.temperatura or 67)
-            SubElement(s_el, "STEP_TIME").text = str(step.durata_min or 60)
+        mash_steps = []
+        if ricetta.profilo_mash.steps_json:
+            try:
+                parsed_steps = json.loads(ricetta.profilo_mash.steps_json)
+                mash_steps = parsed_steps if isinstance(parsed_steps, list) else []
+            except Exception:
+                mash_steps = []
+        for step in mash_steps:
+            if isinstance(step, dict):
+                s_el = SubElement(steps_el, "MASH_STEP")
+                SubElement(s_el, "NAME").text = str(step.get("nome") or "Saccarificazione")
+                SubElement(s_el, "VERSION").text = "1"
+                SubElement(s_el, "TYPE").text = "Infusion"
+                SubElement(s_el, "STEP_TEMP").text = str(step.get("temp_gradi") or step.get("temp") or 67)
+                SubElement(s_el, "STEP_TIME").text = str(step.get("durata_min") or step.get("durata") or 60)
 
     xml_str = minidom.parseString(tostring(root, encoding="unicode")).toprettyxml(
         indent="  "

@@ -30,6 +30,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -477,8 +480,17 @@ async def vai_produzione_submit(cotta_id: int, request: Request, db: Session = D
 def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if cotta:
-        db.delete(cotta)
-        db.commit()
+        try:
+            from ..models import LetturaDensita, LogCotta, Degustazione, AggiuntaCotta
+            db.query(LetturaDensita).filter(LetturaDensita.cotta_id == cotta_id).delete(synchronize_session=False)
+            db.query(LogCotta).filter(LogCotta.cotta_id == cotta_id).delete(synchronize_session=False)
+            db.query(Degustazione).filter(Degustazione.cotta_id == cotta_id).delete(synchronize_session=False)
+            db.query(AggiuntaCotta).filter(AggiuntaCotta.cotta_id == cotta_id).delete(synchronize_session=False)
+            db.delete(cotta)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse("/cotte?msg=Errore+durante+l+eliminazione+della+cotta", status_code=303)
     return RedirectResponse("/cotte", status_code=303)
 
 
@@ -633,14 +645,16 @@ def stampa_scheda_cotta(cotta_id: int, request: Request, db: Session = Depends(g
     if ricetta and ricetta.profilo_mash and ricetta.profilo_mash.steps_json:
         try:
             raw_steps = json.loads(ricetta.profilo_mash.steps_json)
-            for s in raw_steps:
-                mash_steps.append({
-                    "nome": s.get("nome") or s.get("step_name") or "Step",
-                    "temp": s.get("temp_gradi") or s.get("temp") or s.get("step_temp") or "-",
-                    "tempo": s.get("durata_min") or s.get("durata") or s.get("step_time") or s.get("tempo") or "-"
-                })
+            if isinstance(raw_steps, list):
+                for s in raw_steps:
+                    if isinstance(s, dict):
+                        mash_steps.append({
+                            "nome": s.get("nome") or s.get("step_name") or "Step",
+                            "temp": s.get("temp_gradi") or s.get("temp") or s.get("step_temp") or "-",
+                            "tempo": s.get("durata_min") or s.get("durata") or s.get("step_time") or s.get("tempo") or "-"
+                        })
         except Exception:
-            pass
+            mash_steps = []
 
     if not mash_steps:
         mash_steps = [

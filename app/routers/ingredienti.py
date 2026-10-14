@@ -16,6 +16,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -84,7 +87,11 @@ def salva_modifica(
     ing.yeast_form = yeast_form or None
     ing.misc_type = misc_type or None
     ing.misc_use = misc_use or None
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(f"/ricette/{ing.ricetta_id}?msg=Errore+salvataggio", status_code=303)
 
     return RedirectResponse(f"/ricette/{ing.ricetta_id}", status_code=303)
 
@@ -94,8 +101,12 @@ def elimina_ingrediente(ing_id: int, db: Session = Depends(get_db)):
     ing = db.query(IngredienteRicetta).filter(IngredienteRicetta.id == ing_id).first()
     if ing:
         ricetta_id = ing.ricetta_id
-        db.delete(ing)
-        db.commit()
+        try:
+            db.delete(ing)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse(f"/ricette/{ricetta_id}?msg=Errore+eliminazione", status_code=303)
         return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
     return RedirectResponse("/ricette/html", status_code=303)
 
@@ -109,5 +120,9 @@ def quick_update(ing_id: int, payload: QuickUpdatePayload, db: Session = Depends
     ing.unita = payload.unita
     ing.time_min = payload.time_min
     ing.note = payload.note
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        return {"error": "database error"}, 500
     return {"ok": True}

@@ -17,6 +17,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -165,8 +168,12 @@ def aggiorna_quantita(
 def elimina(iid: int, db: Session = Depends(get_db)):
     item = db.query(InventarioItem).filter(InventarioItem.id == iid).first()
     if item:
-        db.delete(item)
-        db.commit()
+        try:
+            db.delete(item)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse("/inventario?msg=Impossibile+eliminare:+articolo+in+uso", status_code=303)
     return RedirectResponse("/inventario", status_code=303)
 
 

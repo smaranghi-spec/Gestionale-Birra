@@ -10,45 +10,85 @@ def _to_g(quantita, unita):
     return _to_kg(quantita, unita) * 1000
 
 
-def calcola_stats(ricetta, ingredienti):
-    volume = ricetta.volume_target_litri or 20.0
-    efficienza = (ricetta.efficienza or 75.0) / 100.0
+def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
+    # Support signature: calcola_stats(ingredienti, volume, efficienza) as well as calcola_stats(ricetta, ingredienti)
+    if isinstance(ricetta, (list, tuple)) and not hasattr(ricetta, "volume_target_litri"):
+        actual_ingredienti = ricetta
+        actual_volume = ingredienti
+        actual_eff = efficienza_param
+        ricetta_obj = None
+    else:
+        actual_ingredienti = ingredienti if ingredienti is not None else []
+        actual_volume = getattr(ricetta, "volume_target_litri", None) if ricetta else None
+        actual_eff = getattr(ricetta, "efficienza", None) if ricetta else None
+        ricetta_obj = ricetta
+
+    try:
+        vol = float(actual_volume) if actual_volume is not None and float(actual_volume) > 0 else 20.0
+    except (ValueError, TypeError):
+        vol = 20.0
+
+    try:
+        eff_raw = float(actual_eff) if actual_eff is not None and float(actual_eff) > 0 else 75.0
+    except (ValueError, TypeError):
+        eff_raw = 75.0
+    eff = eff_raw / 100.0
+
+    volume = vol
+    efficienza = eff
 
     gu = 0.0
     ibu = 0.0
     mcu = 0.0
     attenuazione_lievito = None
 
-    for i in ingredienti:
-        if i.categoria == "grain":
-            q_kg = _to_kg(i.quantita, i.unita)
-            y = (i.yield_percent or 0.0) / 100.0
-            color = i.color_srm or 0.0
-            gu += q_kg * y * efficienza * 383.6 / volume
-            q_lb = q_kg * 2.2046
-            v_gal = volume / 3.785
-            mcu += (color * q_lb) / v_gal
+    for i in actual_ingredienti:
+        try:
+            categoria = getattr(i, "categoria", None) or (i.get("categoria") if isinstance(i, dict) else "")
+            quantita = getattr(i, "quantita", None) or (i.get("quantita") if isinstance(i, dict) else 0.0) or 0.0
+            unita = getattr(i, "unita", None) or (i.get("unita") if isinstance(i, dict) else "kg") or "kg"
 
-        elif i.categoria == "hop" and i.alpha_acid:
-            q_g = _to_g(i.quantita, i.unita)
-            alpha = i.alpha_acid / 100.0
-            t = i.time_min or 0
-            og_for_util = 1.0 + gu / 1000.0
-            bigness = 1.65 * (0.000125 ** (og_for_util - 1.0))
-            if t > 0:
-                boil_factor = (1.0 - math.exp(-0.04 * t)) / 4.15
-            else:
-                boil_factor = 0.0
-            utilization = bigness * boil_factor
-            ibu += (alpha * q_g * utilization * 1000.0) / (volume * 1.34095)
+            if categoria == "grain":
+                q_kg = _to_kg(float(quantita), unita)
+                yield_raw = getattr(i, "yield_percent", None) or (i.get("yield_percent") if isinstance(i, dict) else 0.0) or 0.0
+                y = float(yield_raw) / 100.0
+                color_raw = getattr(i, "color_srm", None) or (i.get("color_srm") if isinstance(i, dict) else 0.0) or 0.0
+                color = float(color_raw)
+                if volume > 0:
+                    gu += q_kg * y * efficienza * 383.6 / volume
+                q_lb = q_kg * 2.2046
+                v_gal = volume / 3.785
+                if v_gal > 0:
+                    mcu += (color * q_lb) / v_gal
 
-        elif i.categoria == "yeast" and i.attenuation:
-            attenuazione_lievito = i.attenuation / 100.0
+            elif categoria == "hop":
+                alpha_raw = getattr(i, "alpha_acid", None) or (i.get("alpha_acid") if isinstance(i, dict) else None)
+                if alpha_raw:
+                    q_g = _to_g(float(quantita), unita)
+                    alpha = float(alpha_raw) / 100.0
+                    t_raw = getattr(i, "time_min", None) or (i.get("time_min") if isinstance(i, dict) else 0) or 0
+                    t = float(t_raw)
+                    og_for_util = 1.0 + gu / 1000.0
+                    bigness = 1.65 * (0.000125 ** (og_for_util - 1.0))
+                    if t > 0:
+                        boil_factor = (1.0 - math.exp(-0.04 * t)) / 4.15
+                    else:
+                        boil_factor = 0.0
+                    utilization = bigness * boil_factor
+                    if volume > 0:
+                        ibu += (alpha * q_g * utilization * 1000.0) / (volume * 1.34095)
+
+            elif categoria == "yeast":
+                att_raw = getattr(i, "attenuation", None) or (i.get("attenuation") if isinstance(i, dict) else None)
+                if att_raw:
+                    attenuazione_lievito = float(att_raw) / 100.0
+        except Exception:
+            continue
 
     og = 1.0 + gu / 1000.0
     att = attenuazione_lievito if attenuazione_lievito is not None else 0.75
     fg = 1.0 + (gu / 1000.0) * (1.0 - att)
-    abv = (og - fg) * 131.25
+    abv = max(0.0, (og - fg) * 131.25)
 
     srm = 1.4922 * (mcu**0.6859) if mcu > 0 else 0.0
     ebc = srm * 1.97

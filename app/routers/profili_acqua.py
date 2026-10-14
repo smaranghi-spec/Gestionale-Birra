@@ -32,6 +32,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -74,8 +77,12 @@ def nuovo(
 def elimina(pid: int, db: Session = Depends(get_db)):
     p = db.query(ProfiloAcquaPreset).filter(ProfiloAcquaPreset.id == pid).first()
     if p:
-        db.delete(p)
-        db.commit()
+        try:
+            db.delete(p)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse("/profili-acqua?msg=Errore+durante+l+eliminazione", status_code=303)
     return RedirectResponse("/profili-acqua?msg=Eliminato", status_code=303)
 
 

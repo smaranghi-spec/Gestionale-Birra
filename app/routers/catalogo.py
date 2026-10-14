@@ -17,6 +17,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -269,6 +272,10 @@ def aggiungi_a_ricetta(
 def elimina_ingrediente(item_id: int, db: Session = Depends(get_db)):
     item = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == item_id).first()
     if item:
-        db.delete(item)
-        db.commit()
+        try:
+            db.delete(item)
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse("/catalogo/ingredienti?msg=Impossibile+eliminare:+elemento+in+uso", status_code=303)
     return RedirectResponse("/catalogo/ingredienti", status_code=303)
