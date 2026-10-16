@@ -535,18 +535,25 @@ def catalogo_per_ricetta(
 ):
     from ..models import CatalogoIngrediente
 
-    query = db.query(CatalogoIngrediente)
-    if categoria:
-        query = query.filter(CatalogoIngrediente.categoria == categoria)
-    items = query.all()
+    try:
+        query = db.query(CatalogoIngrediente)
+        if categoria:
+            query = query.filter(CatalogoIngrediente.categoria == categoria)
+        items = query.all()
+        all_items = db.query(CatalogoIngrediente).all()
+    except Exception:
+        db.rollback()
+        items = []
+        all_items = []
 
-    all_items = db.query(CatalogoIngrediente).all()
     per_cat = {}
     for i in all_items:
-        per_cat[i.categoria] = per_cat.get(i.categoria, 0) + 1
-    items_sorted = sorted(items, key=lambda i: i.nome)
+        cat = getattr(i, "categoria", None) or "misc"
+        per_cat[cat] = per_cat.get(cat, 0) + 1
+    items_sorted = sorted(items, key=lambda i: (getattr(i, "nome", "") or "").lower())
 
     return templates.TemplateResponse(
+        request,
         "catalogo_ingredienti.html",
         {
             "request": request,

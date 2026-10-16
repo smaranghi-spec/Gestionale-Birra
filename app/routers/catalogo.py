@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -11,6 +12,7 @@ from ..stats import srm_to_hex
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["srm_to_hex"] = srm_to_hex
+logger = logging.getLogger("catalogo")
 
 
 def get_db():
@@ -24,6 +26,11 @@ def get_db():
         db.close()
 
 
+@router.get("/catalogo")
+def redirect_catalogo():
+    return RedirectResponse("/catalogo/ingredienti", status_code=303)
+
+
 @router.get("/catalogo/ingredienti", response_class=HTMLResponse)
 def lista_catalogo(
     request: Request,
@@ -31,34 +38,46 @@ def lista_catalogo(
     msg: str = None,
     db: Session = Depends(get_db),
 ):
-    all_items = db.query(CatalogoIngrediente).all()
+    try:
+        all_items = db.query(CatalogoIngrediente).all()
+    except Exception as e:
+        logger.error(f"Errore caricamento catalogo: {e}")
+        db.rollback()
+        all_items = []
+
     per_cat = {}
     for i in all_items:
-        per_cat[i.categoria] = per_cat.get(i.categoria, 0) + 1
+        cat = getattr(i, "categoria", None) or "misc"
+        per_cat[cat] = per_cat.get(cat, 0) + 1
 
     if categoria:
-        items = [i for i in all_items if i.categoria == categoria]
+        items = [i for i in all_items if (getattr(i, "categoria", None) or "") == categoria]
     else:
         items = all_items
 
-    items = sorted(items, key=lambda i: i.nome)
+    items = sorted(items, key=lambda i: (getattr(i, "nome", "") or "").lower())
+
+    context = {
+        "request": request,
+        "items": items,
+        "categoria_attiva": categoria,
+        "msg": msg,
+        "per_cat": per_cat,
+        "totale": len(all_items),
+        "ricetta_id": None,
+    }
 
     return templates.TemplateResponse(
+        request,
         "catalogo_ingredienti.html",
-        {
-            "request": request,
-            "items": items,
-            "categoria_attiva": categoria,
-            "msg": msg,
-            "per_cat": per_cat,
-            "totale": len(all_items),
-        },
+        context,
     )
 
 
 @router.get("/catalogo/ingredienti/nuovo", response_class=HTMLResponse)
 def form_nuovo_ingrediente(request: Request):
     return templates.TemplateResponse(
+        request,
         "nuovo_ingrediente_catalogo.html",
         {"request": request},
     )
@@ -218,6 +237,7 @@ def duplica_ingrediente(item_id: int, request: Request, db: Session = Depends(ge
         return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
     return templates.TemplateResponse(
+        request,
         "duplica_ingrediente_catalogo.html",
         {
             "request": request,

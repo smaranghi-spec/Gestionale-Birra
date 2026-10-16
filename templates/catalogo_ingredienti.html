@@ -203,8 +203,8 @@
         </thead>
         <tbody>
           {% for i in cat_items %}
-          <tr class="ing-row" data-nome="{{ i.nome|lower }}">
-            <td style="font-weight:600;color:var(--text);">{{ i.nome }}</td>
+          <tr class="ing-row" data-nome="{{ (i.nome or '')|lower }}">
+            <td style="font-weight:600;color:var(--text);">{{ i.nome or '—' }}</td>
             {% if cat_key == 'grain' %}
             <td><span class="badge badge-amber">{{ i.fermentable_type or '—' }}</span></td>
             <td>{{ i.yield_percent or '—' }}{% if i.yield_percent %}%{% endif %}</td>
@@ -232,11 +232,11 @@
             <td>
               <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
                 {% if ricetta_id %}
-                <button type="button" class="btn btn-xs" style="background:#f59e0b;color:#000;font-weight:700;" onclick="apriModalAggiungi({{ i.id }}, '{{ i.nome|replace(\"'\", \"\\'\") }}', '{{ i.categoria }}', '{{ i.yield_percent or '' }}', '{{ i.color_srm or '' }}', '{{ i.alpha_acid or '' }}', '{{ i.attenuation or '' }}')">
+                <button type="button" class="btn btn-xs" style="background:#f59e0b;color:#000;font-weight:700;" onclick="apriModalAggiungi({{ i.id }}, '{{ (i.nome or '')|replace(\"'\", \"\\\\'\") }}', '{{ i.categoria or '' }}', '{{ i.yield_percent or '' }}', '{{ i.color_srm or '' }}', '{{ i.alpha_acid or '' }}', '{{ i.attenuation or '' }}')">
                   ➕ Ricetta
                 </button>
                 {% endif %}
-                <a href="/inventario/da-catalogo/{{ i.id }}" title="Aggiungi al magazzino" class="btn btn-ghost btn-xs" style="color:#4ade80;border-color:#4ade80" onclick="return confirm('Aggiungere {{ i.nome }} al magazzino?')">📦+</a>
+                <a href="/inventario/da-catalogo/{{ i.id }}" title="Aggiungi al magazzino" class="btn btn-ghost btn-xs" style="color:#4ade80;border-color:#4ade80" onclick="return confirm('Aggiungere questo ingrediente al magazzino?')">📦+</a>
                 <a href="/catalogo/ingredienti/{{ i.id }}/duplica" class="btn btn-ghost btn-xs">Duplica</a>
                 <form method="post" action="/catalogo/ingredienti/{{ i.id }}/elimina" style="margin:0;"
                   onsubmit="return confirm('Eliminare questo ingrediente?')">

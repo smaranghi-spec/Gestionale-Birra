@@ -75,22 +75,30 @@ def run_migrations():
         ("degustazioni", "equilibrio", "REAL"),
         ("degustazioni", "persistenza_gusto_olfattiva", "REAL"),
         ("degustazioni", "impressione_generale", "REAL"),
+        ("catalogo_ingredienti", "fermentable_type", "TEXT"),
+        ("catalogo_ingredienti", "yield_percent", "REAL"),
+        ("catalogo_ingredienti", "color_srm", "REAL"),
+        ("catalogo_ingredienti", "alpha_acid", "REAL"),
+        ("catalogo_ingredienti", "hop_use", "TEXT"),
+        ("catalogo_ingredienti", "hop_form", "TEXT"),
+        ("catalogo_ingredienti", "attenuation", "REAL"),
+        ("catalogo_ingredienti", "yeast_type", "TEXT"),
+        ("catalogo_ingredienti", "yeast_form", "TEXT"),
+        ("catalogo_ingredienti", "misc_type", "TEXT"),
+        ("catalogo_ingredienti", "misc_use", "TEXT"),
     ]
 
     with engine.connect() as conn:
-        for table, col, col_type in alterations:
-            if table_exists(table) and not column_exists(table, col):
-                try:
-                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
-                    conn.commit()
-                except Exception:
-                    conn.rollback()
-
         # Tabelle aggiuntive create se non esistono
         # Usa sintassi compatibile con SQLite e PostgreSQL
         is_pg = engine.dialect.name == "postgresql"
         pk_type = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
         extra_tables = [
+            ("catalogo_ingredienti",
+             f"id {pk_type}, nome TEXT NOT NULL, categoria TEXT NOT NULL, "
+             "fermentable_type TEXT, yield_percent REAL, color_srm REAL, "
+             "alpha_acid REAL, hop_use TEXT, hop_form TEXT, attenuation REAL, "
+             "yeast_type TEXT, yeast_form TEXT, misc_type TEXT, misc_use TEXT"),
             ("prodotti_finiti",
              f"id {pk_type}, cotta_id INTEGER REFERENCES cotte(id), "
              "nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, "
@@ -114,6 +122,15 @@ def run_migrations():
                     conn.commit()
                 except Exception:
                     conn.rollback()
+
+        for table, col, col_type in alterations:
+            if table_exists(table) and not column_exists(table, col):
+                try:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+
 
 
 run_migrations()

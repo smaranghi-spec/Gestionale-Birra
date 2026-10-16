@@ -228,7 +228,10 @@ SRM_COLORS = [
 
 def srm_to_hex(srm):
     """Converte un valore SRM nel colore esadecimale corrispondente."""
-    srm = max(0.0, float(srm or 0))
+    try:
+        srm = max(0.0, float(srm or 0))
+    except (ValueError, TypeError):
+        return "#F3F993"
     if srm <= 0:
         return "#F3F993"
     for threshold, color in SRM_COLORS:
