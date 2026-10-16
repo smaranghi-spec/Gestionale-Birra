@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory="templates")
 logger = logging.getLogger("prezzi")
 
 CATEGORIE_RICERCA = ["ingrediente", "attrezzatura", "accessorio", "luppolo", "malto", "lievito", "chimico"]
-FORNITORI_DISPONIBILI = ["MrMalt", "Polsinelli", "Beer and Wine", "AEB Group", "Pinta"]
+FORNITORI_DISPONIBILI = ["Pinta", "Polsinelli", "Enosystem", "Beer and Wine", "MrMalt"]
 
 
 def get_db():
@@ -119,7 +119,7 @@ async def cerca(
     if not q:
         return pagina_prezzi(request, db)
 
-    query_full = f"{categoria} {q}".strip() if categoria and categoria not in q else q
+    query_full = q
     risultati = None
     da_cache = False
 
@@ -160,7 +160,7 @@ async def cerca_json(q: str = "", categoria: str = "", db: Session = Depends(get
     q = q.strip()
     if not q:
         return JSONResponse({"errore": "Query vuota", "risultati": []})
-    query_full = f"{categoria} {q}".strip() if categoria and categoria not in q else q
+    query_full = q
     risultati = await cerca_prezzi(query_full)
     _salva_cache(db, query_full, risultati)
     return JSONResponse({"query": query_full, "risultati": risultati})

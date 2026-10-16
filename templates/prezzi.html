@@ -54,7 +54,7 @@ select.pz-input { appearance:none; max-width:180px; flex:0 0 180px; }
 
   <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem">
     <span style="font-size:.72rem;color:var(--muted);line-height:2">Ricerche rapide:</span>
-    {% for sug in ['Citra', 'Cascade', 'Mosaic', 'Pilsner Malt', 'Munich Malt', 'Safale US-05', 'Wyeast 1056', 'Irish Moss', 'chiller', 'densimetro'] %}
+    {% for sug in ['Frumento', 'Fiocchi di frumento', 'Citra', 'Cascade', 'Mosaic', 'Pilsner Malt', 'Munich Malt', 'Safale US-05', 'chiller', 'densimetro'] %}
     <a href="/prezzi/cerca?q={{ sug }}" class="sug-pill">{{ sug }}</a>
     {% endfor %}
   </div>
@@ -183,7 +183,7 @@ function pzAggiorna() {
 <div style="text-align:center;padding:4rem 2rem;color:var(--muted)">
   <div style="font-size:3.5rem;margin-bottom:.8rem">💹</div>
   <p>Inserisci un termine di ricerca per confrontare i prezzi.<br>
-  <span style="font-size:.82rem">MrMalt · Polsinelli · Beer&amp;Wine · AEB Group · Pinta</span></p>
+  <span style="font-size:.82rem">Pinta · Polsinelli · Enosystem · Beer&amp;Wine · MrMalt</span></p>
 </div>
 {% endif %}
 {% endblock %}

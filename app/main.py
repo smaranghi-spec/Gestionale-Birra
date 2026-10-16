@@ -229,7 +229,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-10-16_1910_prezzi_safe",
+        "build": "2026-10-16_1950_search_enhanced",
     }
 
 
