@@ -114,6 +114,9 @@ def run_migrations():
              f"id {pk_type}, ordine_id INTEGER, riga_id INTEGER, "
              "nome TEXT, categoria TEXT, unita TEXT, quantita REAL, "
              "prezzo_unitario REAL, note TEXT"),
+            ("prezzi_cache",
+             f"id {pk_type}, query TEXT NOT NULL, fornitore TEXT NOT NULL, "
+             "nome_prodotto TEXT NOT NULL, prezzo REAL, url TEXT, aggiornato_il TEXT"),
         ]
         for tname, tcols in extra_tables:
             if not table_exists(tname):
@@ -226,7 +229,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-10-16_1900_catalogo_safe",
+        "build": "2026-10-16_1910_prezzi_safe",
     }
 
 
