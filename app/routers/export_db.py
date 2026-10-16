@@ -8,9 +8,8 @@ import tempfile
 from datetime import datetime, date
 
 from fastapi import APIRouter, File, Request, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
+from fastapi.responses import Response, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from starlette.background import BackgroundTask
 from sqlalchemy import inspect, text
 
 from ..db import engine, SessionLocal
@@ -81,54 +80,62 @@ def genera_backup_sqlite() -> str:
 
     # Dump universale da SQLAlchemy (per PostgreSQL o se il file SQLite locale non è leggibile)
     sqlite_conn = sqlite3.connect(tmp_path)
-    inspector = inspect(engine)
-    table_names = inspector.get_table_names()
+    try:
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names()
 
-    with engine.connect() as conn:
-        for t_name in table_names:
-            try:
-                cols = inspector.get_columns(t_name)
-                if not cols:
+        with engine.connect() as conn:
+            for t_name in table_names:
+                try:
+                    cols = inspector.get_columns(t_name)
+                    if not cols:
+                        continue
+                    col_defs = []
+                    for c in cols:
+                        col_name = c["name"]
+                        c_type = str(c.get("type", "")).lower()
+                        sql_type = "TEXT"
+                        if "int" in c_type:
+                            sql_type = "INTEGER"
+                        elif any(x in c_type for x in ("float", "real", "numeric", "decimal")):
+                            sql_type = "REAL"
+                        col_defs.append(f'"{col_name}" {sql_type}')
+
+                    create_stmt = f'CREATE TABLE IF NOT EXISTS "{t_name}" ({", ".join(col_defs)})'
+                    sqlite_conn.execute(create_stmt)
+
+                    col_names_list = [c["name"] for c in cols]
+                    res = conn.execute(text(f'SELECT * FROM "{t_name}"')).mappings().all()
+                    if res:
+                        placeholders = ", ".join(["?"] * len(col_names_list))
+                        col_names_sql = ", ".join(f'"{c}"' for c in col_names_list)
+                        insert_stmt = f'INSERT INTO "{t_name}" ({col_names_sql}) VALUES ({placeholders})'
+
+                        rows_to_insert = []
+                        for row in res:
+                            row_vals = []
+                            for c_name in col_names_list:
+                                v = row.get(c_name)
+                                if isinstance(v, bool):
+                                    row_vals.append(1 if v else 0)
+                                elif isinstance(v, (datetime, date)):
+                                    row_vals.append(v.isoformat())
+                                elif isinstance(v, (dict, list)):
+                                    row_vals.append(json.dumps(v, ensure_ascii=False))
+                                elif hasattr(v, "__str__") and not isinstance(v, (int, float, str, bytes, type(None))):
+                                    row_vals.append(str(v))
+                                else:
+                                    row_vals.append(v)
+                            rows_to_insert.append(tuple(row_vals))
+
+                        sqlite_conn.executemany(insert_stmt, rows_to_insert)
+                    sqlite_conn.commit()
+                except Exception as e:
+                    logger.warning(f"Errore esportazione tabella {t_name}: {e}")
                     continue
-                col_defs = []
-                for c in cols:
-                    col_name = c["name"]
-                    c_type = str(c.get("type", "")).lower()
-                    sql_type = "TEXT"
-                    if "int" in c_type:
-                        sql_type = "INTEGER"
-                    elif any(x in c_type for x in ("float", "real", "numeric", "decimal")):
-                        sql_type = "REAL"
-                    col_defs.append(f'"{col_name}" {sql_type}')
+    finally:
+        sqlite_conn.close()
 
-                create_stmt = f'CREATE TABLE IF NOT EXISTS "{t_name}" ({", ".join(col_defs)})'
-                sqlite_conn.execute(create_stmt)
-
-                res = conn.execute(text(f'SELECT * FROM "{t_name}"')).fetchall()
-                if res:
-                    placeholders = ", ".join(["?"] * len(cols))
-                    col_names = ", ".join(f'"{c["name"]}"' for c in cols)
-                    insert_stmt = f'INSERT INTO "{t_name}" ({col_names}) VALUES ({placeholders})'
-
-                    rows_to_insert = []
-                    for row in res:
-                        row_vals = []
-                        for v in row:
-                            if isinstance(v, bool):
-                                row_vals.append(1 if v else 0)
-                            elif isinstance(v, (datetime, date)):
-                                row_vals.append(v.isoformat())
-                            else:
-                                row_vals.append(v)
-                        rows_to_insert.append(tuple(row_vals))
-
-                    sqlite_conn.executemany(insert_stmt, rows_to_insert)
-                sqlite_conn.commit()
-            except Exception as e:
-                logger.warning(f"Errore esportazione tabella {t_name}: {e}")
-                continue
-
-    sqlite_conn.close()
     return tmp_path
 
 
@@ -149,18 +156,21 @@ def genera_backup_json() -> str:
     with engine.connect() as conn:
         for t_name in table_names:
             try:
-                res = conn.execute(text(f'SELECT * FROM "{t_name}"'))
+                res = conn.execute(text(f'SELECT * FROM "{t_name}"')).mappings().all()
                 cols = [c["name"] for c in inspector.get_columns(t_name)]
                 rows = []
-                for r in res.fetchall():
+                for r in res:
                     row_dict = {}
-                    for col_name, val in zip(cols, r):
+                    for col_name in cols:
+                        val = r.get(col_name)
                         if isinstance(val, (datetime, date)):
                             row_dict[col_name] = val.isoformat()
                         elif isinstance(val, bytes):
                             row_dict[col_name] = "<binary data>"
-                        else:
+                        elif isinstance(val, (dict, list, int, float, str, bool, type(None))):
                             row_dict[col_name] = val
+                        else:
+                            row_dict[col_name] = str(val)
                     rows.append(row_dict)
                 data["tables"][t_name] = rows
             except Exception as e:
@@ -184,16 +194,41 @@ def export_db(request: Request):
 
     try:
         tmp_path = genera_backup_sqlite()
-        return FileResponse(
-            tmp_path,
+        with open(tmp_path, "rb") as f:
+            content = f.read()
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+        return Response(
+            content=content,
             media_type="application/octet-stream",
-            filename=fname,
-            headers={"Content-Disposition": f'attachment; filename="{fname}"'},
-            background=BackgroundTask(lambda: os.path.exists(tmp_path) and os.remove(tmp_path)),
+            headers={"Content-Disposition": f'attachment; filename="{fname}"'}
         )
     except Exception as e:
-        logger.error(f"Errore durante esportazione database: {e}")
-        return HTMLResponse(f"Errore durante l'esportazione del backup: {e}", status_code=500)
+        logger.error(f"Errore durante esportazione database SQLite: {e}, tentativo fallback JSON")
+        try:
+            json_fname = f"gestionale_birra_{ts}.json"
+            tmp_json = genera_backup_json()
+            with open(tmp_json, "rb") as f:
+                content = f.read()
+            try:
+                os.remove(tmp_json)
+            except OSError:
+                pass
+
+            return Response(
+                content=content,
+                media_type="application/json",
+                headers={"Content-Disposition": f'attachment; filename="{json_fname}"'}
+            )
+        except Exception as e2:
+            logger.error(f"Errore critico durante backup: {e2}")
+            return HTMLResponse(
+                f"<h3>Impossibile completare il backup</h3><p>{e}</p><p><a href='/amministrazione'>Torna all'amministrazione</a></p>",
+                status_code=500
+            )
 
 
 @router.get("/admin/export-json")
@@ -208,16 +243,25 @@ def export_json(request: Request):
 
     try:
         tmp_path = genera_backup_json()
-        return FileResponse(
-            tmp_path,
+        with open(tmp_path, "rb") as f:
+            content = f.read()
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+        return Response(
+            content=content,
             media_type="application/json",
-            filename=fname,
-            headers={"Content-Disposition": f'attachment; filename="{fname}"'},
-            background=BackgroundTask(lambda: os.path.exists(tmp_path) and os.remove(tmp_path)),
+            headers={"Content-Disposition": f'attachment; filename="{fname}"'}
         )
     except Exception as e:
         logger.error(f"Errore durante esportazione JSON: {e}")
-        return HTMLResponse(f"Errore durante l'esportazione del backup JSON: {e}", status_code=500)
+        return HTMLResponse(
+            f"<h3>Errore durante l'esportazione JSON</h3><p>{e}</p><p><a href='/amministrazione'>Torna all'amministrazione</a></p>",
+            status_code=500
+        )
+
 
 
 @router.post("/admin/import-db")
