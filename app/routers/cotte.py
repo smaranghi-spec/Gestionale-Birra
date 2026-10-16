@@ -508,7 +508,7 @@ def lista_degustazioni(request: Request, db: Session = Depends(get_db)):
     # Ordina le degustazioni di ciascuna cotta per data desc
     for c in cottas:
         c.degustazioni.sort(key=lambda d: d.data, reverse=True)
-    return templates.TemplateResponse("degustazioni.html", {
+    return templates.TemplateResponse(request, "degustazioni.html", {
         "request": request,
         "cottas": cottas,
         "session": request.session,
