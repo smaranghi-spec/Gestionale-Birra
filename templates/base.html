@@ -443,20 +443,33 @@
 
 <!-- Backup Urgente Modal -->
 <div id="modal-backup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; justify-content:center; align-items:center;">
-  <div style="background:var(--card); padding:30px; border-radius:12px; width:90%; max-width:400px; text-align:center; border:2px solid var(--red); box-shadow:0 0 40px rgba(255,0,0,0.2);">
-    <div style="font-size:40px; margin-bottom:15px;">⚠️</div>
-    <h2 style="color:var(--red); margin-top:0;">Backup Obbligatorio!</h2>
-    <p style="color:var(--text); font-size:14px;">
-      Sono passati <strong id="giorni-backup">più di 30</strong> giorni dall'ultimo backup del database.<br><br>
-      Per prevenire perdite di dati, sei <strong>obbligato</strong> a scaricare il backup prima di poter continuare a usare il gestionale.
+  <div style="background:var(--card); padding:30px; border-radius:12px; width:90%; max-width:420px; text-align:center; border:2px solid var(--amber); box-shadow:0 0 40px rgba(245,158,11,0.25); position:relative;">
+    <button type="button" onclick="chiudiModalBackup()" style="position:absolute; top:12px; right:12px; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; line-height:1;" title="Chiudi">✕</button>
+    <div style="font-size:42px; margin-bottom:12px;">💾</div>
+    <h2 style="color:var(--amber); margin-top:0; font-size:20px;">Backup Consigliato</h2>
+    <p style="color:var(--text); font-size:14px; line-height:1.5;">
+      Sono passati <strong id="giorni-backup" style="color:var(--amber);">più di 30</strong> giorni dall'ultimo salvataggio del database.<br><br>
+      Scarica una copia di sicurezza per proteggere tutte le ricette, cotte, giacenze e dati storici del birrificio.
     </p>
-    <a href="/admin/export-db" class="btn btn-danger" style="display:block; padding:12px; font-size:16px; margin-top:20px; font-weight:bold;" onclick="setTimeout(()=>document.getElementById('modal-backup').style.display='none', 2000)">
-      ⬇ SCARICA BACKUP ORA
+    <a href="/admin/export-db" class="btn btn-primary" style="display:block; padding:12px; font-size:15px; margin-top:18px; font-weight:bold; text-align:center;" onclick="setTimeout(chiudiModalBackup, 1500)">
+      ⬇ Scarica Backup Database (.db)
     </a>
+    <a href="/admin/export-json" class="btn btn-ghost" style="display:block; padding:10px; font-size:13px; margin-top:8px; text-align:center;" onclick="setTimeout(chiudiModalBackup, 1500)">
+      📄 Scarica Copia JSON (.json)
+    </a>
+    <button type="button" onclick="chiudiModalBackup()" class="btn btn-ghost" style="width:100%; margin-top:10px; font-size:12px; color:var(--muted);">
+      Ricordamelo più tardi
+    </button>
   </div>
 </div>
 
 <script>
+function chiudiModalBackup() {
+  const m = document.getElementById('modal-backup');
+  if (m) m.style.display = 'none';
+  sessionStorage.setItem('backup_modal_dismissed', 'true');
+}
+
 function toggleMobileMenu() {
   const m = document.getElementById('mobile-menu');
   const btn = document.getElementById('hamburger-btn');
@@ -487,10 +500,12 @@ async function caricaNotifiche() {
     const res = await fetch('/api/notifiche');
     const data = await res.json();
     
-    // Controlla il backup
-    if (data.backup_urgente === true) {
-      document.getElementById('giorni-backup').textContent = data.giorni_da_backup;
-      document.getElementById('modal-backup').style.display = 'flex';
+    // Controlla il backup se non è già stato posticipato in questa sessione di navigazione
+    if (data.backup_urgente === true && !sessionStorage.getItem('backup_modal_dismissed')) {
+      const gEl = document.getElementById('giorni-backup');
+      if (gEl) gEl.textContent = data.giorni_da_backup;
+      const m = document.getElementById('modal-backup');
+      if (m) m.style.display = 'flex';
     }
 
     const nots = data.notifiche || [];

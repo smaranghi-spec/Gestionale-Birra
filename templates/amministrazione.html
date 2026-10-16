@@ -20,9 +20,14 @@
     <div style="font-size:12px; margin-bottom:12px; padding:8px; background:rgba(255,255,255,0.05); border-radius:6px;">
       <strong>Ultimo backup effettuato:</strong> <span style="color:var(--amber);">{{ ultimo_backup }}</span>
     </div>
-    <a href="/admin/export-db" class="btn btn-primary" style="display:block;text-align:center;margin-bottom:10px;">
-      ⬇ Scarica backup database
-    </a>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+      <a href="/admin/export-db" class="btn btn-primary" style="display:block;text-align:center;">
+        ⬇ Scarica backup database (.db)
+      </a>
+      <a href="/admin/export-json" class="btn btn-ghost" style="display:block;text-align:center;font-size:13px;">
+        📄 Scarica backup completo JSON (.json)
+      </a>
+    </div>
     <div style="margin-top:16px;">
       <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Ripristina da backup</div>
       <form method="post" action="/admin/import-db" enctype="multipart/form-data">
