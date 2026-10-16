@@ -136,18 +136,45 @@ def run_migrations():
 
 
 
+
 run_migrations()
+
+
+def auto_seed_data():
+    """Auto-popola dati essenziali mancanti (catalogo 260 materie prime) senza sovrascrivere o alterare dati esistenti."""
+    try:
+        from .db import SessionLocal
+        from .models import CatalogoIngrediente
+        from .data_catalogo import TUTTO
+        db = SessionLocal()
+        try:
+            n_cat = db.query(CatalogoIngrediente).count()
+            if n_cat < 30:
+                esistenti = { (i.nome or "").strip().lower() for i in db.query(CatalogoIngrediente.nome).all() }
+                nuovi = [CatalogoIngrediente(**d) for d in TUTTO if (d.get("nome") or "").strip().lower() not in esistenti]
+                if nuovi:
+                    db.add_all(nuovi)
+                    db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
+auto_seed_data()
 
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
 EXEMPT = ("/login", "/register", "/birre", "/debug", "/static", "/recupera-password")
-READ_ONLY_PATHS = ("/", "/ricette/html", "/cotte", "/stili", "/catalogo",
+READ_ONLY_PATHS = ("/", "/ricette/html", "/ricette/libreria", "/cotte", "/stili", "/catalogo",
                    "/strumenti", "/profili-acqua", "/prezzi", "/impianto",
                    "/tracciabilita", "/inventario")
 
 WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 # Scritture consentite anche per utenti non-soci (solo queste route)
-SOCIO_EXEMPT_WRITES = ("/diventa-socio",)
+SOCIO_EXEMPT_WRITES = ("/diventa-socio", "/ricette/libreria/importa", "/catalogo/ingredienti/popola_completo", "/catalogo/ingredienti/popola_demo")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -229,7 +256,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-10-16_1950_search_enhanced",
+        "build": "2026-10-16_2020_libreria_catalogo",
     }
 
 

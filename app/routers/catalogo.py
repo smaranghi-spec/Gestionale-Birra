@@ -122,109 +122,32 @@ def crea_ingrediente_catalogo(
     return RedirectResponse("/catalogo/ingredienti", status_code=303)
 
 
+def popola_catalogo_completo(db: Session) -> int:
+    """Popola il catalogo con le 260 materie prime di data_catalogo.py senza toccare o duplicare quelle esistenti."""
+    from ..data_catalogo import TUTTO
+    esistenti = { (i.nome or "").strip().lower() for i in db.query(CatalogoIngrediente.nome).all() }
+    da_aggiungere = []
+    for item_data in TUTTO:
+        nome_clean = (item_data.get("nome") or "").strip().lower()
+        if nome_clean and nome_clean not in esistenti:
+            da_aggiungere.append(CatalogoIngrediente(**item_data))
+            esistenti.add(nome_clean)
+    if da_aggiungere:
+        db.add_all(da_aggiungere)
+        db.commit()
+    return len(da_aggiungere)
+
+
+@router.post("/catalogo/ingredienti/popola_completo")
 @router.post("/catalogo/ingredienti/popola_demo")
 def popola_demo(db: Session = Depends(get_db)):
-    if db.query(CatalogoIngrediente).count() > 0:
-        return RedirectResponse("/catalogo/ingredienti", status_code=303)
-
-    demo = [
-        CatalogoIngrediente(
-            nome="Pale Ale Malt",
-            categoria="grain",
-            fermentable_type="Grain",
-            yield_percent=78.0,
-            color_srm=3.5,
-        ),
-        CatalogoIngrediente(
-            nome="Pilsner Malt",
-            categoria="grain",
-            fermentable_type="Grain",
-            yield_percent=80.0,
-            color_srm=1.8,
-        ),
-        CatalogoIngrediente(
-            nome="Munich Malt",
-            categoria="grain",
-            fermentable_type="Grain",
-            yield_percent=77.0,
-            color_srm=9.0,
-        ),
-        CatalogoIngrediente(
-            nome="Caramel 60L",
-            categoria="grain",
-            fermentable_type="Crystal",
-            yield_percent=72.0,
-            color_srm=60.0,
-        ),
-        CatalogoIngrediente(
-            nome="Chocolate Malt",
-            categoria="grain",
-            fermentable_type="Roasted",
-            yield_percent=60.0,
-            color_srm=350.0,
-        ),
-        CatalogoIngrediente(
-            nome="Cascade",
-            categoria="hop",
-            alpha_acid=5.5,
-            hop_use="Boil",
-            hop_form="Pellet",
-        ),
-        CatalogoIngrediente(
-            nome="Centennial",
-            categoria="hop",
-            alpha_acid=10.0,
-            hop_use="Boil",
-            hop_form="Pellet",
-        ),
-        CatalogoIngrediente(
-            nome="Citra",
-            categoria="hop",
-            alpha_acid=12.0,
-            hop_use="Dry Hop",
-            hop_form="Pellet",
-        ),
-        CatalogoIngrediente(
-            nome="Saaz",
-            categoria="hop",
-            alpha_acid=3.5,
-            hop_use="Boil",
-            hop_form="Pellet",
-        ),
-        CatalogoIngrediente(
-            nome="Safale US-05",
-            categoria="yeast",
-            attenuation=77.0,
-            yeast_type="Ale",
-            yeast_form="Dry",
-        ),
-        CatalogoIngrediente(
-            nome="Wyeast 1056 American Ale",
-            categoria="yeast",
-            attenuation=75.0,
-            yeast_type="Ale",
-            yeast_form="Liquid",
-        ),
-        CatalogoIngrediente(
-            nome="Irish Moss",
-            categoria="misc",
-            misc_type="Fining",
-            misc_use="Boil",
-        ),
-        CatalogoIngrediente(
-            nome="Whirlfloc",
-            categoria="misc",
-            misc_type="Fining",
-            misc_use="Boil",
-        ),
-    ]
-
-    db.add_all(demo)
-    db.commit()
-    nuovi = len(demo)
-
+    nuovi = popola_catalogo_completo(db)
+    if nuovi > 0:
+        msg = f"Catalogo+aggiornato:+aggiunte+{nuovi}+materie+prime+complete"
+    else:
+        msg = "Catalogo+gia+aggiornato:+tutte+le+materie+prime+sono+presenti"
     return RedirectResponse(
-        f"/catalogo/ingredienti?msg=Importati+{nuovi}+ingredienti",
+        f"/catalogo/ingredienti?msg={msg}",
         status_code=303,
     )
 

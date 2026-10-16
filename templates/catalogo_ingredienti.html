@@ -16,11 +16,9 @@
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <button class="btn btn-primary" onclick="toggleForm()">➕ Nuovo ingrediente</button>
-    {% if totale == 0 %}
-    <form method="post" action="/catalogo/ingredienti/popola_demo" style="margin:0;">
-      <button type="submit" class="btn btn-ghost">🚀 Carica catalogo demo</button>
+    <form method="post" action="/catalogo/ingredienti/popola_completo" style="margin:0;">
+      <button type="submit" class="btn btn-secondary" title="Sincronizza il database con 260 malti, luppoli, lieviti e additivi predefiniti">📥 Carica Catalogo Completo (260)</button>
     </form>
-    {% endif %}
     <a href="/prezzi" class="btn btn-ghost">🛒 Confronta prezzi</a>
   </div>
 </div>

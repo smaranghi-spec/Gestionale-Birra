@@ -88,7 +88,12 @@
 <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
   <div>
     <h1 style="font-size:22px;margin-bottom:4px;">🧪 Ricette</h1>
-    <p style="color:var(--muted);font-size:13px;">{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %} · <a href="/catalogo/ingredienti" style="color:var(--amber);">📦 Catalogo ingredienti</a> · <a href="/importa/beerxml" style="color:var(--amber);">📥 Importa BeerXML</a></p>
+    <p style="color:var(--muted);font-size:13px;">{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %} · <a href="/ricette/libreria" style="color:var(--amber);font-weight:600;">📚 Libreria Ricette Predefinite (17)</a> · <a href="/catalogo/ingredienti" style="color:var(--amber);">📦 Catalogo ingredienti</a> · <a href="/importa/beerxml" style="color:var(--amber);">📥 Importa BeerXML</a></p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="/ricette/libreria" class="btn btn-secondary" style="border-color:var(--amber);color:var(--amber);background:rgba(245,158,11,0.08);">
+      <span>📚</span> Sfoglia Libreria Ricette
+    </a>
   </div>
 </div>
 

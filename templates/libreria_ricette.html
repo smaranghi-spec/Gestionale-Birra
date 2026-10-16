@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+{% block title %}Libreria Ricette Predefinite{% endblock %}
+{% block content %}
+
+<style>
+.lib-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.cat-pill {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-decoration: none;
+  transition: all .15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cat-pill:hover {
+  color: var(--text);
+  border-color: var(--amber);
+  text-decoration: none;
+}
+.cat-pill.active {
+  background: var(--amber);
+  color: #000;
+  border-color: var(--amber);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+.recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+@media (max-width: 600px) {
+  .recipes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lib-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.lib-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--amber);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.srm-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.spec-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.spec-chip strong {
+  color: var(--amber);
+}
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+.modal-overlay.open {
+  display: flex;
+}
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  max-width: 850px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 10;
+}
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--panel);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+.lib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.lib-table th, .lib-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.lib-table th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+</style>
+
+<!-- HEADER -->
+<div class="lib-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <h1 style="font-size:24px;margin:0;">📚 Libreria Ricette Predefinite</h1>
+      <span style="background:var(--amber-dim);border:1px solid var(--amber);color:var(--amber);padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;">
+        {{ totale_catalogo }} Ricette BJCP
+      </span>
+    </div>
+    <p style="margin:0;color:var(--muted);font-size:13px;max-width:750px;">
+      Collezione di ricette iconiche mondiali all-grain calibrate per 23 litri (75% efficienza).
+      Puoi consultare le schede tecniche complete e aggiungerle con un clic al tuo ricettario personale per brassarle o modificarle.
+    </p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="/ricette/html" class="btn btn-secondary">
+      <span>🧪</span> Torna alle mie Ricette
+    </a>
+  </div>
+</div>
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-danger" style="margin-bottom:16px;">
+  ⚠️ {{ request.query_params.get('error') }}
+</div>
+{% endif %}
+
+<!-- FILTRI & RICERCA -->
+<div class="card" style="padding:16px;margin-bottom:24px;">
+  <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <!-- SEARCH FORM -->
+    <form method="get" action="/ricette/libreria" style="display:flex;gap:8px;flex:1;min-width:280px;max-width:500px;">
+      <input type="hidden" name="categoria" value="{{ categoria_selezionata }}">
+      <div style="position:relative;width:100%;">
+        <input type="text" name="q" id="search-input" value="{{ q }}" placeholder="Cerca stile, luppolo, malto o parola chiave..." 
+               style="width:100%;padding:9px 12px 9px 34px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;">🔍</span>
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding:0 16px;">Cerca</button>
+      {% if q or (categoria_selezionata and categoria_selezionata != 'Tutte') %}
+      <a href="/ricette/libreria" class="btn btn-ghost" title="Resetta filtri">✕</a>
+      {% endif %}
+    </form>
+
+    <div style="font-size:13px;color:var(--muted);">
+      Mostrando: <strong style="color:var(--text);" id="count-display">{{ totale }}</strong> su {{ totale_catalogo }} ricette
+    </div>
+  </div>
+
+  <!-- CATEGORY PILLS -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    {% for cat in categorie %}
+    <a href="/ricette/libreria?categoria={{ cat }}{% if q %}&q={{ q }}{% endif %}" 
+       class="cat-pill {% if categoria_selezionata == cat %}active{% endif %}">
+      {{ cat }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- GRIGLIA RICETTE -->
+{% if ricette|length == 0 %}
+<div class="empty card" style="padding:48px 24px;">
+  <div class="empty-icon">🍺</div>
+  <h3 style="margin-bottom:6px;">Nessuna ricetta trovata</h3>
+  <p style="color:var(--muted);font-size:14px;">Nessuna ricetta corrisponde ai criteri di ricerca impostati.</p>
+  <a href="/ricette/libreria" class="btn btn-secondary" style="margin-top:12px;">Mostra tutte le ricette</a>
+</div>
+{% else %}
+<div class="recipes-grid" id="recipes-grid">
+  {% for r in ricette %}
+  <div class="lib-card recipe-item" data-name="{{ r.nome|lower }}" data-style="{{ r.stile_nome|lower }}" data-cat="{{ r.categoria_macro }}">
+    <div>
+      <!-- HEADER CARD -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="srm-badge" style="background-color:{{ srm_to_hex(r.srm) }};" title="Colore stimato: {{ r.srm }} SRM / {{ r.ebc }} EBC"></span>
+          <div>
+            <h2 style="font-size:16px;font-weight:700;margin:0;color:var(--text);line-height:1.2;">{{ r.nome }}</h2>
+            <div style="font-size:12px;color:var(--amber);margin-top:2px;">
+              {{ r.stile_bjcp }} · {{ r.stile_nome }}
+            </div>
+          </div>
+        </div>
+        <span style="font-size:11px;background:rgba(255,255,255,0.06);color:var(--muted);padding:2px 8px;border-radius:10px;white-space:nowrap;border:1px solid var(--border);">
+          {{ r.tipo }}
+        </span>
+      </div>
+
+      <!-- SPECS CHIPS -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        <span class="spec-chip">🍺 ABV: <strong>{{ r.abv }}%</strong></span>
+        <span class="spec-chip">🌿 IBU: <strong>{{ r.ibu }}</strong></span>
+        <span class="spec-chip">🎨 EBC: <strong>{{ r.ebc }}</strong></span>
+        <span class="spec-chip">⚖️ OG: <strong>{{ r.og }}</strong> → FG: <strong>{{ r.fg }}</strong></span>
+        <span class="spec-chip">📦 <strong>{{ r.volume_target_litri|int }}L</strong> · {{ r.efficienza|int }}%</span>
+      </div>
+
+      <!-- DESCRIZIONE -->
+      <p style="font-size:12.5px;color:var(--muted);line-height:1.45;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
+        {{ r.descrizione }}
+      </p>
+
+      <!-- PREVIEW INGREDIENTI -->
+      <div style="border-top:1px dashed var(--border);padding-top:10px;margin-bottom:14px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;font-weight:600;">
+          Ingredienti chiave:
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          {% for ing in r.ingredienti[:4] %}
+          <span style="font-size:11px;background:var(--surface);border:1px solid var(--border);padding:2px 6px;border-radius:4px;color:var(--text);">
+            {% if ing.categoria == 'grain' %}🌾{% elif ing.categoria == 'hop' %}🌿{% elif ing.categoria == 'yeast' %}🧫{% else %}✨{% endif %}
+            {{ ing.nome }} ({{ ing.quantita }}{{ ing.unita }})
+          </span>
+          {% endfor %}
+          {% if r.ingredienti|length > 4 %}
+          <span style="font-size:11px;color:var(--muted);padding:2px 4px;">+ altri {{ r.ingredienti|length - 4 }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTONI AZIONE -->
+    <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px;margin-top:6px;justify-content:space-between;align-items:center;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="apriDettagli('{{ r.slug }}')" style="font-size:12px;">
+        <span>🔍</span> Dettagli
+      </button>
+
+      <form method="post" action="/ricette/libreria/importa/{{ r.slug }}" style="margin:0;">
+        <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Vuoi aggiungere la ricetta «{{ r.nome }}» alle tue ricette personali? Potrai poi modificarla e brassarla liberamente.')" style="font-size:12px;font-weight:700;">
+          <span>➕</span> Aggiungi alle mie ricette
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- MODALE ISPEZIONE COMPLETA -->
+<div id="modal-dettaglio" class="modal-overlay" onclick="if(event.target===this)chiudiDettagli()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="modal-srm-badge" class="srm-badge" style="width:28px;height:28px;"></span>
+        <div>
+          <h2 id="modal-titolo" style="font-size:18px;margin:0;color:var(--text);">Nome Ricetta</h2>
+          <div id="modal-sottotitolo" style="font-size:12px;color:var(--amber);margin-top:2px;">Stile BJCP</div>
+        </div>
+      </div>
+      <button type="button" onclick="chiudiDettagli()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;" title="Chiudi">✕</button>
+    </div>
+
+    <div class="modal-body" id="modal-body-content">
+      <div style="text-align:center;padding:30px;color:var(--muted);">Caricamento dettagli...</div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="chiudiDettagli()">Chiudi</button>
+      <form id="modal-form-importa" method="post" action="" style="margin:0;">
+        <button type="submit" class="btn btn-primary" onclick="return confirm('Aggiungere questa ricetta al tuo ricettario personale?')">
+          <span>➕</span> Aggiungi alle mie ricette
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+async function apriDettagli(slug) {
+  const modal = document.getElementById('modal-dettaglio');
+  const bodyContent = document.getElementById('modal-body-content');
+  const modalForm = document.getElementById('modal-form-importa');
+  
+  modalForm.action = `/ricette/libreria/importa/${slug}`;
+  bodyContent.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Caricamento dettagli ricetta in corso...</div>';
+  modal.classList.add('open');
+
+  try {
+    const res = await fetch(`/ricette/libreria/${slug}/json`);
+    if (!res.ok) throw new Error('Errore caricamento dati');
+    const r = await res.json();
+
+    document.getElementById('modal-titolo').textContent = r.nome;
+    document.getElementById('modal-sottotitolo').textContent = `${r.stile_bjcp} · ${r.stile_nome} (${r.categoria_macro})`;
+
+    // Calcolo colore srm indicativo
+    const srmHex = getSrmHex(r.srm);
+    document.getElementById('modal-srm-badge').style.backgroundColor = srmHex;
+
+    // Costruisci il corpo del modale
+    let html = `
+      <!-- PARAMETRI BATCH -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:10px;text-align:center;">
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Volume</div><div style="font-size:16px;font-weight:700;color:var(--text);">${r.volume_target_litri} L</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Efficienza</div><div style="font-size:16px;font-weight:700;color:var(--text);">${r.efficienza}%</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">OG stimata</div><div style="font-size:16px;font-weight:700;color:var(--amber);">${r.og}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">FG stimata</div><div style="font-size:16px;font-weight:700;color:var(--amber);">${r.fg}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Alcol (ABV)</div><div style="font-size:16px;font-weight:700;color:var(--green);">${r.abv}%</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Amaro (IBU)</div><div style="font-size:16px;font-weight:700;color:var(--text);">${r.ibu}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Colore EBC</div><div style="font-size:16px;font-weight:700;color:var(--text);">${r.ebc}</div></div>
+      </div>
+
+      <!-- DESCRIZIONE & CONSIGLI -->
+      <div>
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:6px;">Descrizione dello stile</h4>
+        <p style="font-size:13px;line-height:1.5;color:var(--text);margin-bottom:12px;">${r.descrizione || ''}</p>
+        ${r.consigli_brewday ? `
+        <div style="background:rgba(245,158,11,0.08);border-left:3px solid var(--amber);padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;color:var(--text);">
+          <strong style="color:var(--amber);">💡 Consigli per il Brewday:</strong> ${r.consigli_brewday}
+        </div>` : ''}
+      </div>
+
+      <!-- GRANI & FERMENTABILI -->
+      <div>
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:6px;">🌾 Grani e Fermentabili</h4>
+        <table class="lib-table">
+          <thead>
+            <tr><th>Ingrediente</th><th>Quantità</th><th>Tipo</th><th>Colore</th><th>Resa</th></tr>
+          </thead>
+          <tbody>
+            ${r.ingredienti.filter(i => i.categoria === 'grain').map(i => `
+              <tr>
+                <td><strong>${i.nome}</strong></td>
+                <td>${i.quantita} ${i.unita}</td>
+                <td>${i.fermentable_type || 'Grain'}</td>
+                <td>${i.color_srm ? i.color_srm + ' SRM' : '—'}</td>
+                <td>${i.yield_percent ? i.yield_percent + '%' : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- LUPPOLI -->
+      <div>
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:6px;">🌿 Luppolatura</h4>
+        <table class="lib-table">
+          <thead>
+            <tr><th>Varietà</th><th>Quantità</th><th>Alfa Acidi</th><th>Utilizzo</th><th>Tempo</th><th>Forma</th></tr>
+          </thead>
+          <tbody>
+            ${r.ingredienti.filter(i => i.categoria === 'hop').map(i => `
+              <tr>
+                <td><strong>${i.nome}</strong></td>
+                <td>${i.quantita} ${i.unita}</td>
+                <td>${i.alpha_acid ? i.alpha_acid + '%' : '—'}</td>
+                <td>${i.hop_use || 'Boil'}</td>
+                <td>${i.time_min !== null && i.time_min !== undefined ? i.time_min + ' min' : '—'}</td>
+                <td>${i.hop_form || 'Pellet'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- LIEVITO E ALTRO -->
+      <div>
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:6px;">🧫 Lievito & Ingredienti Speciali</h4>
+        <table class="lib-table">
+          <thead>
+            <tr><th>Ingrediente</th><th>Categoria</th><th>Dose</th><th>Dettagli / Attenuazione</th></tr>
+          </thead>
+          <tbody>
+            ${r.ingredienti.filter(i => i.categoria !== 'grain' && i.categoria !== 'hop').map(i => `
+              <tr>
+                <td><strong>${i.nome}</strong></td>
+                <td>${i.categoria === 'yeast' ? 'Lievito' : 'Spezie/Altro'}</td>
+                <td>${i.quantita} ${i.unita}</td>
+                <td>${i.attenuation ? 'Attenuazione ~' + i.attenuation + '%' : (i.time_min ? i.time_min + ' min bollitura' : '—')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PROFILO DI MASH -->
+      ${r.profilo_mash && r.profilo_mash.steps ? `
+      <div>
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:6px;">⏱️ Profilo di Ammostamento (${r.profilo_mash.nome})</h4>
+        <table class="lib-table">
+          <thead>
+            <tr><th>#</th><th>Step</th><th>Temperatura</th><th>Durata</th><th>Tipo</th></tr>
+          </thead>
+          <tbody>
+            ${r.profilo_mash.steps.map((s, idx) => `
+              <tr>
+                <td>${s.step_order || idx + 1}</td>
+                <td><strong>${s.name || s.nome}</strong></td>
+                <td>${s.step_temp || s.temp_gradi}°C</td>
+                <td>${s.step_time || s.durata_min} min</td>
+                <td>${s.step_type || s.tipo || 'Infusion'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+      <!-- PROFILO ACQUA -->
+      ${r.profilo_acqua ? `
+      <div>
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:6px;">💧 Profilo Acqua Consigliato (${r.profilo_acqua.nome})</h4>
+        <div style="display:grid;grid-template-columns:repeat(6, 1fr);gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+          <div><div style="color:var(--muted);font-size:11px;">Ca²⁺</div><strong>${r.profilo_acqua.ca} ppm</strong></div>
+          <div><div style="color:var(--muted);font-size:11px;">Mg²⁺</div><strong>${r.profilo_acqua.mg} ppm</strong></div>
+          <div><div style="color:var(--muted);font-size:11px;">Na⁺</div><strong>${r.profilo_acqua.na} ppm</strong></div>
+          <div><div style="color:var(--muted);font-size:11px;">Cl⁻</div><strong>${r.profilo_acqua.cl} ppm</strong></div>
+          <div><div style="color:var(--muted);font-size:11px;">SO₄²⁻</div><strong>${r.profilo_acqua.so4} ppm</strong></div>
+          <div><div style="color:var(--muted);font-size:11px;">HCO₃⁻</div><strong>${r.profilo_acqua.hco3} ppm</strong></div>
+        </div>
+      </div>` : ''}
+    `;
+
+    bodyContent.innerHTML = html;
+  } catch (err) {
+    bodyContent.innerHTML = `<div style="text-align:center;padding:30px;color:var(--red);">Errore nel caricamento della ricetta: ${err.message}</div>`;
+  }
+}
+
+function chiudiDettagli() {
+  document.getElementById('modal-dettaglio').classList.remove('open');
+}
+
+// Fallback visuale srm in js
+function getSrmHex(srm) {
+  if (!srm || srm < 2) return '#F3F993';
+  if (srm < 4) return '#F5CA5A';
+  if (srm < 7) return '#E58500';
+  if (srm < 12) return '#C35900';
+  if (srm < 18) return '#993900';
+  if (srm < 24) return '#681B00';
+  if (srm < 30) return '#420B00';
+  return '#1A0000';
+}
+
+// Chiusura con tasto Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') chiudiDettagli();
+});
+</script>
+
+{% endblock %}

@@ -1,7 +1,7 @@
 import json
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -138,6 +138,174 @@ def crea_ricetta(
         db.rollback()
         return RedirectResponse("/ricette/html?msg=Errore+creazione+ricetta", status_code=303)
     return RedirectResponse(f"/ricette/{r.id}", status_code=303)
+
+
+# ── LIBRERIA RICETTE PREDEFINITE ──────────────────────────────────────────────
+
+@router.get("/ricette/libreria", response_class=HTMLResponse)
+def libreria_ricette_view(
+    request: Request,
+    categoria: str = "",
+    q: str = "",
+    db: Session = Depends(get_db),
+):
+    from ..data_ricette import get_ricette_libreria
+    tutte_ricette = get_ricette_libreria()
+
+    categorie = [
+        "Tutte",
+        "Luppolate (IPA & Pale Ale)",
+        "Lager & Bassa Fermentazione",
+        "Belghe & Saison",
+        "Frumento & Weizen",
+        "Scure (Stout & Porter)",
+        "Classiche UK & Tedesche",
+    ]
+
+    filtered = tutte_ricette
+    if categoria and categoria != "Tutte":
+        filtered = [r for r in filtered if r.get("categoria_macro") == categoria]
+
+    if q and q.strip():
+        term = q.strip().lower()
+        filtered = [
+            r for r in filtered
+            if term in (r.get("nome") or "").lower()
+            or term in (r.get("stile_nome") or "").lower()
+            or term in (r.get("stile_bjcp") or "").lower()
+            or term in (r.get("descrizione") or "").lower()
+            or any(term in (i.get("nome") or "").lower() for i in r.get("ingredienti", []))
+        ]
+
+    return templates.TemplateResponse(
+        "libreria_ricette.html",
+        {
+            "request": request,
+            "ricette": filtered,
+            "totale": len(filtered),
+            "totale_catalogo": len(tutte_ricette),
+            "categorie": categorie,
+            "categoria_selezionata": categoria or "Tutte",
+            "q": q,
+        },
+    )
+
+
+@router.get("/ricette/libreria/{slug}/json")
+def libreria_ricetta_json(slug: str):
+    from ..data_ricette import get_ricetta_by_slug
+    r = get_ricetta_by_slug(slug)
+    if not r:
+        return JSONResponse(status_code=404, content={"error": "Ricetta non trovata"})
+    return JSONResponse(content=r)
+
+
+@router.post("/ricette/libreria/importa/{slug}")
+def libreria_importa_ricetta(slug: str, request: Request, db: Session = Depends(get_db)):
+    from ..data_ricette import get_ricetta_by_slug
+    r_data = get_ricetta_by_slug(slug)
+    if not r_data:
+        return RedirectResponse("/ricette/libreria?error=Ricetta+non+trovata", status_code=303)
+
+    try:
+        # Match BJCP style in DB if exists
+        stile_obj = None
+        if r_data.get("stile_bjcp"):
+            stile_obj = db.query(Stile).filter(
+                (Stile.linea_guida.ilike(f"%{r_data['stile_bjcp']}%")) | (Stile.nome.ilike(f"%{r_data['stile_bjcp']}%"))
+            ).first()
+        if not stile_obj and r_data.get("stile_nome"):
+            stile_obj = db.query(Stile).filter(Stile.nome.ilike(f"%{r_data['stile_nome']}%")).first()
+
+        note_content = (
+            f"{r_data.get('descrizione', '')}\n\n[Consigli Brewday]: {r_data.get('consigli_brewday', '')}"
+        ).strip()
+
+        nuova_ricetta = Ricetta(
+            nome=r_data["nome"],
+            tipo=r_data.get("tipo", "All Grain"),
+            volume_target_litri=float(r_data.get("volume_target_litri", 23.0)),
+            efficienza=float(r_data.get("efficienza", 75.0)),
+            versione=1,
+            stile_id=stile_obj.id if stile_obj else None,
+            note=note_content,
+            pubblica=False,
+        )
+        db.add(nuova_ricetta)
+        db.flush()
+
+        # Add ingredients
+        for ing in r_data.get("ingredienti", []):
+            db.add(
+                IngredienteRicetta(
+                    ricetta_id=nuova_ricetta.id,
+                    nome=ing.get("nome"),
+                    categoria=ing.get("categoria"),
+                    quantita=float(ing.get("quantita", 0.0)),
+                    unita=ing.get("unita", "kg"),
+                    note=ing.get("note"),
+                    time_min=ing.get("time_min"),
+                    fermentable_type=ing.get("fermentable_type"),
+                    yield_percent=float(ing["yield_percent"]) if ing.get("yield_percent") is not None else None,
+                    color_srm=float(ing["color_srm"]) if ing.get("color_srm") is not None else None,
+                    alpha_acid=float(ing["alpha_acid"]) if ing.get("alpha_acid") is not None else None,
+                    hop_use=ing.get("hop_use"),
+                    hop_form=ing.get("hop_form"),
+                    attenuation=float(ing["attenuation"]) if ing.get("attenuation") is not None else None,
+                    yeast_type=ing.get("yeast_type"),
+                    yeast_form=ing.get("yeast_form"),
+                    misc_type=ing.get("misc_type"),
+                    misc_use=ing.get("misc_use"),
+                )
+            )
+
+        # Add mash profile
+        mash_data = r_data.get("profilo_mash")
+        if mash_data:
+            steps_list = mash_data.get("steps", [])
+            normalized_steps = []
+            for idx, s in enumerate(steps_list, start=1):
+                normalized_steps.append({
+                    "step_order": s.get("step_order", idx),
+                    "nome": s.get("name") or s.get("nome", f"Step {idx}"),
+                    "temp_gradi": s.get("step_temp") or s.get("temp", 67),
+                    "durata_min": s.get("step_time") or s.get("durata", 60),
+                    "tipo": s.get("step_type") or s.get("tipo", "Infusion"),
+                })
+            db.add(
+                ProfiloAmmostamento(
+                    ricetta_id=nuova_ricetta.id,
+                    nome=mash_data.get("nome", "Profilo Ammostamento"),
+                    steps_json=json.dumps(normalized_steps, ensure_ascii=False),
+                )
+            )
+
+        # Add water profile
+        water_data = r_data.get("profilo_acqua")
+        if water_data:
+            db.add(
+                ProfiloAcqua(
+                    ricetta_id=nuova_ricetta.id,
+                    nome=water_data.get("nome", "Profilo Acqua"),
+                    ca=float(water_data.get("ca", 0.0)),
+                    mg=float(water_data.get("mg", 0.0)),
+                    na=float(water_data.get("na", 0.0)),
+                    cl=float(water_data.get("cl", 0.0)),
+                    so4=float(water_data.get("so4", 0.0)),
+                    hco3=float(water_data.get("hco3", 0.0)),
+                )
+            )
+
+        db.commit()
+        return RedirectResponse(
+            f"/ricette/{nuova_ricetta.id}?imported=true&msg=Ricetta+aggiunta+con+successo+alle+tue+ricette!",
+            status_code=303,
+        )
+    except Exception as e:
+        db.rollback()
+        import urllib.parse
+        err_msg = urllib.parse.quote(f"Errore durante l'importazione: {str(e)}")
+        return RedirectResponse(f"/ricette/libreria?error={err_msg}", status_code=303)
 
 
 @router.get("/ricette/{ricetta_id}", response_class=HTMLResponse)
