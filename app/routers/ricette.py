@@ -557,6 +557,7 @@ def catalogo_per_ricetta(
         "catalogo_ingredienti.html",
         {
             "request": request,
+            "session": request.session,
             "items": items_sorted,
             "totale": len(all_items),
             "per_cat": per_cat,

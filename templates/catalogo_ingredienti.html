@@ -232,7 +232,15 @@
             <td>
               <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
                 {% if ricetta_id %}
-                <button type="button" class="btn btn-xs" style="background:#f59e0b;color:#000;font-weight:700;" onclick="apriModalAggiungi({{ i.id }}, '{{ (i.nome or '')|replace(\"'\", \"\\\\'\") }}', '{{ i.categoria or '' }}', '{{ i.yield_percent or '' }}', '{{ i.color_srm or '' }}', '{{ i.alpha_acid or '' }}', '{{ i.attenuation or '' }}')">
+                <button type="button" class="btn btn-xs" style="background:#f59e0b;color:#000;font-weight:700;"
+                  data-id="{{ i.id }}"
+                  data-nome="{{ i.nome or '' }}"
+                  data-cat="{{ i.categoria or '' }}"
+                  data-yield="{{ i.yield_percent or '' }}"
+                  data-srm="{{ i.color_srm or '' }}"
+                  data-alpha="{{ i.alpha_acid or '' }}"
+                  data-atten="{{ i.attenuation or '' }}"
+                  onclick="apriModalBtn(this)">
                   ➕ Ricetta
                 </button>
                 {% endif %}
@@ -340,6 +348,19 @@ function filterCatalogo(q) {
   document.querySelectorAll('.ing-row').forEach(row => {
     row.style.display = !q || row.dataset.nome.includes(q) ? '' : 'none';
   });
+}
+
+function apriModalBtn(btn) {
+  if (!btn || !btn.dataset) return;
+  apriModalAggiungi(
+    btn.dataset.id,
+    btn.dataset.nome,
+    btn.dataset.cat,
+    btn.dataset.yield,
+    btn.dataset.srm,
+    btn.dataset.alpha,
+    btn.dataset.atten
+  );
 }
 
 function apriModalAggiungi(itemId, nome, cat, yieldPct, srm, alpha, atten) {

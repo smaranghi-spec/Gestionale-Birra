@@ -59,6 +59,7 @@ def lista_catalogo(
 
     context = {
         "request": request,
+        "session": request.session,
         "items": items,
         "categoria_attiva": categoria,
         "msg": msg,

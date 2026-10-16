@@ -182,6 +182,54 @@ app = FastAPI(title="Gestionale Birrificio")
 app.add_middleware(AuthMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    err_tb = traceback.format_exc()
+    print(f"CRITICAL ERROR on {request.method} {request.url.path}: {err_tb}", flush=True)
+    return HTMLResponse(
+        content=f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Errore 500 - Gestionale Birrificio</title>
+<style>
+body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: #0d1117; color: #e6edf3; padding: 24px; }}
+.card {{ background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 24px; max-width: 800px; margin: 30px auto; }}
+h2 {{ color: #f85149; margin-top: 0; }}
+pre {{ background: #0d1117; padding: 14px; border-radius: 6px; overflow-x: auto; color: #f87171; font-size: 13px; border: 1px solid #30363d; line-height: 1.4; }}
+a {{ color: #58a6ff; text-decoration: none; }}
+a:hover {{ text-decoration: underline; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>⚠️ Si è verificato un errore sul server (500)</h2>
+  <p><strong>Percorso:</strong> {request.url.path}</p>
+  <p><strong>Dettaglio:</strong> {exc}</p>
+  <details open style="margin-top:16px;">
+    <summary style="cursor:pointer; color:#58a6ff; margin-bottom:8px; font-weight:600;">Dettagli tecnici traceback</summary>
+    <pre>{err_tb}</pre>
+  </details>
+  <div style="margin-top:20px;">
+    <a href="/">← Torna alla Home</a> &nbsp;|&nbsp;
+    <a href="javascript:history.back()">← Torna Indietro</a>
+  </div>
+</div>
+</body>
+</html>""",
+        status_code=500
+    )
+
+
+@app.get("/debug/version")
+def debug_version():
+    return {
+        "status": "online",
+        "app": "Gestionale Birrificio",
+        "build": "2026-10-16_1900_catalogo_safe",
+    }
+
+
 app.include_router(auth_router.router)
 app.include_router(ricette.router)
 app.include_router(catalogo.router)
