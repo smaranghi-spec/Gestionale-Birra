@@ -270,18 +270,36 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
     else:
         bilanciamento_desc = "Molto amara"
 
-    # 7. Budget Acqua e Volumi di Cotta (Stile Brewfather)
-    v_boil_loss = 2.5  # evaporazione standard 60 min (2.5 L)
-    v_trub_loss = 1.5  # perdita fondo pentola / trub
+    # 7. Budget Acqua e Volumi di Cotta (Stile Brewfather con Profilo Impianto)
+    pb = _get_val(ricetta_obj, "profilo_birrificio")
+    v_boil_loss = float(_get_val(pb, "boil_off_litri_ora") or 2.5)
+    v_trub_loss = float(_get_val(pb, "trub_loss_litri") or 1.5)
+    v_deadspace = float(_get_val(pb, "mash_tun_deadspace_litri") or 0.0)
+    grain_absorp = float(_get_val(pb, "assorbimento_grani_l_kg") or 0.96)
+    mash_ratio = float(_get_val(pb, "rapporto_mash_l_kg") or 3.0)
+
     v_preboil = volume + v_boil_loss + v_trub_loss
-    assorbimento_grani = grist_totale_kg * 0.96  # ~0.96 L/kg di trebbie assorbite
-    acqua_totale = v_preboil + assorbimento_grani
-    acqua_mash = round(grist_totale_kg * 3.0, 1) if grist_totale_kg > 0 else 0.0  # ratio standard 3.0 L/kg
+    assorbimento_grani = grist_totale_kg * grain_absorp
+    acqua_totale = v_preboil + assorbimento_grani + v_deadspace
+    acqua_mash = round((grist_totale_kg * mash_ratio) + v_deadspace, 1) if grist_totale_kg > 0 else 0.0
     acqua_sparge = round(max(0.0, acqua_totale - acqua_mash), 1)
+
+    temp_mash_target = temp_mash_effettiva or 67.0
+    strike_water_temp = round(temp_mash_target + 0.4 * (grist_totale_kg / max(1.0, acqua_mash)) * (temp_mash_target - 20.0), 1) if acqua_mash > 0 else temp_mash_target
 
     preboil_gu = (gu_mashed * volume / v_preboil) if v_preboil > 0 else 0.0
     preboil_og = 1.0 + (preboil_gu / 1000.0)
     preboil_plato = plato_from_sg(preboil_og)
+
+    # 8. Moduli Avanzati Brewfather (pH Mash, Acidi, Pitch Rate, Priming)
+    ph_info = calcola_ph_mash(ricetta_obj, actual_ingredienti, _get_val(ricetta_obj, "profilo_acqua"))
+    acidi_info = calcola_dosi_acido(acqua_mash, acqua_sparge, ph_info["ph_stimato"])
+
+    stile_obj = _get_val(ricetta_obj, "stile")
+    stile_nome = str(_get_val(stile_obj, "nome") or _get_val(ricetta_obj, "stile_nome") or "")
+    pitch_info = calcola_pitch_rate(og, volume, stile_nome)
+
+    priming_info = calcola_priming(volume, 20.0, 2.4)
 
     volumi_dict = {
         "volume_target": round(volume, 1),
@@ -292,7 +310,11 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
         "acqua_totale": round(acqua_totale, 1),
         "acqua_mash": round(acqua_mash, 1),
         "acqua_sparge": round(acqua_sparge, 1),
+        "strike_water_temp": strike_water_temp,
         "assorbimento_grani": round(assorbimento_grani, 1),
+        "deadspace": v_deadspace,
+        "boil_loss": v_boil_loss,
+        "trub_loss": v_trub_loss,
     }
 
     return {
@@ -320,8 +342,13 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
         "acqua_totale": round(acqua_totale, 1),
         "acqua_mash": round(acqua_mash, 1),
         "acqua_sparge": round(acqua_sparge, 1),
+        "strike_water_temp": strike_water_temp,
         "assorbimento_grani": round(assorbimento_grani, 1),
         "volumi": volumi_dict,
+        "ph_mash": ph_info,
+        "acidi": acidi_info,
+        "pitch_rate": pitch_info,
+        "priming": priming_info,
     }
 
 
@@ -479,3 +506,183 @@ def calcola_costo(ingredienti):
                 }
             )
     return {"totale": round(totale, 2), "dettaglio": dettaglio}
+
+
+def calcola_ph_mash(ricetta, ingredienti, profilo_acqua=None):
+    """
+    Stima il pH dell'impasto (Mash pH) in base al grist dei malti e all'alcalinità residua dell'acqua
+    secondo il modello buffer di Palmer & Troester (ASBC buffer system).
+    """
+    grist_kg = 0.0
+    sauermalz_kg = 0.0
+    delta_crystal = 0.0
+    delta_roasted = 0.0
+
+    for i in ingredienti or []:
+        categoria = (getattr(i, "categoria", None) or (i.get("categoria") if isinstance(i, dict) else "") or "").lower()
+        if categoria == "grain":
+            quantita = getattr(i, "quantita", None) or (i.get("quantita") if isinstance(i, dict) else 0.0) or 0.0
+            unita = getattr(i, "unita", None) or (i.get("unita") if isinstance(i, dict) else "kg") or "kg"
+            q_kg = _to_kg(quantita, unita)
+            if q_kg <= 0:
+                continue
+            grist_kg += q_kg
+            nome = str(getattr(i, "nome", None) or (i.get("nome") if isinstance(i, dict) else "") or "").lower()
+            color_srm = float(getattr(i, "color_srm", None) or (i.get("color_srm") if isinstance(i, dict) else 0.0) or 0.0)
+
+            if any(k in nome for k in ["sauermalz", "acidulated", "acido", "acid malt"]):
+                sauermalz_kg += q_kg
+            elif color_srm >= 200 or any(k in nome for k in ["roasted", "black", "chocolate", "carafa", "de-husked"]):
+                delta_roasted += -0.0022 * color_srm * q_kg
+            elif color_srm >= 15 or any(k in nome for k in ["crystal", "caramel", "cara"]):
+                delta_crystal += -0.0035 * color_srm * q_kg
+
+    # 1. Impatto Malti
+    base_distilled_ph = 5.72
+    if grist_kg > 0:
+        pct_sauermalz = (sauermalz_kg / grist_kg) * 100.0
+        delta_sauermalz = -0.10 * pct_sauermalz
+        delta_crystal_norm = max(-0.35, (delta_crystal / grist_kg) / 10.0)
+        delta_roasted_norm = max(-0.45, (delta_roasted / grist_kg) / 10.0)
+        ph_malts = base_distilled_ph + delta_sauermalz + delta_crystal_norm + delta_roasted_norm
+    else:
+        ph_malts = base_distilled_ph
+
+    # 2. Impatto Acqua (Alcalinità Residua - Kolbach & Palmer)
+    ra_ppm = 50.0  # default tap water
+    if profilo_acqua:
+        ca = float(getattr(profilo_acqua, "ca", None) or (profilo_acqua.get("ca") if isinstance(profilo_acqua, dict) else 0.0) or 0.0)
+        mg = float(getattr(profilo_acqua, "mg", None) or (profilo_acqua.get("mg") if isinstance(profilo_acqua, dict) else 0.0) or 0.0)
+        hco3 = float(getattr(profilo_acqua, "hco3", None) or (profilo_acqua.get("hco3") if isinstance(profilo_acqua, dict) else 0.0) or 0.0)
+        ra_meq = (hco3 / 61.0) - ((ca / 70.14) + (mg / 85.05))
+        ra_ppm = ra_meq * 50.04
+
+    # Ogni 50 ppm di RA sposta il pH del mosto di circa +0.082 unità
+    delta_water = (ra_ppm / 50.0) * 0.082
+    ph_stimato = round(max(4.6, min(6.3, ph_malts + delta_water)), 2)
+
+    if 5.2 <= ph_stimato <= 5.55:
+        stato_ph = "Ottimale (5.2 - 5.5)"
+        colore_badge = "#15803d"
+    elif ph_stimato > 5.55:
+        stato_ph = "Alto (Consigliata acidificazione)"
+        colore_badge = "#b45309"
+    else:
+        stato_ph = "Basso"
+        colore_badge = "#1d4ed8"
+
+    return {
+        "ph_stimato": ph_stimato,
+        "stato": stato_ph,
+        "colore_badge": colore_badge,
+        "alcalinita_residua_ppm": round(ra_ppm, 1),
+        "ph_base_malti": round(ph_malts, 2),
+    }
+
+
+def calcola_dosi_acido(vol_mash, vol_sparge, ph_stimato, ph_target_mash=5.35, ph_target_sparge=5.8):
+    """
+    Calcola il fabbisogno di acidificazione in mL di Acido Lattico 80% o Acido Fosforico 75%.
+    """
+    delta_mash = max(0.0, ph_stimato - ph_target_mash)
+    lattico_mash_ml = round(delta_mash * 10.0 * 0.055 * max(1.0, vol_mash), 1) if delta_mash > 0 else 0.0
+    lattico_sparge_ml = round(max(0.0, vol_sparge * 0.12), 1)
+
+    fosforico_mash_ml = round(lattico_mash_ml * 0.82, 1)
+    fosforico_sparge_ml = round(lattico_sparge_ml * 0.82, 1)
+
+    return {
+        "lattico_mash_ml": lattico_mash_ml,
+        "lattico_sparge_ml": lattico_sparge_ml,
+        "lattico_totale_ml": round(lattico_mash_ml + lattico_sparge_ml, 1),
+        "fosforico_mash_ml": fosforico_mash_ml,
+        "fosforico_sparge_ml": fosforico_sparge_ml,
+        "fosforico_totale_ml": round(fosforico_mash_ml + fosforico_sparge_ml, 1),
+    }
+
+
+def calcola_pitch_rate(og, volume_litri, stile_nome="", yeast_type="", yeast_form=""):
+    """
+    Calcola il Pitch Rate raccomandato e il fabbisogno in miliardi di cellule e bustine/fiale.
+    """
+    plato = plato_from_sg(og)
+    nome_low = (stile_nome or "").lower()
+    type_low = (yeast_type or "").lower()
+    is_lager = "lager" in type_low or any(k in nome_low for k in ["lager", "pils", "bock", "märzen", "helles", "dunkel", "schwarzbier"])
+    is_high_gravity = plato > 14.5
+
+    if is_lager:
+        rate = 2.0 if is_high_gravity else 1.5
+        tipo_desc = "Lager (Alta densità)" if is_high_gravity else "Lager Standard"
+    else:
+        rate = 1.0 if is_high_gravity else 0.75
+        tipo_desc = "Ale (Alta gravità)" if is_high_gravity else "Ale Standard"
+
+    v_ml = max(1.0, float(volume_litri or 20.0)) * 1000.0
+    cellule_miliardi = round((rate * v_ml * max(1.0, plato)) / 1000.0)
+
+    bustine_secco = max(1, math.ceil(cellule_miliardi / 160.0))
+    fiale_liquido = max(1, math.ceil(cellule_miliardi / 100.0))
+
+    starter_consigliato = cellule_miliardi > 180 or (is_lager and "dry" not in (yeast_form or "").lower())
+    starter_vol_l = round(max(0.8, min(4.0, cellule_miliardi / 160.0 * 0.9)), 1)
+    starter_dme_g = round(starter_vol_l * 100.0)
+
+    return {
+        "pitch_rate": rate,
+        "tipo_desc": tipo_desc,
+        "is_lager": is_lager,
+        "cellule_miliardi": cellule_miliardi,
+        "bustine_secco_11g": bustine_secco,
+        "fiale_liquido": fiale_liquido,
+        "starter_consigliato": starter_consigliato,
+        "starter_vol_litri": starter_vol_l,
+        "starter_dme_g": starter_dme_g,
+    }
+
+
+def calcola_priming(volume_litri, temp_max_ferm=20.0, co2_vols_target=2.4):
+    """
+    Calcola i grammi di zucchero per priming in bottiglia e la pressione per infustamento (keg).
+    """
+    t = float(temp_max_ferm or 20.0)
+    v_target = float(co2_vols_target or 2.4)
+    vol = float(volume_litri or 20.0)
+
+    co2_diss = max(0.6, min(1.8, 1.013 * (0.0101 * (t**2) - 0.285 * t + 2.716)))
+    delta_co2 = max(0.0, v_target - co2_diss)
+
+    g_l_saccarosio = round(delta_co2 * 4.0, 2)
+    g_l_destrosio = round(delta_co2 * 4.4, 2)
+    g_l_dme = round(delta_co2 * 5.8, 2)
+    g_l_miele = round(delta_co2 * 5.3, 2)
+
+    p_bar = round(max(0.2, -1.13 + (0.042 * 4.0) + (0.177 * v_target) + (0.0037 * 4.0 * v_target)), 2)
+    p_psi = round(p_bar * 14.5038, 1)
+
+    return {
+        "co2_target": round(v_target, 1),
+        "co2_dissolta": round(co2_diss, 2),
+        "delta_co2": round(delta_co2, 2),
+        "saccarosio": {
+            "grammi_totali": round(g_l_saccarosio * vol),
+            "grammi_litro": g_l_saccarosio,
+        },
+        "destrosio": {
+            "grammi_totali": round(g_l_destrosio * vol),
+            "grammi_litro": g_l_destrosio,
+        },
+        "dme": {
+            "grammi_totali": round(g_l_dme * vol),
+            "grammi_litro": g_l_dme,
+        },
+        "miele": {
+            "grammi_totali": round(g_l_miele * vol),
+            "grammi_litro": g_l_miele,
+        },
+        "keg_4c": {
+            "bar": p_bar,
+            "psi": p_psi,
+        },
+    }
+

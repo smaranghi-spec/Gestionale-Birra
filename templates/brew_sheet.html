@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheda di Cotta — {{ ricetta.nome }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f3f4f6;
+            color: #111827;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0 0 4px 0;
+            color: #111827;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #4b5563;
+            margin: 0;
+        }
+        .meta-box {
+            text-align: right;
+            font-size: 12px;
+            color: #4b5563;
+        }
+        .meta-box strong { color: #111827; font-size: 13px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+        .stat-card .label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; }
+        .stat-card .val { font-size: 18px; font-weight: 800; color: #111827; margin: 2px 0; }
+        .stat-card .sub { font-size: 10px; color: #6b7280; }
+
+        .section {
+            margin-bottom: 18px;
+            break-inside: avoid;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        th {
+            background: #f3f4f6;
+            text-align: left;
+            padding: 6px 8px;
+            font-weight: 700;
+            color: #374151;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #d1d5db;
+        }
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f3f4f6;
+            color: #1f2937;
+        }
+        tr:nth-child(even) td { background: #fafafa; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        .water-highlight {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 10px 14px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .water-highlight .item-val {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1d4ed8;
+        }
+        .water-highlight .item-lbl {
+            font-size: 11px;
+            color: #1e40af;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .checklist-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 6px;
+            padding: 12px 16px;
+        }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        .check-box {
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid #92400e;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .fill-blank {
+            border-bottom: 1px dashed #92400e;
+            display: inline-block;
+            min-width: 60px;
+            height: 14px;
+        }
+
+        .no-print-bar {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+        }
+        .btn-print {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-weight: 700;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-print:hover { background: #1d4ed8; }
+        .btn-back {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 10px 16px;
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-back:hover { background: #f3f4f6; }
+
+        @media print {
+            body { background: white; padding: 0; font-size: 11px; }
+            .page { box-shadow: none; padding: 0; max-width: 100%; }
+            .no-print-bar { display: none !important; }
+            .stat-card .val { font-size: 16px; }
+            .water-highlight .item-val { font-size: 16px; }
+            table { font-size: 11px; }
+            th, td { padding: 4px 6px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="no-print-bar">
+    <a href="/ricette/{{ ricetta.id }}" class="btn-back">← Torna alla Ricetta</a>
+    <button onclick="window.print()" class="btn-print">🖨️ Stampa Scheda (A4)</button>
+</div>
+
+<div class="page">
+    <!-- INTESTAZIONE -->
+    <div class="header">
+        <div>
+            <h1 class="title">🍺 {{ ricetta.nome }}</h1>
+            <p class="subtitle">
+                {{ stile.nome if stile else (ricetta.stile_nome or 'Stile personalizzato') }}
+                {% if stile and stile.codice_bjcp %} · <strong>BJCP {{ stile.codice_bjcp }}</strong>{% endif %}
+                · Metodo: <strong>{{ ricetta.tipo or 'All Grain' }}</strong>
+            </p>
+        </div>
+        <div class="meta-box">
+            Data cotta: <strong>{{ oggi }}</strong><br>
+            Volume target: <strong>{{ ricetta.volume_target_litri }} L</strong><br>
+            Efficienza stimata: <strong>{{ ricetta.efficienza }}%</strong>
+        </div>
+    </div>
+
+    <!-- STATS CHIAVE -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="label">OG Target</div>
+            <div class="val">{{ stats.og }}</div>
+            <div class="sub">{{ stats.plato_og }}°P · Pre {{ stats.volumi.preboil_og }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">FG Stimata</div>
+            <div class="val">{{ stats.fg }}</div>
+            <div class="sub">{{ stats.plato_fg }}°P · Att {{ stats.attenuazione }}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Gradazione ABV</div>
+            <div class="val" style="color:#15803d;">{{ stats.abv }}%</div>
+            <div class="sub">{{ stats.abw }}% w/w · {{ stats.calorie_33cl }} kcal</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Amaro IBU</div>
+            <div class="val">{{ stats.ibu }}</div>
+            <div class="sub">Tinseth · Pellet +10%</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Rapporto BU/GU</div>
+            <div class="val">{{ stats.bu_gu }}</div>
+            <div class="sub">{{ stats.bilanciamento }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Colore EBC</div>
+            <div class="val" style="color:#92400e;">{{ stats.ebc }}</div>
+            <div class="sub">SRM: {{ stats.srm }} (Morey)</div>
+        </div>
+    </div>
+
+    <!-- PIANO ACQUA & VOLUMI -->
+    <div class="section">
+        <div class="section-title">
+            <span>💧 Piano Acqua di Cotta (All-Grain)</span>
+            <span style="font-size:11px;font-weight:normal;color:#4b5563;">Strike Temp: Calcolata su malti a 20°C</span>
+        </div>
+        <div class="water-highlight">
+            <div>
+                <div class="item-lbl">Acqua Mash</div>
+                <div class="item-val">{{ stats.volumi.acqua_mash }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Strike a <strong>{{ stats.strike_water_temp }}°C</strong></div>
+            </div>
+            <div>
+                <div class="item-lbl">Acqua Sparge</div>
+                <div class="item-val">{{ stats.volumi.acqua_sparge }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Riscaldare a <strong>78°C</strong></div>
+            </div>
+            <div>
+                <div class="item-lbl">Acqua Totale</div>
+                <div class="item-val" style="color:#15803d;">{{ stats.volumi.acqua_totale }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Fabbisogno complessivo</div>
+            </div>
+            <div>
+                <div class="item-lbl">Volume Pre-Bollitura</div>
+                <div class="item-val" style="color:#b45309;">{{ stats.volumi.preboil_volume }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Target: <strong>{{ stats.volumi.preboil_og }} SG</strong></div>
+            </div>
+        </div>
+
+        {% if stats.ph_mash or stats.acidi %}
+        <div style="display:flex;justify-content:space-between;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;font-size:11px;margin-bottom:8px;">
+            <div>
+                🧪 <strong>pH Mash Stimato:</strong> {{ stats.ph_mash.ph_stimato }} ({{ stats.ph_mash.stato }})
+                · Alcalinità Residua: {{ stats.ph_mash.alcalinita_residua_ppm }} ppm CaCO₃
+            </div>
+            <div>
+                {% if stats.acidi.lattico_mash_ml > 0 %}
+                Dosaggio Acido Lattico 80%: <strong>{{ stats.acidi.lattico_mash_ml }} mL nel Mash</strong> · <strong>{{ stats.acidi.lattico_sparge_ml }} mL nello Sparge</strong>
+                {% else %}
+                Nessuna acidificazione necessaria nel mash (pH in target). Aggiungere ~{{ stats.acidi.lattico_sparge_ml }} mL nello sparge.
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- FERMENTABILI -->
+    <div class="section">
+        <div class="section-title">🌾 Fermentabili & Grani (Grist Totale: {{ stats.volumi.peso_grani_kg }} kg)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50%;">Nome Ingrediente</th>
+                    <th class="text-right" style="width:15%;">Quantità</th>
+                    <th class="text-right" style="width:10%;">% Grist</th>
+                    <th class="text-center" style="width:15%;">Colore</th>
+                    <th class="text-center" style="width:10%;">Pesato</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in grani %}
+                <tr>
+                    <td><strong>{{ g.nome }}</strong>{% if g.fermentable_type %} <span style="font-size:10px;color:#6b7280;">({{ g.fermentable_type }})</span>{% endif %}</td>
+                    <td class="text-right"><strong>{{ g.quantita }}</strong> {{ g.unita }}</td>
+                    <td class="text-right">
+                        {% if stats.volumi.peso_grani_kg > 0 %}
+                        {{ ((g.quantita / stats.volumi.peso_grani_kg) * 100)|round(1) }}%
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="text-center">{{ g.color_srm or 0 }} SRM ({{ ((g.color_srm or 0)*1.97)|round(1) }} EBC)</td>
+                    <td class="text-center"><span class="check-box" style="margin:0 auto;"></span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- AMMOSTAMENTO (MASH) -->
+    <div class="section">
+        <div class="section-title">🌡️ Profilo Ammostamento (Mash Schedule)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:10%;">Step</th>
+                    <th style="width:40%;">Nome Fase</th>
+                    <th class="text-center" style="width:20%;">Temperatura Target</th>
+                    <th class="text-center" style="width:15%;">Durata</th>
+                    <th class="text-center" style="width:15%;">Eseguito</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if mash_steps %}
+                {% for st in mash_steps %}
+                <tr>
+                    <td>#{{ loop.index }}</td>
+                    <td><strong>{{ st.nome or st.name or 'Step Mash' }}</strong></td>
+                    <td class="text-center"><strong>{{ st.temp_gradi or st.step_temp or st.temp }}°C</strong></td>
+                    <td class="text-center">{{ st.durata_min or st.step_time or st.durata or 0 }} min</td>
+                    <td class="text-center"><span class="check-box" style="margin:0 auto;"></span></td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td>#1</td>
+                    <td><strong>Saccarificazione (Infuso Singolo)</strong></td>
+                    <td class="text-center"><strong>67°C</strong></td>
+                    <td class="text-center">60 min</td>
+                    <td class="text-center"><span class="check-box" style="margin:0 auto;"></span></td>
+                </tr>
+                <tr>
+                    <td>#2</td>
+                    <td><strong>Mash Out</strong></td>
+                    <td class="text-center"><strong>78°C</strong></td>
+                    <td class="text-center">10 min</td>
+                    <td class="text-center"><span class="check-box" style="margin:0 auto;"></span></td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- BOLLITURA E LUPPOLI -->
+    <div class="section">
+        <div class="section-title">🌿 Gittate Luppoli & Bollitura (Boil Time: 60 min)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:30%;">Varietà Luppolo</th>
+                    <th class="text-center" style="width:15%;">Uso / Tempo</th>
+                    <th class="text-right" style="width:15%;">Grammi</th>
+                    <th class="text-center" style="width:15%;">Alfa Acidi</th>
+                    <th class="text-center" style="width:15%;">Forma</th>
+                    <th class="text-center" style="width:10%;">Dosato</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in luppoli %}
+                <tr>
+                    <td><strong>{{ h.nome }}</strong></td>
+                    <td class="text-center">
+                        {% if h.hop_use == 'Dry Hop' %}
+                        <span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">Dry Hop</span>
+                        {% elif h.hop_use == 'Whirlpool' %}
+                        <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">Whirlpool (85°C)</span>
+                        {% else %}
+                        <strong>{{ h.time_min or 0 }} min</strong> ({{ h.hop_use or 'Boil' }})
+                        {% endif %}
+                    </td>
+                    <td class="text-right"><strong>{{ h.quantita }}</strong> {{ h.unita }}</td>
+                    <td class="text-center">{{ h.alpha_acid or 0 }}% AA</td>
+                    <td class="text-center">{{ h.hop_form or 'Pellet' }}</td>
+                    <td class="text-center"><span class="check-box" style="margin:0 auto;"></span></td>
+                </tr>
+                {% endfor %}
+                {% for a in altri %}
+                <tr style="background:#fffbeb;">
+                    <td><strong>{{ a.nome }}</strong> <span style="font-size:10px;color:#92400e;">(Additivo / Spezia)</span></td>
+                    <td class="text-center"><strong>{{ a.time_min or 0 }} min</strong> ({{ a.misc_use or 'Boil' }})</td>
+                    <td class="text-right"><strong>{{ a.quantita }}</strong> {{ a.unita }}</td>
+                    <td class="text-center">—</td>
+                    <td class="text-center">{{ a.misc_type or 'Misc' }}</td>
+                    <td class="text-center"><span class="check-box" style="margin:0 auto;"></span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- LIEVITI E FERMENTAZIONE -->
+    <div class="section">
+        <div class="section-title">🧫 Lieviti, Pitching Rate & Fermentazione</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;">
+                <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;">Ceppo & Inoculo</div>
+                {% for y in lieviti %}
+                <div style="margin-top:4px;">
+                    <strong>{{ y.nome }}</strong> — {{ y.quantita }} {{ y.unita }} (Att. {{ y.attenuation or 75 }}%)
+                </div>
+                {% else %}
+                <div style="color:#6b7280;">Nessun lievito specificato.</div>
+                {% endfor %}
+                <div style="font-size:11px;color:#374151;margin-top:4px;">
+                    Pitch Rate: <strong>{{ stats.pitch_rate.pitch_rate }} M cell/mL/°P</strong>
+                    · Fabbisogno: <strong>{{ stats.pitch_rate.cellule_miliardi }} mld cellule</strong>
+                    ({{ stats.pitch_rate.bustine_secco_11g }} bustine secco)
+                </div>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;">
+                <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;">Priming CO₂ & Packaging</div>
+                <div style="margin-top:4px;">
+                    Target: <strong>{{ stats.priming.co2_target }} vol CO₂</strong>
+                    · Zucchero / Destrosio: <strong>{{ stats.priming.destrosio.grammi_totali }} g</strong> ({{ stats.priming.destrosio.grammi_litro }} g/L)
+                </div>
+                <div style="font-size:11px;color:#374151;margin-top:4px;">
+                    In fusto (keg a 4°C): <strong>{{ stats.priming.keg_4c.bar }} bar</strong> ({{ stats.priming.keg_4c.psi }} PSI)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHECKLIST MISURAZIONI REALI (COMPILABILE A PENNA) -->
+    <div class="section">
+        <div class="section-title">📋 Registro Misurazioni Reali di Cotta (Compilazione a Penna)</div>
+        <div class="checklist-grid">
+            <div class="check-item"><span class="check-box"></span> Acqua strike a temp: <span class="fill-blank"></span> °C</div>
+            <div class="check-item"><span class="check-box"></span> Inizio ammostamento ore: <span class="fill-blank"></span></div>
+            <div class="check-item"><span class="check-box"></span> pH Mash misurato (15m): <span class="fill-blank"></span></div>
+            <div class="check-item"><span class="check-box"></span> Test iodio (conversione OK): <span class="fill-blank"></span></div>
+            <div class="check-item"><span class="check-box"></span> Volume pre-boil misurato: <span class="fill-blank"></span> L</div>
+            <div class="check-item"><span class="check-box"></span> Gravità pre-boil reale: <span class="fill-blank"></span> SG</div>
+            <div class="check-item"><span class="check-box"></span> Inizio bollitura ore: <span class="fill-blank"></span></div>
+            <div class="check-item"><span class="check-box"></span> Fine bollitura / fiamma spenta: <span class="fill-blank"></span></div>
+            <div class="check-item"><span class="check-box"></span> Volume finale in fermentatore: <span class="fill-blank"></span> L</div>
+            <div class="check-item"><span class="check-box"></span> OG reale misurata: <span class="fill-blank"></span> SG</div>
+            <div class="check-item"><span class="check-box"></span> Temperatura inoculo lievito: <span class="fill-blank"></span> °C</div>
+            <div class="check-item"><span class="check-box"></span> Fermentatore / Cella n°: <span class="fill-blank"></span></div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between;">
+            <span>Firma Birraio Responsabile: ___________________________</span>
+            <span>Gestionale Birrificio · Scheda Stampa A4</span>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -256,19 +256,35 @@
 </head>
 <body>
     <div class="card">
-        <h1>{{ ricetta.nome }}</h1>
-        <p>
-            <strong>Tipo:</strong> {{ ricetta.tipo }}
-            · <strong>Volume:</strong> {{ ricetta.volume_target_litri }} L
-            · <strong>Efficienza:</strong> {{ ricetta.efficienza }}%
-        </p>
-        <p><strong>Versione:</strong> {{ ricetta.versione }}</p>
-        <p><strong>Note:</strong> {{ ricetta.note or '-' }}</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+            <div>
+                <h1 style="margin:0 0 8px 0;">{{ ricetta.nome }}</h1>
+                <p style="margin:0 0 6px 0;">
+                    <strong>Tipo:</strong> {{ ricetta.tipo }}
+                    · <strong>Volume:</strong> {{ ricetta.volume_target_litri }} L
+                    · <strong>Efficienza:</strong> {{ ricetta.efficienza }}%
+                </p>
+                <p style="margin:0;font-size:13px;color:#555;"><strong>Versione:</strong> {{ ricetta.versione }} · <strong>Note:</strong> {{ ricetta.note or '-' }}</p>
+            </div>
+            <!-- SELETTORE PROFILO IMPIANTO -->
+            <form method="post" action="/ricette/{{ ricetta.id }}/assegna-impianto" style="background:#f9f6f0;border:1px solid #e2d9cf;border-radius:8px;padding:8px 12px;display:flex;gap:8px;align-items:center;">
+                <label style="font-size:12px;font-weight:bold;color:#5a381e;white-space:nowrap;">⚙️ Impianto:</label>
+                <select name="profilo_birrificio_id" onchange="this.form.submit()" style="padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:13px;background:#fff;">
+                    <option value="0">Default All-Grain (standard)</option>
+                    {% for p in profili_impianto %}
+                    <option value="{{ p.id }}" {% if ricetta.profilo_birrificio_id == p.id %}selected{% endif %}>{{ p.nome }}</option>
+                    {% endfor %}
+                </select>
+                <noscript><button type="submit">Salva</button></noscript>
+            </form>
+        </div>
 
-        <div class="toolbar">
+        <div class="toolbar" style="margin-top:16px;">
             <a href="/">{{ "🏠 Home" }}</a>
             <a href="/ricette/html">← Ricette</a>
             <a href="/ricette/{{ ricetta.id }}/modifica" class="btn">✏ Modifica ricetta</a>
+            <button type="button" class="btn" style="background:#7c3aed;" onclick="apriModalScala()">⚖️ Scala Ricetta</button>
+            <a href="/ricette/{{ ricetta.id }}/stampa" target="_blank" class="btn" style="background:#0284c7;" title="Scheda di cotta per stampa A4">📄 Stampa Scheda A4</a>
             <a href="/ricette/{{ ricetta.id }}/catalogo" class="btn">Apri catalogo ingredienti</a>
             <a href="/inventario?ricetta_id={{ ricetta.id }}" class="btn">📦 Aggiungi da Magazzino</a>
             <a href="/ricette/{{ ricetta.id }}/beerxml" class="btn-dark">Esporta BeerXML</a>
@@ -277,7 +293,7 @@
             <a href="#avvia-cotta" class="btn" style="background:#198754;" onclick="document.getElementById('avvia-cotta').scrollIntoView({behavior:'smooth'});document.getElementById('avvia-form').style.display='block';this.style.display='none';">🚀 Avvia Cotta</a>
         </div>
         {% if n_cotte > 0 %}
-        <p style="margin:8px 0 0 0;font-size:13px;color:#666;">
+        <p style="margin:10px 0 0 0;font-size:13px;color:#666;">
             🍺 <strong>{{ n_cotte }}</strong> cott{{ 'a prodotta' if n_cotte == 1 else 'e prodotte' }} da questa ricetta ·
             <a href="#storico-cotte">Vedi storico</a>
         </p>
@@ -357,9 +373,13 @@
     <!-- BOX VOLUMI & ACQUA DI COTTA (STILE BREWFATHER) -->
     <div class="card" id="card-volumi-acqua">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
-            <h2 style="margin:0;">💧 Volumi & Acqua di Cotta (Modello All-Grain)</h2>
+            <h2 style="margin:0;">💧 Volumi &amp; Acqua di Cotta (Modello Impianto All-Grain)</h2>
             <span style="font-size:12px;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:12px;font-weight:600;">
-                Rapporto Mash 3.0 L/kg · Boil-off 2.5 L/h · Trub 1.5 L
+                {% if profilo_impianto_corrente %}
+                    {{ profilo_impianto_corrente.nome }} · Mash {{ profilo_impianto_corrente.rapporto_mash_l_kg or 3.0 }} L/kg · Boil-off {{ profilo_impianto_corrente.boil_off_litri_ora or 2.5 }} L/h · Trub {{ profilo_impianto_corrente.trub_loss_litri or 1.5 }} L
+                {% else %}
+                    Profilo Standard · Mash 3.0 L/kg · Boil-off 2.5 L/h · Trub 1.5 L
+                {% endif %}
             </span>
         </div>
         <p style="font-size:13px;color:#666;margin:0 0 14px 0;">
@@ -374,7 +394,9 @@
             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;">Acqua Mash (Ammostamento)</div>
                 <div style="font-size:22px;font-weight:bold;color:#1d4ed8;" id="vol-acqua-mash">{{ stats.volumi.acqua_mash }} L</div>
-                <div style="font-size:11px;color:#4b5563;">Infuso iniziale a 67°C</div>
+                <div style="font-size:11px;color:#4b5563;">
+                    Infuso a <strong id="vol-strike-temp" style="color:#b45309;">{{ stats.volumi.strike_water_temp_c if stats.volumi else '69.0' }}°C</strong> (per target 67°C)
+                </div>
             </div>
             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;">Acqua Sparge (Lavaggio)</div>
@@ -389,7 +411,7 @@
             <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:11px;font-weight:bold;color:#4b5563;text-transform:uppercase;">Assorbimento Grani</div>
                 <div style="font-size:22px;font-weight:bold;color:#374151;" id="vol-assorbimento">{{ stats.volumi.assorbimento_grani }} L</div>
-                <div style="font-size:11px;color:#4b5563;">Trattenuta trebbie (~0.96 L/kg)</div>
+                <div style="font-size:11px;color:#4b5563;">Trattenuta trebbie (~{{ profilo_impianto_corrente.assorbimento_grani_l_kg if profilo_impianto_corrente else 0.96 }} L/kg)</div>
             </div>
         </div>
     </div>
@@ -959,6 +981,207 @@
         </details>
     </div>
 
+    <!-- 🧪 CHIMICA ACQUA & PREDIZIONE PH MASH -->
+    <div class="card" id="card-ph-mash">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <h2 style="margin:0;">🧪 Predizione pH Mash &amp; Dosaggio Acidi (Modello Palmer &amp; Troester)</h2>
+            <span style="font-size:12px;background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:12px;font-weight:600;">
+                Target Mash pH: 5.2 - 5.6
+            </span>
+        </div>
+        <p style="font-size:13px;color:#666;margin:0 0 14px 0;">
+            Calcolato sull'Alcalinità Residua (RA) dell'acqua e sul potere tamponante/acidificante dei malti in ricetta (malti base, crystal e tostati).
+        </p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:16px;">
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">pH Mash Stimato</div>
+                <div style="font-size:26px;font-weight:bold;color:{% if stats.ph_mash.stato == 'ottimale' %}#15803d{% else %}#b45309{% endif %};" id="ph-mash-val">
+                    {{ stats.ph_mash.ph_stimato }}
+                </div>
+                <div style="margin-top:4px;">
+                    <span id="ph-mash-stato" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;background:{% if stats.ph_mash.stato == 'ottimale' %}#dcfce7;color:#166534{% elif stats.ph_mash.stato == 'alto' %}#fee2e2;color:#991b1b{% else %}#fef9c3;color:#854d0e{% endif %};">
+                        {{ stats.ph_mash.stato|upper }}
+                    </span>
+                </div>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">Alcalinità Residua (RA)</div>
+                <div style="font-size:26px;font-weight:bold;color:#0284c7;" id="ph-mash-ra">
+                    {{ stats.ph_mash.alcalinita_residua }} <span style="font-size:12px;color:#64748b;">ppm</span>
+                </div>
+                <div style="font-size:11px;color:#64748b;margin-top:4px;">mg/L equivalenti di CaCO₃</div>
+            </div>
+
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;">
+                <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;margin-bottom:6px;">💧 Correzione con Acido Lattico 80%</div>
+                <div style="font-size:13px;color:#1e3a8a;line-height:1.5;">
+                    <div>Nel Mash (infuso): <strong id="dose-lat-mash" style="font-size:15px;color:#1d4ed8;">{{ stats.acidi.acido_lattico_mash_ml }} mL</strong></div>
+                    <div>Nello Sparge (lavaggio): <strong id="dose-lat-sparge" style="font-size:15px;color:#1d4ed8;">{{ stats.acidi.acido_lattico_sparge_ml }} mL</strong></div>
+                </div>
+            </div>
+
+            <div style="background:#fdf2f8;border:1px solid #fbcfe8;border-radius:8px;padding:12px;">
+                <div style="font-size:11px;font-weight:bold;color:#9d174d;text-transform:uppercase;margin-bottom:6px;">🧪 In alternativa: Acido Fosforico 75%</div>
+                <div style="font-size:13px;color:#831843;line-height:1.5;">
+                    <div>Nel Mash (infuso): <strong id="dose-fos-mash" style="font-size:15px;color:#be185d;">{{ stats.acidi.acido_fosforico_mash_ml }} mL</strong></div>
+                    <div>Nello Sparge (lavaggio): <strong id="dose-fos-sparge" style="font-size:15px;color:#be185d;">{{ stats.acidi.acido_fosforico_sparge_ml }} mL</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding:10px 14px;background:#f0fdf4;border-left:4px solid #16a34a;border-radius:4px;font-size:13px;color:#166534;" id="ph-mash-consiglio">
+            💡 <strong>Consiglio del mastro birraio:</strong> {{ stats.ph_mash.consiglio }}
+        </div>
+    </div>
+
+    <!-- 🧫 PITCH RATE LIEVITO & STARTER -->
+    <div class="card" id="card-pitch-rate">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <h2 style="margin:0;">🧫 Pitch Rate &amp; Starter Lievito (White Labs / Brewfather)</h2>
+            <span style="font-size:12px;background:#e0e7ff;color:#3730a3;padding:3px 10px;border-radius:12px;font-weight:600;">
+                Tasso target: {{ stats.pitch_rate.pitch_rate_g_ml_p }} M cellule/mL/°P
+            </span>
+        </div>
+        <p style="font-size:13px;color:#666;margin:0 0 14px 0;">
+            Dimensionamento della popolazione cellulare per inoculo ideale, evitando under-pitching (fermentazioni bloccate o difetti) e over-pitching.
+        </p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:14px;">
+            <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#5b21b6;text-transform:uppercase;">Cellule Target</div>
+                <div style="font-size:24px;font-weight:bold;color:#6d28d9;" id="pr-cellule">
+                    {{ stats.pitch_rate.cellule_miliardi_target }} <span style="font-size:13px;color:#6b7280;">B</span>
+                </div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">Miliardi di cellule vitali</div>
+            </div>
+
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#166534;text-transform:uppercase;">Bustine Lievito Secco</div>
+                <div style="font-size:24px;font-weight:bold;color:#15803d;" id="pr-bustine">
+                    {{ stats.pitch_rate.bustine_secco_11g }}
+                </div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">Bustine standard da 11.5g</div>
+            </div>
+
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;">Fiale Lievito Liquido</div>
+                <div style="font-size:24px;font-weight:bold;color:#1d4ed8;" id="pr-fiale">
+                    {{ stats.pitch_rate.fiale_liquido }}
+                </div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">Fiale fresche (~100B cellule)</div>
+            </div>
+
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;">
+                <div style="font-size:11px;font-weight:bold;color:#92400e;text-transform:uppercase;margin-bottom:4px;">🌪️ Starter Magnetico</div>
+                {% if stats.pitch_rate.starter_raccomandato %}
+                <div style="font-size:12px;color:#78350f;">
+                    <div>Acqua starter: <strong id="pr-starter-l">{{ stats.pitch_rate.starter_litri }} L</strong></div>
+                    <div>DME estratto secco: <strong id="pr-starter-dme">{{ stats.pitch_rate.dme_grammi }} g</strong></div>
+                    <div style="font-size:11px;color:#92400e;margin-top:2px;">Mosto a 1.037 OG (rapporto 1:10)</div>
+                </div>
+                {% else %}
+                <div style="font-size:12px;color:#15803d;margin-top:4px;">
+                    ✅ Starter non strettamente necessario con secco. Inoculo diretto o reidratazione consigliata.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div style="font-size:12px;color:#555;padding:8px 12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;">
+            ℹ️ {{ stats.pitch_rate.descrizione }}
+        </div>
+    </div>
+
+    <!-- 🧊 PROFILO FERMENTAZIONE MULTI-STEP & PRIMING/CARBONAZIONE -->
+    <div class="card" id="card-fermentazione-priming">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <h2 style="margin:0;">🧊 Profilo di Fermentazione &amp; Carbonazione</h2>
+            <span style="font-size:12px;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:12px;font-weight:600;">
+                Multi-Step + Priming Bottiglia &amp; Fusto
+            </span>
+        </div>
+
+        <!-- TABELLA STEP FERMENTAZIONE -->
+        <h3 style="font-size:15px;margin:0 0 8px 0;color:#5a381e;">📅 Step di Fermentazione Programmati</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;" id="ferm-steps-display">
+            {% for s in fermentazione_steps %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:8px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-weight:bold;color:#1e293b;">{{ loop.index }}. {{ s.nome }}</span>
+                    <span style="font-size:11px;color:#64748b;">({{ s.tipo }})</span>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <span style="background:#dbeafe;color:#1e40af;font-weight:bold;font-size:12px;padding:3px 10px;border-radius:12px;">🌡️ {{ s.temp }}°C</span>
+                    <span style="background:#f1f5f9;color:#475569;font-weight:bold;font-size:12px;padding:3px 10px;border-radius:12px;">⏱️ {{ s.giorni }} giorni</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <details style="margin-bottom:20px;">
+            <summary style="font-size:13px;color:#0284c7;font-weight:bold;cursor:pointer;">✏️ Modifica step di fermentazione</summary>
+            <form method="post" action="/ricette/{{ ricetta.id }}/profilo-fermentazione" style="margin-top:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                <div id="ferm-form-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+                    {% for s in fermentazione_steps %}
+                    <div class="form-row-inline ferm-row" style="background:#fff;padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1;display:flex;gap:8px;align-items:center;">
+                        <div style="flex:2;"><input type="text" name="step_nome" value="{{ s.nome }}" placeholder="Nome fase" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;"></div>
+                        <div style="width:90px;"><input type="number" step="0.5" name="step_temp" value="{{ s.temp }}" placeholder="Temp °C" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;"></div>
+                        <div style="width:80px;"><input type="number" name="step_giorni" value="{{ s.giorni }}" placeholder="Giorni" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;"></div>
+                        <div style="width:140px;">
+                            <select name="step_tipo" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;">
+                                <option value="primaria" {% if s.tipo == 'primaria' %}selected{% endif %}>Primaria</option>
+                                <option value="dry_hop" {% if s.tipo == 'dry_hop' %}selected{% endif %}>Dry Hop</option>
+                                <option value="cold_crash" {% if s.tipo == 'cold_crash' %}selected{% endif %}>Cold Crash</option>
+                                <option value="condizionamento" {% if s.tipo == 'condizionamento' %}selected{% endif %}>Condizionamento</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="this.closest('.ferm-row').remove()" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:6px 10px;cursor:pointer;">✕</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button type="button" class="btn btn-ghost btn-xs" onclick="aggiungiStepFermentazione()">+ Aggiungi Step</button>
+                    <button type="submit" class="btn" style="background:#0284c7;padding:6px 14px;font-size:12px;">💾 Salva Profilo Fermentazione</button>
+                </div>
+            </form>
+        </details>
+
+        <!-- PRIMING & CARBONAZIONE -->
+        <h3 style="font-size:15px;margin:16px 0 8px 0;color:#5a381e;">🍾 Calcolatore Priming &amp; Carbonazione Fusto</h3>
+        <p style="font-size:13px;color:#666;margin:0 0 12px 0;">
+            Stima dello zucchero necessario per raggiungere <strong>{{ stats.priming.target_co2 }} volumi di CO₂</strong> su {{ ricetta.volume_target_litri }} L (CO₂ residua stimata disciolta: {{ stats.priming.co2_residua }} vol).
+        </p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;margin-bottom:12px;">
+            <div style="background:#fefce8;border:1px solid #fef08a;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#854d0e;text-transform:uppercase;">Destrosio</div>
+                <div style="font-size:20px;font-weight:bold;color:#a16207;" id="prim-destrosio">{{ stats.priming.destrosio_g }} g</div>
+                <div style="font-size:10px;color:#713f12;">Zucchero di mais</div>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#475569;text-transform:uppercase;">Saccarosio</div>
+                <div style="font-size:20px;font-weight:bold;color:#334155;" id="prim-saccarosio">{{ stats.priming.saccarosio_g }} g</div>
+                <div style="font-size:10px;color:#64748b;">Zucchero da tavola</div>
+            </div>
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#9a3412;text-transform:uppercase;">DME Secco</div>
+                <div style="font-size:20px;font-weight:bold;color:#c2410c;" id="prim-dme">{{ stats.priming.dme_g }} g</div>
+                <div style="font-size:10px;color:#9a3412;">Estratto di malto</div>
+            </div>
+            <div style="background:#fefce8;border:1px solid #fef08a;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#854d0e;text-transform:uppercase;">Miele</div>
+                <div style="font-size:20px;font-weight:bold;color:#a16207;" id="prim-miele">{{ stats.priming.miele_g }} g</div>
+                <div style="font-size:10px;color:#713f12;">Miele naturale</div>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#166534;text-transform:uppercase;">Kegging (4°C)</div>
+                <div style="font-size:20px;font-weight:bold;color:#15803d;" id="prim-keg-psi">{{ stats.priming.keg_psi_4c }} <span style="font-size:11px;">PSI</span></div>
+                <div style="font-size:10px;color:#166534;"><span id="prim-keg-bar">{{ stats.priming.keg_bar_4c }}</span> bar</div>
+            </div>
+        </div>
+    </div>
+
     <script>
     const SALI_ACQUA_ATTUALE = {
         ca: {{ profilo_acqua.ca if profilo_acqua else 0 }}, mg: {{ profilo_acqua.mg if profilo_acqua else 0 }},
@@ -1311,6 +1534,41 @@
                     setText("vol-preboil-og", v.preboil_og);
                     setText("stat-preboil-og", v.preboil_og);
                     setText("vol-assorbimento", v.assorbimento_grani + " L");
+                    if (v.strike_water_temp_c !== undefined) setText("vol-strike-temp", v.strike_water_temp_c + "°C");
+                }
+
+                if (s.ph_mash) {
+                    setText("ph-mash-val", s.ph_mash.ph_stimato);
+                    setText("ph-mash-ra", s.ph_mash.alcalinita_residua + " ppm");
+                    setText("ph-mash-stato", (s.ph_mash.stato || "").toUpperCase());
+                    const phEl = document.getElementById("ph-mash-val");
+                    if (phEl) phEl.style.color = s.ph_mash.stato === 'ottimale' ? '#15803d' : '#b45309';
+                    const cEl = document.getElementById("ph-mash-consiglio");
+                    if (cEl) cEl.innerHTML = `💡 <strong>Consiglio del mastro birraio:</strong> ${s.ph_mash.consiglio}`;
+                }
+
+                if (s.acidi) {
+                    setText("dose-lat-mash", s.acidi.acido_lattico_mash_ml + " mL");
+                    setText("dose-lat-sparge", s.acidi.acido_lattico_sparge_ml + " mL");
+                    setText("dose-fos-mash", s.acidi.acido_fosforico_mash_ml + " mL");
+                    setText("dose-fos-sparge", s.acidi.acido_fosforico_sparge_ml + " mL");
+                }
+
+                if (s.pitch_rate) {
+                    setText("pr-cellule", s.pitch_rate.cellule_miliardi_target + " B");
+                    setText("pr-bustine", s.pitch_rate.bustine_secco_11g);
+                    setText("pr-fiale", s.pitch_rate.fiale_liquido);
+                    if (s.pitch_rate.starter_litri !== undefined) setText("pr-starter-l", s.pitch_rate.starter_litri + " L");
+                    if (s.pitch_rate.dme_grammi !== undefined) setText("pr-starter-dme", s.pitch_rate.dme_grammi + " g");
+                }
+
+                if (s.priming) {
+                    setText("prim-destrosio", s.priming.destrosio_g + " g");
+                    setText("prim-saccarosio", s.priming.saccarosio_g + " g");
+                    setText("prim-dme", s.priming.dme_g + " g");
+                    setText("prim-miele", s.priming.miele_g + " g");
+                    setText("prim-keg-psi", s.priming.keg_psi_4c + " PSI");
+                    setText("prim-keg-bar", s.priming.keg_bar_4c);
                 }
 
                 if (data.confronto_stile) {
@@ -1559,6 +1817,74 @@
                 if (unitSel) unitSel.value = "g";
             }
         }
+
+        function apriModalScala() {
+            const m = document.getElementById('modal-scala');
+            if (m) m.style.display = 'flex';
+        }
+        function chiudiModalScala() {
+            const m = document.getElementById('modal-scala');
+            if (m) m.style.display = 'none';
+        }
+        function aggiungiStepFermentazione() {
+            const container = document.getElementById('ferm-form-rows');
+            if (!container) return;
+            const div = document.createElement('div');
+            div.className = 'form-row-inline ferm-row';
+            div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1;display:flex;gap:8px;align-items:center;';
+            div.innerHTML = `
+                <div style="flex:2;"><input type="text" name="step_nome" value="Nuova fase" placeholder="Nome fase" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;"></div>
+                <div style="width:90px;"><input type="number" step="0.5" name="step_temp" value="18" placeholder="Temp °C" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;"></div>
+                <div style="width:80px;"><input type="number" name="step_giorni" value="7" placeholder="Giorni" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;"></div>
+                <div style="width:140px;">
+                    <select name="step_tipo" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;width:100%;">
+                        <option value="primaria">Primaria</option>
+                        <option value="dry_hop">Dry Hop</option>
+                        <option value="cold_crash">Cold Crash</option>
+                        <option value="condizionamento">Condizionamento</option>
+                    </select>
+                </div>
+                <button type="button" onclick="this.closest('.ferm-row').remove()" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:6px 10px;cursor:pointer;">✕</button>
+            `;
+            container.appendChild(div);
+        }
     </script>
+
+    <!-- MODAL SCALA RICETTA -->
+    <div id="modal-scala" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;width:95%;max-width:480px;box-shadow:0 10px 40px rgba(0,0,0,0.25);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:10px;">
+                <h3 style="margin:0;color:#5a381e;">⚖️ Scala Dimensioni &amp; Parametri Ricetta</h3>
+                <button type="button" onclick="chiudiModalScala()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">✕</button>
+            </div>
+            <p style="font-size:13px;color:#666;margin:0 0 16px 0;">
+                Ricalcola automaticamente e proporziona tutti i malti e luppoli in base al nuovo volume impianto, efficienza, target OG o target IBU.
+            </p>
+            <form method="post" action="/ricette/{{ ricetta.id }}/scala">
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:12px;font-weight:bold;color:#333;display:block;margin-bottom:4px;">Volume Target Nel Fermentatore (L)</label>
+                    <input type="number" step="0.5" name="volume_target_litri" value="{{ ricetta.volume_target_litri }}" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" required>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:12px;font-weight:bold;color:#333;display:block;margin-bottom:4px;">Efficienza Impianto Stimata (%)</label>
+                    <input type="number" step="0.5" name="efficienza" value="{{ ricetta.efficienza }}" min="40" max="95" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" required>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                    <div>
+                        <label style="font-size:12px;font-weight:bold;color:#666;display:block;margin-bottom:4px;">Target OG (opzionale)</label>
+                        <input type="number" step="0.001" name="target_og" placeholder="es. 1.055" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:bold;color:#666;display:block;margin-bottom:4px;">Target IBU (opzionale)</label>
+                        <input type="number" step="0.5" name="target_ibu" placeholder="es. 38" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button type="button" onclick="chiudiModalScala()" style="background:#e2e8f0;color:#334155;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">Annulla</button>
+                    <button type="submit" class="btn" style="background:#7c3aed;padding:9px 18px;border:none;cursor:pointer;">⚖️ Scala e Salva Ricetta</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

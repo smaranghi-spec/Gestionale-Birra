@@ -15,7 +15,7 @@ from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 from .routers import prezzi, fattura, brewmonk, soci
 from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
-from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard
+from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard, iot
 
 Base.metadata.create_all(bind=engine)
 
@@ -86,6 +86,14 @@ def run_migrations():
         ("catalogo_ingredienti", "yeast_form", "TEXT"),
         ("catalogo_ingredienti", "misc_type", "TEXT"),
         ("catalogo_ingredienti", "misc_use", "TEXT"),
+        ("ricette", "profilo_birrificio_id", "INTEGER"),
+        ("ricette", "profilo_fermentazione_json", "TEXT"),
+        ("profilo_birrificio", "boil_off_litri_ora", "REAL DEFAULT 2.5"),
+        ("profilo_birrificio", "trub_loss_litri", "REAL DEFAULT 1.5"),
+        ("profilo_birrificio", "mash_tun_deadspace_litri", "REAL DEFAULT 1.0"),
+        ("profilo_birrificio", "assorbimento_grani_l_kg", "REAL DEFAULT 0.96"),
+        ("profilo_birrificio", "rapporto_mash_l_kg", "REAL DEFAULT 3.0"),
+        ("profilo_birrificio", "contrazione_termica_pct", "REAL DEFAULT 4.0"),
     ]
 
     with engine.connect() as conn:
@@ -256,7 +264,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-11-01_1120_brewfather_engine",
+        "build": "2026-11-01_1150_brewfather_full_suite",
     }
 
 
@@ -293,6 +301,7 @@ app.include_router(export_db.router)
 app.include_router(api_inventario.router)
 app.include_router(api_notifiche.router)
 app.include_router(dashboard.router)
+app.include_router(iot.router)
 
 @app.get("/amministrazione", response_class=HTMLResponse)
 def amministrazione(request: Request):
@@ -346,12 +355,56 @@ def seed_admin():
 @app.get("/api/stats-home")
 def stats_home():
     from .db import SessionLocal
-    from .models import Ricetta, Cotta, CatalogoIngrediente, Stile, Degustazione
+    from .models import Ricetta, Cotta, CatalogoIngrediente, Stile, Degustazione, STATI_COTTA
     db = SessionLocal()
     try:
-        cotte_attive = db.query(Cotta).filter(
-            Cotta.stato.notin_(["archiviata", "pronta"])
-        ).order_by(Cotta.id.desc()).limit(5).all()
+        FASI_DETT = {
+            "pianificata": {"label": "Pianificata", "color": "#64748b", "bg": "rgba(100,116,139,0.15)", "pct": 10},
+            "brewday": {"label": "Brew Day (Cotta)", "color": "#f59e0b", "bg": "rgba(245,158,11,0.15)", "pct": 25},
+            "fermentazione": {"label": "Fermentazione Primaria", "color": "#10b981", "bg": "rgba(16,185,129,0.15)", "pct": 50},
+            "secondaria": {"label": "Fermentazione Secondaria / Dry Hop", "color": "#06b6d4", "bg": "rgba(6,182,212,0.15)", "pct": 70},
+            "condizionamento": {"label": "Condizionamento / Lagering", "color": "#3b82f6", "bg": "rgba(59,130,246,0.15)", "pct": 80},
+            "imbottigliamento": {"label": "Imbottigliamento / Fusto", "color": "#8b5cf6", "bg": "rgba(139,92,246,0.15)", "pct": 90},
+            "maturazione": {"label": "Maturazione in Bottiglia", "color": "#ec4899", "bg": "rgba(236,72,153,0.15)", "pct": 95},
+            "pronta": {"label": "Pronta per la Spina", "color": "#10b981", "bg": "rgba(16,185,129,0.2)", "pct": 100},
+        }
+
+        cotte_attive = (
+            db.query(Cotta)
+            .filter(Cotta.stato.notin_(["archiviata"]))
+            .order_by(Cotta.id.desc())
+            .all()
+        )
+
+        cotte_out = []
+        tot_litri_in_prod = 0.0
+        for c in cotte_attive:
+            finfo = FASI_DETT.get(c.stato, {"label": c.stato.capitalize(), "color": "#f59e0b", "bg": "rgba(245,158,11,0.15)", "pct": 50})
+            litri = float(c.volume_imbottigliato or c.volume_post_bollitura or (c.ricetta.volume_target_litri if c.ricetta else 20.0) or 20.0)
+            if c.stato != "pronta":
+                tot_litri_in_prod += litri
+
+            cotte_out.append({
+                "id": c.id,
+                "nome": c.nome,
+                "codice": c.codice or f"COT-{c.id:03d}",
+                "stato": c.stato,
+                "fase_label": finfo["label"],
+                "fase_colore": "amber" if finfo["pct"] <= 25 else ("green" if finfo["pct"] <= 60 else ("blue" if finfo["pct"] <= 85 else "purple")),
+                "fase_progresso": finfo["pct"],
+                "color": finfo["color"],
+                "bg": finfo["bg"],
+                "pct": finfo["pct"],
+                "ricetta": c.ricetta.nome if c.ricetta else "Ricetta personalizzata",
+                "stile": c.ricetta.stile.nome if (c.ricetta and c.ricetta.stile) else "Stile libero",
+                "data_brew": c.data_brew or "—",
+                "data_cotta": c.data_brew or "—",
+                "fermentatore": c.fermentatore or "Non assegnato",
+                "temp": f"{c.temp_fermentazione}°C" if c.temp_fermentazione else "N/D",
+                "og": c.og_reale or (c.ricetta.og if c.ricetta else None),
+                "fg": c.fg_reale or (c.ricetta.fg if c.ricetta else None),
+                "litri": round(litri, 1),
+            })
 
         degs = db.query(Degustazione).order_by(Degustazione.id.desc()).limit(6).all()
         degu_out = []
@@ -370,10 +423,12 @@ def stats_home():
 
         return {
             "n_ricette": db.query(Ricetta).count(),
-            "n_cotte": db.query(Cotta).filter(Cotta.stato != "archiviata").count(),
+            "n_cotte": len([c for c in cotte_attive if c.stato != "pronta"]),
+            "tot_litri_produzione": round(tot_litri_in_prod, 1),
             "n_catalogo": db.query(CatalogoIngrediente).count(),
             "n_stili": db.query(Stile).count(),
-            "cotte_attive": [{"id": c.id, "nome": c.nome, "stato": c.stato, "ricetta": c.ricetta.nome if c.ricetta else ""} for c in cotte_attive],
+            "cotte_attive": cotte_out,
+            "produzione_dettaglio": cotte_out,
             "degustazioni": degu_out,
         }
     finally:

@@ -1,4 +1,6 @@
 import json
+from typing import Optional
+from datetime import date
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
@@ -20,6 +22,7 @@ from ..models import (
     ProfiloAcquaPreset,
     CatalogoIngrediente,
     InventarioItem,
+    ProfiloBirrificio,
 )
 from ..stats import (
     calcola_stats,
@@ -361,6 +364,15 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
     profili_preset_acqua = db.query(ProfiloAcquaPreset).order_by(ProfiloAcquaPreset.nome).all()
     catalogo_items = db.query(CatalogoIngrediente).order_by(CatalogoIngrediente.categoria, CatalogoIngrediente.nome).all()
     inventario_items = db.query(InventarioItem).order_by(InventarioItem.categoria, InventarioItem.nome).all()
+    profili_impianto = db.query(ProfiloBirrificio).order_by(ProfiloBirrificio.nome).all()
+
+    fermentazione_steps = []
+    if ricetta.profilo_fermentazione_json:
+        try:
+            parsed_ferm = json.loads(ricetta.profilo_fermentazione_json)
+            fermentazione_steps = parsed_ferm if isinstance(parsed_ferm, list) else []
+        except Exception:
+            fermentazione_steps = []
 
     return templates.TemplateResponse(
         "dettaglio_ricetta.html",
@@ -384,6 +396,8 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
             "profili_preset_acqua": profili_preset_acqua,
             "catalogo_items": catalogo_items,
             "inventario_items": inventario_items,
+            "profili_impianto": profili_impianto,
+            "fermentazione_steps": fermentazione_steps,
         },
     )
 
@@ -973,3 +987,135 @@ def esporta_beerxml(ricetta_id: int, db: Session = Depends(get_db)):
         media_type="application/xml",
         headers={"Content-Disposition": f'attachment; filename="{ricetta.nome}.xml"'},
     )
+
+
+@router.post("/ricette/{ricetta_id}/assegna-impianto")
+def assegna_impianto(
+    ricetta_id: int,
+    profilo_birrificio_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
+    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
+    if not ricetta:
+        return RedirectResponse("/ricette/html", status_code=303)
+    ricetta.profilo_birrificio_id = profilo_birrificio_id if profilo_birrificio_id and profilo_birrificio_id > 0 else None
+    db.commit()
+    return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
+
+
+@router.post("/ricette/{ricetta_id}/scala")
+def scala_ricetta(
+    ricetta_id: int,
+    nuovo_volume: float = Form(...),
+    nuova_efficienza: Optional[float] = Form(None),
+    nuova_og: Optional[float] = Form(None),
+    nuovi_ibu: Optional[float] = Form(None),
+    db: Session = Depends(get_db),
+):
+    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
+    if not ricetta:
+        return RedirectResponse("/ricette/html", status_code=303)
+
+    ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
+    old_stats = calcola_stats(ricetta, ingredienti)
+
+    old_vol = float(ricetta.volume_target_litri or 20.0)
+    old_eff = float(ricetta.efficienza or 75.0)
+    new_vol = max(1.0, float(nuovo_volume))
+    new_eff = float(nuova_efficienza) if nuova_efficienza and float(nuova_efficienza) > 0 else old_eff
+
+    grain_factor = (new_vol / max(1.0, old_vol)) * (old_eff / max(1.0, new_eff))
+    if nuova_og and float(nuova_og) > 1.0 and old_stats.get("og", 1.0) > 1.0:
+        target_pts = (float(nuova_og) - 1.0) * 1000.0
+        current_pts = max(1.0, (old_stats["og"] - 1.0) * 1000.0)
+        grain_factor *= (target_pts / current_pts)
+
+    target_ibu = float(nuovi_ibu) if nuovi_ibu and float(nuovi_ibu) > 0 else old_stats.get("ibu", 0.0)
+    current_ibu = max(0.1, old_stats.get("ibu", 0.0))
+    hop_factor = (new_vol / max(1.0, old_vol)) * (target_ibu / current_ibu if current_ibu > 0 and target_ibu > 0 else 1.0)
+
+    for i in ingredienti:
+        if i.categoria == "grain" and i.quantita:
+            i.quantita = round(float(i.quantita) * grain_factor, 3)
+        elif i.categoria == "hop" and i.quantita:
+            i.quantita = round(float(i.quantita) * hop_factor, 1)
+
+    ricetta.volume_target_litri = round(new_vol, 1)
+    ricetta.efficienza = round(new_eff, 1)
+    db.commit()
+    return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
+
+
+@router.post("/ricette/{ricetta_id}/profilo-fermentazione")
+def salva_profilo_fermentazione(
+    ricetta_id: int,
+    steps_json: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
+    if not ricetta:
+        return RedirectResponse("/ricette/html", status_code=303)
+    try:
+        parsed = json.loads(steps_json)
+        ricetta.profilo_fermentazione_json = json.dumps(parsed)
+    except Exception:
+        ricetta.profilo_fermentazione_json = steps_json
+    db.commit()
+    return RedirectResponse(f"/ricette/{ricetta_id}#profilo-ferm", status_code=303)
+
+
+@router.get("/ricette/{ricetta_id}/stampa", response_class=HTMLResponse)
+def scheda_cotta_stampa(
+    ricetta_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
+    if not ricetta:
+        return RedirectResponse("/ricette/html", status_code=303)
+
+    ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
+    grani = [i for i in ingredienti if i.categoria == "grain"]
+    luppoli = sorted([i for i in ingredienti if i.categoria == "hop"], key=lambda x: (x.time_min or 0), reverse=True)
+    lieviti = [i for i in ingredienti if i.categoria == "yeast"]
+    altri = [i for i in ingredienti if i.categoria not in ("grain", "hop", "yeast")]
+
+    stats = calcola_stats(ricetta, ingredienti)
+    stile = db.query(Stile).filter(Stile.id == ricetta.stile_id).first() if ricetta.stile_id else None
+    cf = confronta_stile(stats, stile)
+    profilo_mash = db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).first()
+    profilo_acqua = db.query(ProfiloAcqua).filter(ProfiloAcqua.ricetta_id == ricetta_id).first()
+
+    mash_steps = []
+    if profilo_mash and profilo_mash.steps_json:
+        try:
+            mash_steps = json.loads(profilo_mash.steps_json)
+        except Exception:
+            mash_steps = []
+
+    ferm_steps = []
+    if ricetta.profilo_fermentazione_json:
+        try:
+            ferm_steps = json.loads(ricetta.profilo_fermentazione_json)
+        except Exception:
+            ferm_steps = []
+
+    return templates.TemplateResponse(
+        "brew_sheet.html",
+        {
+            "request": request,
+            "ricetta": ricetta,
+            "grani": grani,
+            "luppoli": luppoli,
+            "lieviti": lieviti,
+            "altri": altri,
+            "stats": stats,
+            "stile": stile,
+            "confronto_stile": cf,
+            "mash_steps": mash_steps,
+            "profilo_acqua": profilo_acqua,
+            "ferm_steps": ferm_steps,
+            "oggi": date.today().strftime("%d/%m/%Y"),
+        },
+    )
+

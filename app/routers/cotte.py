@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA, Degustazione, InventarioItem
+from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA, Degustazione, InventarioItem, IngredienteRicetta
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -697,3 +697,54 @@ def stampa_scheda_cotta(cotta_id: int, request: Request, db: Session = Depends(g
             "session": request.session,
         }
     )
+
+
+@router.get("/cotte/{cotta_id}/brew-day", response_class=HTMLResponse)
+def brew_day_view(cotta_id: int, request: Request, db: Session = Depends(get_db)):
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta:
+        return RedirectResponse("/cotte", status_code=303)
+
+    ricetta = db.query(Ricetta).filter(Ricetta.id == cotta.ricetta_id).first() if cotta.ricetta_id else None
+    ingredienti = []
+    if ricetta:
+        ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta.id).all()
+
+    grani = [i for i in ingredienti if i.categoria == "grain"]
+    luppoli = sorted([i for i in ingredienti if i.categoria == "hop"], key=lambda x: (x.time_min or 0), reverse=True)
+    lieviti = [i for i in ingredienti if i.categoria == "yeast"]
+    altri = [i for i in ingredienti if i.categoria not in ("grain", "hop", "yeast")]
+
+    stats = {}
+    if ricetta:
+        from ..stats import calcola_stats
+        stats = calcola_stats(ricetta, ingredienti)
+
+    mash_steps = []
+    if ricetta and ricetta.profilo_mash and ricetta.profilo_mash.steps_json:
+        try:
+            mash_steps = json.loads(ricetta.profilo_mash.steps_json)
+        except Exception:
+            mash_steps = []
+    if not mash_steps:
+        mash_steps = [
+            {"nome": "Saccarificazione (Infuso Singolo)", "temp_gradi": 67, "durata_min": 60},
+            {"nome": "Mash Out", "temp_gradi": 78, "durata_min": 10},
+        ]
+
+    return templates.TemplateResponse(
+        request,
+        "brew_day.html",
+        {
+            "cotta": cotta,
+            "ricetta": ricetta,
+            "grani": grani,
+            "luppoli": luppoli,
+            "lieviti": lieviti,
+            "altri": altri,
+            "stats": stats,
+            "mash_steps": mash_steps,
+            "session": request.session,
+        }
+    )
+

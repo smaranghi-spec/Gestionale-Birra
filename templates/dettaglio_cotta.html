@@ -136,6 +136,15 @@
 
 <!-- ── BREW DAY ──────────────────────────────────────────── -->
 <div id="stab-brewday" class="stab-panel active">
+
+  <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div style="font-size:15px;font-weight:bold;color:#f59e0b;">⏱️ Modalità Brew Day Interattiva</div>
+      <div style="font-size:12px;color:var(--muted);">Timer ammostamento con suoni, allarmi gittate luppoli e calcolo automatico efficienze reali.</div>
+    </div>
+    <a href="/cotte/{{ cotta.id }}/brew-day" class="btn btn-primary" style="background:#f59e0b;color:#000;font-weight:bold;padding:8px 18px;">Apri Brew Day Live →</a>
+  </div>
+
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
 
   <div class="form-section">
@@ -212,6 +221,28 @@
       <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:7px 14px;">➕ Aggiungi Lettura</button>
     </form>
   </div>
+
+  <!-- Box Densimetri Digitali IoT (iSpindel / Tilt / RAPT) -->
+  <details style="margin-bottom:16px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:12px 14px;">
+    <summary style="cursor:pointer;font-weight:bold;color:#3b82f6;font-size:13px;display:flex;align-items:center;gap:6px;">
+      📡 Connetti Densimetro Digitale IoT (iSpindel / Tilt / RAPT Pill)
+    </summary>
+    <div style="font-size:12px;color:var(--text);margin-top:10px;line-height:1.5;">
+      <p style="margin:0 0 8px 0;">Configura il tuo densimetro digitale per inviare automaticamente gravità e temperatura in tempo reale ogni 15 minuti:</p>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;">
+        <span style="font-weight:bold;color:#f59e0b;">iSpindel Webhook URL:</span><br>
+        <code style="font-size:12px;color:#38bdf8;">https://gestionale-birra.onrender.com/api/iot/ispindel/{{ cotta.id }}</code>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;">
+        <span style="font-weight:bold;color:#f59e0b;">Tilt Hydrometer / Tilt Pi URL:</span><br>
+        <code style="font-size:12px;color:#38bdf8;">https://gestionale-birra.onrender.com/api/iot/tilt/{{ cotta.id }}</code>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;">
+        <span style="font-weight:bold;color:#f59e0b;">RAPT Pill / Script Generico JSON:</span><br>
+        <code style="font-size:12px;color:#38bdf8;">https://gestionale-birra.onrender.com/api/iot/generic/{{ cotta.id }}</code>
+      </div>
+    </div>
+  </details>
 
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
 

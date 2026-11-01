@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+{% block title %}⏱️ Brew Day Live — {{ cotta.nome }}{% endblock %}
+
+{% block content %}
+<style>
+    .brewday-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        color: var(--text);
+    }
+    .brew-hero {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .brew-hero h1 { margin: 0 0 4px 0; font-size: 22px; color: #f8fafc; }
+    .brew-hero .sub { color: #94a3b8; font-size: 13px; }
+
+    .step-card {
+        background: var(--card, #1e293b);
+        border: 1px solid var(--border, #334155);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .step-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+    }
+    .step-title {
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .timer-display {
+        font-family: monospace;
+        font-size: 48px;
+        font-weight: 800;
+        color: #f59e0b;
+        text-align: center;
+        margin: 14px 0;
+        letter-spacing: 2px;
+    }
+    .timer-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    .btn-timer {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        border: none;
+        transition: 0.15s;
+    }
+    .btn-start { background: #16a34a; color: white; }
+    .btn-start:hover { background: #15803d; }
+    .btn-pause { background: #eab308; color: #111827; }
+    .btn-pause:hover { background: #ca8a04; }
+    .btn-reset { background: #475569; color: white; }
+    .btn-reset:hover { background: #334155; }
+
+    .live-calc-box {
+        background: rgba(37,99,235,0.08);
+        border: 1px solid rgba(59,130,246,0.3);
+        border-radius: 8px;
+        padding: 14px;
+        margin-top: 14px;
+    }
+    .calc-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 13px;
+    }
+    .calc-val {
+        font-weight: 800;
+        font-size: 15px;
+    }
+
+    .alarm-banner {
+        display: none;
+        background: #dc2626;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 16px;
+        animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse { from { opacity: 0.85; } to { opacity: 1; transform: scale(1.01); } }
+</style>
+
+<div class="brewday-container">
+
+    <div id="alarm-box" class="alarm-banner">
+        🔔 ATTENZIONE: Timer completato!
+        <button onclick="dismissAlarm()" style="margin-left:12px;background:white;color:#dc2626;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:bold;">Spegni Allarme</button>
+    </div>
+
+    <!-- HERO TESTATA -->
+    <div class="brew-hero">
+        <div>
+            <h1>⏱️ Modalità Brew Day — {{ cotta.nome }}</h1>
+            <div class="sub">
+                Ricetta: <strong>{{ ricetta.nome if ricetta else 'Libera' }}</strong>
+                · Target Volume: <strong>{{ ricetta.volume_target_litri if ricetta else cotta.volume_post_bollitura or 20 }} L</strong>
+                · Target OG: <strong>{{ stats.og if stats else '—' }}</strong>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <a href="/ricette/{{ ricetta.id }}/stampa" target="_blank" class="btn btn-ghost btn-sm" style="color:#94a3b8;border:1px solid #475569;">📄 Scheda A4</a>
+            <a href="/cotte/{{ cotta.id }}" class="btn btn-ghost btn-sm" style="color:#94a3b8;border:1px solid #475569;">← Dettaglio Cotta</a>
+        </div>
+    </div>
+
+    <!-- FASE 1: ACQUA E STRIKE -->
+    <div class="step-card">
+        <div class="step-header">
+            <div class="step-title">💧 1. Preparazione Acqua & Strike Iniziale</div>
+            <span class="badge badge-blue">Temperatura Malti: 20°C</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;text-align:center;">
+            <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Volume Acqua Mash</div>
+                <div style="font-size:22px;font-weight:800;color:#3b82f6;">{{ stats.volumi.acqua_mash if stats.volumi else '—' }} L</div>
+                <div style="font-size:11px;color:var(--muted);">Nel tino ammostamento</div>
+            </div>
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;color:#fca5a5;text-transform:uppercase;font-weight:bold;">Temperatura Strike Water</div>
+                <div style="font-size:24px;font-weight:800;color:#ef4444;">{{ stats.strike_water_temp if stats.strike_water_temp else '69.0' }}°C</div>
+                <div style="font-size:11px;color:#fca5a5;">Per stabilizzare a {{ mash_steps[0].temp_gradi or mash_steps[0].temp or 67 }}°C</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Volume Sparge (Lavaggio)</div>
+                <div style="font-size:22px;font-weight:800;color:#3b82f6;">{{ stats.volumi.acqua_sparge if stats.volumi else '—' }} L</div>
+                <div style="font-size:11px;color:var(--muted);">Riscaldare a <strong>78°C</strong></div>
+            </div>
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;color:#6ee7b7;text-transform:uppercase;font-weight:bold;">Acido Lattico 80%</div>
+                <div style="font-size:20px;font-weight:800;color:#10b981;">
+                    {{ stats.acidi.lattico_mash_ml if stats.acidi else '0' }} mL
+                </div>
+                <div style="font-size:11px;color:#6ee7b7;">Mash ({{ stats.acidi.lattico_sparge_ml if stats.acidi else '0' }} mL sparge)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FASE 2: AMMOSTAMENTO (TIMER PROGRESSIVI) -->
+    <div class="step-card">
+        <div class="step-header">
+            <div class="step-title">🌡️ 2. Ammostamento — Step Mash Timer</div>
+            <span id="current-mash-label" style="font-size:13px;font-weight:bold;color:#f59e0b;">
+                Step 1: {{ mash_steps[0].nome if mash_steps else 'Saccarificazione' }} ({{ mash_steps[0].temp_gradi or mash_steps[0].temp or 67 }}°C)
+            </span>
+        </div>
+
+        <div class="timer-display" id="mash-timer-display">60:00</div>
+
+        <div class="timer-controls">
+            <button type="button" class="btn-timer btn-start" id="mash-btn-start" onclick="startMashTimer()">▶ Avvia Step</button>
+            <button type="button" class="btn-timer btn-pause" id="mash-btn-pause" onclick="pauseMashTimer()" style="display:none;">⏸ Pausa</button>
+            <button type="button" class="btn-timer btn-reset" onclick="resetMashTimer()">↺ Reimposta</button>
+            <button type="button" class="btn-timer" style="background:#3b82f6;color:white;" onclick="nextMashStep()">⏭ Prossimo Step</button>
+        </div>
+
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+            {% for st in mash_steps %}
+            <div id="step-pill-{{ loop.index0 }}" onclick="selectMashStep({{ loop.index0 }})"
+                 style="cursor:pointer;padding:8px 12px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:{% if loop.first %}#f59e0b;color:#000;font-weight:bold;{% else %}rgba(255,255,255,0.04);color:var(--text);{% endif %}">
+                #{{ loop.index }} {{ st.nome or st.name or 'Step' }} ({{ st.temp_gradi or st.temp or 67 }}°C · {{ st.durata_min or st.durata or 60 }}m)
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- FASE 3: SPARGE & MISURA PRE-BOLLITURA -->
+    <div class="step-card">
+        <div class="step-header">
+            <div class="step-title">🧪 3. Lavaggio Trebbie & Verifica Pre-Bollitura</div>
+            <span class="badge badge-amber">Target: {{ stats.volumi.preboil_volume }} L @ {{ stats.volumi.preboil_og }} SG</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-top:0;">
+            Raccogli il mosto nella pentola di bollitura. Mescola bene, preleva un campione, raffreddalo a 20°C e misura volume e densità per calcolare l'efficienza di estrazione reale del mash.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+                <label style="font-size:12px;font-weight:bold;color:var(--text);display:block;margin-bottom:4px;">Volume Pre-Bollitura Misurato (Litri)</label>
+                <input type="number" step="0.1" id="in-preboil-vol" value="{{ cotta.volume_pre_bollitura or stats.volumi.preboil_volume }}"
+                       style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;" oninput="calcolaEfficienzaLive()">
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:bold;color:var(--text);display:block;margin-bottom:4px;">Densità Pre-Bollitura Misurata (SG)</label>
+                <input type="number" step="0.001" id="in-preboil-sg" value="{{ stats.volumi.preboil_og }}"
+                       style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;" oninput="calcolaEfficienzaLive()">
+            </div>
+        </div>
+
+        <div class="live-calc-box">
+            <div class="calc-row">
+                <span>Efficienza Estrazione Mash Calcolata:</span>
+                <span class="calc-val" id="calc-mash-eff" style="color:#10b981;">— %</span>
+            </div>
+            <div class="calc-row" style="margin-bottom:0;">
+                <span style="color:var(--muted);font-size:11px;">Confronto con target:</span>
+                <span style="font-size:12px;" id="calc-mash-diff">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FASE 4: BOLLITURA CON ALERT LUPPOLI -->
+    <div class="step-card">
+        <div class="step-header">
+            <div class="step-title">🔥 4. Bollitura & Gittate Luppoli (60 Minuti)</div>
+            <span style="font-size:12px;color:#f59e0b;font-weight:bold;" id="boil-next-hop">Prossima gittata: Calcolo in corso…</span>
+        </div>
+
+        <div class="timer-display" id="boil-timer-display" style="color:#ef4444;">60:00</div>
+
+        <div class="timer-controls">
+            <button type="button" class="btn-timer btn-start" id="boil-btn-start" onclick="startBoilTimer()">▶ Inizia Bollitura</button>
+            <button type="button" class="btn-timer btn-pause" id="boil-btn-pause" onclick="pauseBoilTimer()" style="display:none;">⏸ Pausa</button>
+            <button type="button" class="btn-timer btn-reset" onclick="resetBoilTimer()">↺ Reimposta</button>
+        </div>
+
+        <h4 style="margin:14px 0 8px 0;font-size:13px;text-transform:uppercase;color:var(--muted);">Gittate programmate:</h4>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            {% for h in luppoli %}
+            <div id="hop-row-{{ loop.index0 }}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;font-size:13px;">
+                <div>
+                    <strong>{{ h.nome }}</strong> — {{ h.quantita }} {{ h.unita }} ({{ h.alpha_acid or 0 }}% AA)
+                </div>
+                <div>
+                    <span class="badge badge-amber" style="font-weight:bold;">
+                        {% if h.hop_use == 'Whirlpool' %}A fiamma spenta (0m){% else %}-{{ h.time_min or 0 }} min{% endif %}
+                    </span>
+                    <label style="margin-left:10px;font-size:11px;cursor:pointer;">
+                        <input type="checkbox" id="hop-chk-{{ loop.index0 }}"> Versato
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- FASE 5: POST-BOLLITURA & SALVATAGGIO COTTA -->
+    <div class="step-card">
+        <div class="step-header">
+            <div class="step-title">🍺 5. Misure Finali nel Fermentatore & Chiusura Cotta</div>
+            <span class="badge badge-green">Target: {{ ricetta.volume_target_litri }} L @ {{ stats.og }} SG</span>
+        </div>
+
+        <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:14px;">
+                <div>
+                    <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">Volume Finale in Fermentatore (L)</label>
+                    <input type="number" step="0.1" name="volume_post_bollitura" id="in-final-vol"
+                           value="{{ cotta.volume_post_bollitura or ricetta.volume_target_litri }}"
+                           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;" oninput="calcolaEfficienzaLive()">
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">OG Reale Misurata (SG)</label>
+                    <input type="number" step="0.001" name="og_reale" id="in-final-og"
+                           value="{{ cotta.og_reale or stats.og }}"
+                           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;" oninput="calcolaEfficienzaLive()">
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">Efficienza Impianto Reale (%)</label>
+                    <input type="number" step="0.1" name="efficienza_reale" id="in-real-eff"
+                           value="{{ cotta.efficienza_reale or ricetta.efficienza or 75 }}"
+                           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;color:#10b981;font-weight:bold;" readonly>
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">pH Mash Misurato</label>
+                    <input type="number" step="0.01" name="ph_mash" value="{{ cotta.ph_mash or stats.ph_mash.ph_stimato }}"
+                           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;">
+                </div>
+            </div>
+
+            <!-- hidden fields for preboil -->
+            <input type="hidden" name="volume_pre_bollitura" id="hidden-preboil-vol" value="{{ cotta.volume_pre_bollitura or stats.volumi.preboil_volume }}">
+
+            <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
+                <button type="submit" class="btn btn-primary" style="padding:12px 28px;font-size:16px;font-weight:bold;">
+                    💾 Salva Misurazioni & Passa a Fermentazione
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+// --- AUDIO SYNTHESIZER PER ALLARMI (ZERO FILE ESTERNI) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playChime() {
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.8);
+    } catch(e){}
+}
+
+function triggerAlarm(msg) {
+    playChime();
+    const box = document.getElementById("alarm-box");
+    box.innerHTML = `🔔 <strong>${msg}</strong> <button onclick="dismissAlarm()" style="margin-left:12px;background:white;color:#dc2626;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:bold;">OK</button>`;
+    box.style.display = "block";
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+function dismissAlarm() {
+    document.getElementById("alarm-box").style.display = "none";
+}
+
+// --- MASH STEPS LOGIC ---
+const MASH_STEPS = {{ mash_steps|tojson }};
+let currentStepIdx = 0;
+let mashSecondsRemaining = (MASH_STEPS[0] ? (MASH_STEPS[0].durata_min || MASH_STEPS[0].durata || 60) : 60) * 60;
+let mashTimerInterval = null;
+
+function updateMashDisplay() {
+    const m = Math.floor(mashSecondsRemaining / 60);
+    const s = mashSecondsRemaining % 60;
+    document.getElementById("mash-timer-display").textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function selectMashStep(idx) {
+    if (idx < 0 || idx >= MASH_STEPS.length) return;
+    pauseMashTimer();
+    currentStepIdx = idx;
+    const st = MASH_STEPS[idx];
+    const dur = st.durata_min || st.step_time || st.durata || 60;
+    mashSecondsRemaining = dur * 60;
+    updateMashDisplay();
+    document.getElementById("current-mash-label").textContent = `Step ${idx+1}: ${st.nome || st.name || 'Step'} (${st.temp_gradi || st.temp || 67}°C)`;
+
+    MASH_STEPS.forEach((_, i) => {
+        const el = document.getElementById(`step-pill-${i}`);
+        if (el) {
+            if (i === idx) {
+                el.style.background = "#f59e0b";
+                el.style.color = "#000";
+                el.style.fontWeight = "bold";
+            } else {
+                el.style.background = "rgba(255,255,255,0.04)";
+                el.style.color = "var(--text)";
+                el.style.fontWeight = "normal";
+            }
+        }
+    });
+}
+
+function startMashTimer() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (mashTimerInterval) return;
+    document.getElementById("mash-btn-start").style.display = "none";
+    document.getElementById("mash-btn-pause").style.display = "inline-block";
+    mashTimerInterval = setInterval(() => {
+        if (mashSecondsRemaining > 0) {
+            mashSecondsRemaining--;
+            updateMashDisplay();
+        } else {
+            pauseMashTimer();
+            triggerAlarm(`Step Mash #${currentStepIdx+1} Completato!`);
+        }
+    }, 1000);
+}
+
+function pauseMashTimer() {
+    if (mashTimerInterval) {
+        clearInterval(mashTimerInterval);
+        mashTimerInterval = null;
+    }
+    document.getElementById("mash-btn-start").style.display = "inline-block";
+    document.getElementById("mash-btn-pause").style.display = "none";
+}
+
+function resetMashTimer() {
+    pauseMashTimer();
+    const st = MASH_STEPS[currentStepIdx] || {};
+    mashSecondsRemaining = (st.durata_min || st.durata || 60) * 60;
+    updateMashDisplay();
+}
+
+function nextMashStep() {
+    if (currentStepIdx + 1 < MASH_STEPS.length) {
+        selectMashStep(currentStepIdx + 1);
+    } else {
+        triggerAlarm("Tutti gli step di ammostamento completati! Procedere con il lavaggio (Sparge).");
+    }
+}
+updateMashDisplay();
+
+// --- BOIL TIMER & HOP ALARMS ---
+let boilSecondsRemaining = 60 * 60;
+let boilTimerInterval = null;
+const HOPS = {{ luppoli|tojson }};
+
+function updateBoilDisplay() {
+    const m = Math.floor(boilSecondsRemaining / 60);
+    const s = boilSecondsRemaining % 60;
+    document.getElementById("boil-timer-display").textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+    // Controlla prossimo luppolo
+    const minsLeft = Math.ceil(boilSecondsRemaining / 60);
+    const nextHop = HOPS.find(h => (h.time_min || 0) <= minsLeft && (h.hop_use || 'Boil') !== 'Dry Hop');
+    if (nextHop) {
+        document.getElementById("boil-next-hop").textContent = `Prossima gittata: ${nextHop.nome} a -${nextHop.time_min || 0} min (${nextHop.quantita}g)`;
+    } else {
+        document.getElementById("boil-next-hop").textContent = "Nessun'altra gittata programmata.";
+    }
+}
+
+function startBoilTimer() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (boilTimerInterval) return;
+    document.getElementById("boil-btn-start").style.display = "none";
+    document.getElementById("boil-btn-pause").style.display = "inline-block";
+    boilTimerInterval = setInterval(() => {
+        if (boilSecondsRemaining > 0) {
+            boilSecondsRemaining--;
+            updateBoilDisplay();
+
+            // Allarme gittata esatta
+            HOPS.forEach((h, idx) => {
+                if ((h.hop_use || 'Boil') !== 'Dry Hop') {
+                    const tSec = (h.time_min || 0) * 60;
+                    if (boilSecondsRemaining === tSec) {
+                        triggerAlarm(`Gittata Luppolo: ${h.nome} (${h.quantita}g) adesso!`);
+                        const chk = document.getElementById(`hop-chk-${idx}`);
+                        if (chk) chk.checked = true;
+                    }
+                }
+            });
+        } else {
+            pauseBoilTimer();
+            triggerAlarm("Bollitura 60 min completata! Spegnere la fiamma e avviare il Whirlpool.");
+        }
+    }, 1000);
+}
+
+function pauseBoilTimer() {
+    if (boilTimerInterval) {
+        clearInterval(boilTimerInterval);
+        boilTimerInterval = null;
+    }
+    document.getElementById("boil-btn-start").style.display = "inline-block";
+    document.getElementById("boil-btn-pause").style.display = "none";
+}
+
+function resetBoilTimer() {
+    pauseBoilTimer();
+    boilSecondsRemaining = 60 * 60;
+    updateBoilDisplay();
+}
+updateBoilDisplay();
+
+// --- LIVE EFFICIENCY CALCULATION ---
+const TARGET_PREBOIL_PTS = {{ ((stats.volumi.preboil_og or 1.050) - 1.0) * 1000 * (stats.volumi.preboil_volume or 25) }};
+const TARGET_EFF = {{ ricetta.efficienza or 75 }};
+
+function calcolaEfficienzaLive() {
+    const pVol = parseFloat(document.getElementById("in-preboil-vol")?.value) || 0;
+    const pSG = parseFloat(document.getElementById("in-preboil-sg")?.value) || 1.0;
+    document.getElementById("hidden-preboil-vol").value = pVol;
+
+    if (pVol > 0 && pSG > 1.0 && TARGET_PREBOIL_PTS > 0) {
+        const actualPts = (pSG - 1.0) * 1000.0 * pVol;
+        const mashEff = Math.round((actualPts / TARGET_PREBOIL_PTS) * TARGET_EFF * 10) / 10;
+        document.getElementById("calc-mash-eff").textContent = mashEff + "%";
+        const diff = Math.round((mashEff - TARGET_EFF) * 10) / 10;
+        document.getElementById("calc-mash-diff").textContent = diff >= 0 ? `+${diff}% rispetto al target (${TARGET_EFF}%)` : `${diff}% rispetto al target (${TARGET_EFF}%)`;
+    }
+
+    const fVol = parseFloat(document.getElementById("in-final-vol")?.value) || 0;
+    const fSG = parseFloat(document.getElementById("in-final-og")?.value) || 1.0;
+    const targetOG = {{ stats.og or 1.050 }};
+    const targetVol = {{ ricetta.volume_target_litri or 20.0 }};
+
+    if (fVol > 0 && fSG > 1.0 && targetOG > 1.0 && targetVol > 0) {
+        const actualPointsTotal = (fSG - 1.0) * 1000.0 * fVol;
+        const targetPointsTotal = (targetOG - 1.0) * 1000.0 * targetVol;
+        const realEff = Math.round((actualPointsTotal / targetPointsTotal) * TARGET_EFF * 10) / 10;
+        document.getElementById("in-real-eff").value = realEff;
+    }
+}
+calcolaEfficienzaLive();
+</script>
+{% endblock %}

@@ -8,6 +8,7 @@
 .quick-link .qi{font-size:24px;}
 .degu-row{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(48,54,61,.4);}
 .degu-row:last-child{border-bottom:none;}
+.badge-purple{background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.3);}
 @media(max-width:600px){.home-hero{padding:20px 18px;}.home-hero::after{display:none;}}
 {% endblock %}
 {% block content %}
@@ -69,6 +70,25 @@
     {% if session.ruolo == 'admin' %}
     <a href="/utenti" class="quick-link" style="border: 1px solid var(--amber);"><span class="qi">🔑</span>Utenti</a>
     {% endif %}
+<!-- 🏭 STATO DELLA PRODUZIONE & FASI IN CORSO -->
+<div class="card" style="margin-bottom:24px;border:1px solid rgba(245,158,11,0.25);box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+  <div class="card-header" style="border-bottom:1px solid rgba(48,54,61,0.5);padding-bottom:14px;margin-bottom:16px;">
+    <div>
+      <div class="card-title" style="font-size:17px;display:flex;align-items:center;gap:8px;">
+        <span>🏭</span> Stato della Produzione &amp; Fasi in Corso
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+        Riepilogo in tempo reale di lotti attivi, fermentatori, temperature e fasi produttive
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span class="badge badge-amber" id="badge-tot-litri" style="font-size:12px;padding:4px 10px;">0 L in produzione</span>
+      <a href="/cotte" class="btn btn-primary btn-xs">Tutte le cotte →</a>
+    </div>
+  </div>
+  
+  <div id="produzione-dettaglio-container">
+    <div style="color:var(--muted);font-size:13px;padding:12px 0;">Caricamento stato produzione…</div>
   </div>
 </div>
 
@@ -227,6 +247,93 @@ async function loadStats() {
     document.getElementById('n-cotte').textContent = d.n_cotte ?? '—';
     document.getElementById('n-catalogo').textContent = d.n_catalogo ?? '—';
     document.getElementById('n-stili').textContent = d.n_stili ?? '—';
+
+    // Produzione in corso & Fasi
+    const prodCont = document.getElementById('produzione-dettaglio-container');
+    const badgeTotLitri = document.getElementById('badge-tot-litri');
+    if (badgeTotLitri) {
+      badgeTotLitri.textContent = `${d.tot_litri_produzione || 0} L in produzione`;
+    }
+    if (prodCont) {
+      if (!d.produzione_dettaglio || d.produzione_dettaglio.length === 0) {
+        prodCont.innerHTML = `
+          <div style="text-align:center;padding:26px 16px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px dashed var(--border);">
+            <div style="font-size:32px;margin-bottom:8px;">🍺</div>
+            <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Nessuna cotta attualmente in produzione</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Tutti i fermentatori sono attualmente liberi.</div>
+            <a href="/cotte" class="btn btn-primary btn-sm">🚀 Avvia una nuova cotta</a>
+          </div>`;
+      } else {
+        prodCont.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            ${d.produzione_dettaglio.map(p => `
+              <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;transition:0.15s;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <a href="/cotte/${p.id}" style="font-size:16px;font-weight:700;color:var(--text);text-decoration:none;">${p.nome}</a>
+                      <span class="badge badge-${p.fase_colore}" style="font-size:11px;">${p.fase_label}</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                      Ricetta: <strong style="color:var(--text);">${p.ricetta}</strong> · Stile: <em>${p.stile}</em>
+                      ${p.data_cotta ? ` · Cotta del ${p.data_cotta}` : ''}
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <a href="/cotte/${p.id}/brew-day" class="btn btn-ghost btn-xs" style="border-color:var(--amber);color:var(--amber);" title="Timer ammostamento e allarmi luppolo">
+                      ⏱️ Brew Day Live
+                    </a>
+                    <a href="/cotte/${p.id}" class="btn btn-ghost btn-xs">
+                      📈 Dettaglio &amp; IoT →
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Avanzamento ciclo produttivo -->
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+                    <span>Fase attuale: <strong style="color:var(--text);">${p.fase_label}</strong></span>
+                    <span>${p.fase_progresso}%</span>
+                  </div>
+                  <div style="width:100%;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
+                    <div style="width:${p.fase_progresso}%;height:100%;background:${
+                      p.fase_colore === 'amber' ? 'var(--amber)' :
+                      p.fase_colore === 'green' ? 'var(--green, #22c55e)' :
+                      p.fase_colore === 'blue' ? 'var(--blue, #3b82f6)' :
+                      p.fase_colore === 'purple' ? '#a855f7' : 'var(--amber)'
+                    };border-radius:4px;transition:width 0.4s ease;"></div>
+                  </div>
+                </div>
+
+                <!-- Parametri chiave lotto -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;background:rgba(0,0,0,0.18);padding:10px 12px;border-radius:8px;font-size:12px;">
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;display:block;">Fermentatore</span>
+                    <strong style="color:var(--text);">${p.fermentatore}</strong>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;display:block;">Temperatura</span>
+                    <strong style="color:var(--text);">${p.temp}</strong>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;display:block;">Volume</span>
+                    <strong style="color:var(--text);">${p.litri} L</strong>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;display:block;">OG Stim/Eff</span>
+                    <strong style="color:var(--text);">${p.og || '—'}</strong>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;display:block;">FG Stim/Eff</span>
+                    <strong style="color:var(--text);">${p.fg || '—'}</strong>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
 
     if (d.cotte_attive) {
       const ca = document.getElementById('cotte-attive');
