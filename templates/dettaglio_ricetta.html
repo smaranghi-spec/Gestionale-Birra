@@ -258,7 +258,12 @@
     <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
             <div>
-                <h1 style="margin:0 0 8px 0;">{{ ricetta.nome }}</h1>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                    <h1 style="margin:0;">{{ ricetta.nome }}</h1>
+                    {% if ricetta.codice %}
+                    <span style="font-family:monospace;font-size:13px;background:#e8ded5;color:#5a381e;padding:3px 8px;border-radius:6px;font-weight:bold;letter-spacing:0.5px;">{{ ricetta.codice }}</span>
+                    {% endif %}
+                </div>
                 <p style="margin:0 0 6px 0;">
                     <strong>Tipo:</strong> {{ ricetta.tipo }}
                     · <strong>Volume:</strong> {{ ricetta.volume_target_litri }} L
@@ -688,6 +693,9 @@
                 {% set p = percentuali.get(i.id, {}) %}
                 <tr>
                     <td>
+                        {% if i.codice_ingrediente %}
+                        <span style="font-family:monospace;font-size:10px;background:#e8ded5;color:#5a381e;padding:1px 5px;border-radius:4px;font-weight:bold;margin-right:4px;">{{ i.codice_ingrediente }}</span>
+                        {% endif %}
                         <strong>{{ i.nome }}</strong><br>
                         <span class="small-note">ID {{ i.id }}</span>
                     </td>

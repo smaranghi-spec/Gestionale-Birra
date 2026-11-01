@@ -8,7 +8,17 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import Cotta, LogCotta, Ricetta, STATI_COTTA, Degustazione, InventarioItem, IngredienteRicetta
+from ..models import (
+    Cotta,
+    LogCotta,
+    Ricetta,
+    STATI_COTTA,
+    Degustazione,
+    InventarioItem,
+    IngredienteRicetta,
+    CottaIngredienteLotto,
+)
+from ..codici import genera_prossimo_codice_cotta
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -81,9 +91,10 @@ def nuova_cotta(
     note: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    c_codice = codice.strip().upper() if codice and codice.strip() else genera_prossimo_codice_cotta(date.today().year, db)
     cotta = Cotta(
         nome=nome,
-        codice=codice or None,
+        codice=c_codice,
         ricetta_id=ricetta_id if ricetta_id else None,
         data_brew=data_brew or None,
         fermentatore=fermentatore or None,
@@ -390,21 +401,54 @@ def vai_produzione_page(cotta_id: int, request: Request, db: Session = Depends(g
     ingredienti_scalati = []
     for ing in ricetta.ingredienti:
         qty_scalata = round(ing.quantita * fattore, 3)
-        # Controlla disponibilità in inventario
-        inv = db.query(InventarioItem).filter(
-            InventarioItem.nome.ilike(f"%{ing.nome[:20]}%")
-        ).first()
-        disponibile = inv.quantita if inv else None
+
+        # Cerca lotti in magazzino per codice_ingrediente o per nome
+        inv_query = db.query(InventarioItem)
+        if ing.codice_ingrediente:
+            inv_query = inv_query.filter(
+                (InventarioItem.codice_ingrediente == ing.codice_ingrediente) |
+                (InventarioItem.codice == ing.codice_ingrediente) |
+                (InventarioItem.nome.ilike(f"%{ing.nome[:15]}%"))
+            )
+        else:
+            inv_query = inv_query.filter(
+                InventarioItem.nome.ilike(f"%{ing.nome[:15]}%")
+            )
+
+        # Ordina per FEFO (data di scadenza più vicina prima)
+        lotti_db = inv_query.order_by(
+            InventarioItem.data_scadenza.asc().nullslast(),
+            InventarioItem.id.asc()
+        ).all()
+
+        totale_disponibile = sum((l.quantita or 0.0) for l in lotti_db) if lotti_db else 0.0
+
+        # Identifica il lotto consigliato (FEFO con giacenza > 0)
+        lotto_selezionato_id = None
+        for l in lotti_db:
+            if (l.quantita or 0.0) >= qty_scalata:
+                lotto_selezionato_id = l.id
+                break
+        if not lotto_selezionato_id and lotti_db:
+            for l in lotti_db:
+                if (l.quantita or 0.0) > 0:
+                    lotto_selezionato_id = l.id
+                    break
+        if not lotto_selezionato_id and lotti_db:
+            lotto_selezionato_id = lotti_db[0].id
+
         ingredienti_scalati.append({
             "id": ing.id,
             "nome": ing.nome,
+            "codice_ingrediente": ing.codice_ingrediente,
             "categoria": ing.categoria,
             "quantita_ricetta": ing.quantita,
             "unita": ing.unita,
             "quantita_scalata": qty_scalata,
-            "disponibile": disponibile,
-            "inv_id": inv.id if inv else None,
-            "sufficiente": (disponibile is None or disponibile >= qty_scalata),
+            "disponibile": round(totale_disponibile, 3) if lotti_db else None,
+            "sufficiente": (not lotti_db or totale_disponibile >= qty_scalata),
+            "lotti": lotti_db,
+            "lotto_default_id": lotto_selezionato_id,
         })
 
     return templates.TemplateResponse(request, "vai_produzione.html", {
@@ -434,6 +478,10 @@ async def vai_produzione_submit(cotta_id: int, request: Request, db: Session = D
         vol_batch = vol_ricetta
     fattore = vol_batch / vol_ricetta if vol_ricetta else 1.0
 
+    # Assicura codice cotta univoco (COT-YYYY-NNN)
+    if not cotta.codice:
+        cotta.codice = genera_prossimo_codice_cotta(date.today().year, db)
+
     # Aggiorna volume cotta
     cotta.volume_post_bollitura = vol_batch
 
@@ -445,23 +493,63 @@ async def vai_produzione_submit(cotta_id: int, request: Request, db: Session = D
             timestamp=_now_str(),
             fase="brewday",
             tipo="evento",
-            descrizione=f"Avviata produzione — volume: {vol_batch}L (fattore scala: ×{round(fattore,3)})",
+            descrizione=f"Avviata produzione — batch {cotta.codice} — volume: {vol_batch}L (fattore scala: ×{round(fattore,3)})",
         ))
 
-    # Scala ingredienti e scarica inventario se richiesto
+    # Pulisci eventuali precedenti registrazioni lotti se ri-eseguita
+    db.query(CottaIngredienteLotto).filter(CottaIngredienteLotto.cotta_id == cotta_id).delete(synchronize_session=False)
+
     movimenti = []
     for ing in ricetta.ingredienti:
         qty_scalata = round(ing.quantita * fattore, 3)
-        log_desc = f"Ingrediente: {ing.nome} × {qty_scalata} {ing.unita}"
-        if scarica_inventario:
-            inv = db.query(InventarioItem).filter(
-                InventarioItem.nome.ilike(f"%{ing.nome[:20]}%")
-            ).first()
-            if inv and inv.quantita >= qty_scalata:
-                inv.quantita = round(inv.quantita - qty_scalata, 4)
-                inv.ultimo_aggiornamento = _now_str()
-                log_desc += f" (scaricato da magazzino)"
-        movimenti.append(log_desc)
+        lotto_sel = (form.get(f"lotto_sel_{ing.id}") or "").strip()
+        lotto_manuale = (form.get(f"lotto_manuale_{ing.id}") or "").strip()
+        fornitore_manuale = (form.get(f"fornitore_manuale_{ing.id}") or "").strip()
+        scadenza_manuale = (form.get(f"scadenza_manuale_{ing.id}") or "").strip()
+
+        inv_item = None
+        if lotto_sel and lotto_sel.isdigit():
+            inv_item = db.query(InventarioItem).filter(InventarioItem.id == int(lotto_sel)).first()
+
+        num_lotto = None
+        fornitore = None
+        data_scad = None
+        inv_id = None
+
+        if inv_item:
+            inv_id = inv_item.id
+            num_lotto = inv_item.numero_lotto
+            fornitore = inv_item.fornitore
+            data_scad = inv_item.data_scadenza
+            if scarica_inventario:
+                inv_item.quantita = max(0.0, round((inv_item.quantita or 0.0) - qty_scalata, 4))
+                inv_item.ultimo_aggiornamento = _now_str()
+        elif lotto_manuale:
+            num_lotto = lotto_manuale
+            fornitore = fornitore_manuale or None
+            data_scad = scadenza_manuale or None
+
+        # Crea record tracciabilità cotta-lotto
+        c_lotto = CottaIngredienteLotto(
+            cotta_id=cotta_id,
+            inventario_id=inv_id,
+            codice_ingrediente=ing.codice_ingrediente or (inv_item.codice_ingrediente if inv_item else None) or (inv_item.codice if inv_item else None),
+            nome_ingrediente=ing.nome,
+            categoria=ing.categoria,
+            numero_lotto=num_lotto,
+            fornitore=fornitore,
+            data_scadenza=data_scad,
+            quantita_usata=qty_scalata,
+            unita=ing.unita,
+            timestamp=_now_str(),
+            note=f"Tracciabilità cotta {cotta.codice}",
+        )
+        db.add(c_lotto)
+
+        log_d = f"{ing.nome} × {qty_scalata} {ing.unita}"
+        if num_lotto:
+            log_d += f" (Lotto: {num_lotto})"
+        movimenti.append(log_d)
 
     if movimenti:
         db.add(LogCotta(
@@ -469,11 +557,11 @@ async def vai_produzione_submit(cotta_id: int, request: Request, db: Session = D
             timestamp=_now_str(),
             fase="brewday",
             tipo="nota",
-            descrizione="Ingredienti scalati: " + " | ".join(movimenti[:5]) + (f" + altri {len(movimenti)-5}" if len(movimenti)>5 else ""),
+            descrizione="Materie prime impiegate: " + " | ".join(movimenti[:5]) + (f" + altri {len(movimenti)-5}" if len(movimenti)>5 else ""),
         ))
 
     db.commit()
-    return RedirectResponse(f"/cotte/{cotta_id}?msg=Produzione+avviata", status_code=303)
+    return RedirectResponse(f"/cotte/{cotta_id}?msg=Produzione+avviata+e+lotti+registrati", status_code=303)
 
 
 @router.post("/cotte/{cotta_id}/elimina")
@@ -481,7 +569,8 @@ def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if cotta:
         try:
-            from ..models import LetturaDensita, LogCotta, Degustazione, AggiuntaCotta
+            from ..models import LetturaDensita, LogCotta, Degustazione, AggiuntaCotta, CottaIngredienteLotto
+            db.query(CottaIngredienteLotto).filter(CottaIngredienteLotto.cotta_id == cotta_id).delete(synchronize_session=False)
             db.query(LetturaDensita).filter(LetturaDensita.cotta_id == cotta_id).delete(synchronize_session=False)
             db.query(LogCotta).filter(LogCotta.cotta_id == cotta_id).delete(synchronize_session=False)
             db.query(Degustazione).filter(Degustazione.cotta_id == cotta_id).delete(synchronize_session=False)

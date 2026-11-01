@@ -31,6 +31,7 @@ from ..stats import (
     calcola_costo,
     srm_to_hex,
 )
+from ..codici import genera_prossimo_codice_ricetta, genera_prossimo_codice_cotta
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -76,6 +77,7 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
 @router.post("/ricette/html")
 def crea_ricetta(
     nome: str = Form(...),
+    codice: str = Form(""),
     tipo: str = Form(...),
     volume_target_litri: float = Form(...),
     efficienza: float = Form(...),
@@ -87,7 +89,9 @@ def crea_ricetta(
     db: Session = Depends(get_db),
 ):
     import json as _json
+    c_codice = codice.strip().upper() if codice and codice.strip() else genera_prossimo_codice_ricetta(db)
     r = Ricetta(
+        codice=c_codice,
         nome=nome,
         tipo=tipo,
         volume_target_litri=volume_target_litri,
@@ -224,7 +228,9 @@ def libreria_importa_ricetta(slug: str, request: Request, db: Session = Depends(
             f"{r_data.get('descrizione', '')}\n\n[Consigli Brewday]: {r_data.get('consigli_brewday', '')}"
         ).strip()
 
+        c_codice = genera_prossimo_codice_ricetta(db)
         nuova_ricetta = Ricetta(
+            codice=c_codice,
             nome=r_data["nome"],
             tipo=r_data.get("tipo", "All Grain"),
             volume_target_litri=float(r_data.get("volume_target_litri", 23.0)),
@@ -239,10 +245,14 @@ def libreria_importa_ricetta(slug: str, request: Request, db: Session = Depends(
 
         # Add ingredients
         for ing in r_data.get("ingredienti", []):
+            ing_nome = ing.get("nome")
+            cat_match = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.nome.ilike(f"%{ing_nome[:15]}%")).first() if ing_nome else None
+            sku = cat_match.codice if cat_match else None
             db.add(
                 IngredienteRicetta(
                     ricetta_id=nuova_ricetta.id,
-                    nome=ing.get("nome"),
+                    codice_ingrediente=sku,
+                    nome=ing_nome,
                     categoria=ing.get("categoria"),
                     quantita=float(ing.get("quantita", 0.0)),
                     unita=ing.get("unita", "kg"),
@@ -431,6 +441,7 @@ def aggiungi_ingrediente_rapido(
         if item:
             ing = IngredienteRicetta(
                 ricetta_id=ricetta_id,
+                codice_ingrediente=item.codice,
                 nome=item.nome,
                 categoria=item.categoria,
                 quantita=quantita,
@@ -475,6 +486,7 @@ def aggiungi_ingrediente_rapido(
 
             ing = IngredienteRicetta(
                 ricetta_id=ricetta_id,
+                codice_ingrediente=item.codice_ingrediente or item.codice or (cat_match.codice if cat_match else None),
                 nome=item.nome,
                 categoria=cat,
                 quantita=quantita,
@@ -500,8 +512,10 @@ def aggiungi_ingrediente_rapido(
 
     elif sorgente == "manuale" and nome_manuale and categoria_manuale:
         cat = categoria_manuale.strip().lower()
+        cat_match = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.nome.ilike(f"%{nome_manuale.strip()[:15]}%")).first()
         ing = IngredienteRicetta(
             ricetta_id=ricetta_id,
+            codice_ingrediente=cat_match.codice if cat_match else None,
             nome=nome_manuale.strip(),
             categoria=cat,
             quantita=quantita,
@@ -641,9 +655,10 @@ def avvia_cotta_da_ricetta(
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
 
+    c_codice = codice.strip().upper() if codice and codice.strip() else genera_prossimo_codice_cotta(date.today().year, db)
     cotta = Cotta(
         nome=nome,
-        codice=codice or None,
+        codice=c_codice,
         ricetta_id=ricetta_id,
         data_brew=data_brew or None,
         fermentatore=fermentatore or None,
@@ -784,6 +799,7 @@ def form_modifica_ricetta(
 def salva_modifica_ricetta(
     ricetta_id: int,
     nome: str = Form(...),
+    codice: str = Form(""),
     tipo: str = Form(...),
     volume_target_litri: float = Form(...),
     efficienza: float = Form(...),
@@ -797,6 +813,10 @@ def salva_modifica_ricetta(
         return RedirectResponse("/ricette/html", status_code=303)
 
     ricetta.nome = nome
+    if codice and codice.strip():
+        ricetta.codice = codice.strip().upper()
+    elif not ricetta.codice:
+        ricetta.codice = genera_prossimo_codice_ricetta(db)
     ricetta.tipo = tipo
     ricetta.volume_target_litri = volume_target_litri
     ricetta.efficienza = efficienza

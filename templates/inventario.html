@@ -55,7 +55,7 @@
       </div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table class="tbl">
-        <thead><tr><th>Articolo</th><th>Q.tà attuale</th><th>Soglia min.</th><th>Prezzo unit.</th><th>Fornitore</th><th>Aggiornato</th><th></th></tr></thead>
+        <thead><tr><th>Articolo</th><th>SKU / Lotto</th><th>Q.tà attuale</th><th>Soglia min.</th><th>Prezzo unit.</th><th>Fornitore</th><th>Aggiornato</th><th></th></tr></thead>
         <tbody>
         {% for item in cat_items %}
         {% set sotto = item.quantita_minima and item.quantita <= item.quantita_minima %}
@@ -63,6 +63,19 @@
           <td>
             <div style="font-weight:600;{% if sotto %}color:var(--red);{% endif %}">{{ item.nome }}</div>
             {% if item.note %}<div style="font-size:10px;color:var(--muted);">{{ item.note[:50] }}</div>{% endif %}
+          </td>
+          <td>
+            {% if item.codice_ingrediente or item.codice %}
+            <span class="badge badge-gray" style="font-family:monospace;font-size:10px;padding:1px 5px;letter-spacing:0.5px;">{{ item.codice_ingrediente or item.codice }}</span>
+            {% else %}
+            <span style="color:var(--muted);font-size:11px;">—</span>
+            {% endif %}
+            {% if item.numero_lotto %}
+            <div style="font-size:11px;color:var(--amber);margin-top:2px;">Lotto: {{ item.numero_lotto }}</div>
+            {% endif %}
+            {% if item.data_scadenza %}
+            <div style="font-size:10px;color:var(--muted);">Scad: {{ item.data_scadenza }}</div>
+            {% endif %}
           </td>
           <td>
             <span style="font-weight:700;color:{% if sotto %}var(--red){% else %}var(--text){% endif %};">{{ item.quantita }} {{ item.unita }}</span>

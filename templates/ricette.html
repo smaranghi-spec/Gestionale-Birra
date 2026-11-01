@@ -118,6 +118,10 @@
               <label>Nome ricetta <span class="req">*</span></label>
               <input type="text" name="nome" placeholder="es. Weizen Estiva 2025" required autofocus>
             </div>
+            <div class="field-wrap full">
+              <label>Codice Ricetta (opzionale)</label>
+              <input type="text" name="codice" placeholder="Auto: RIC-001, RIC-002...">
+            </div>
             <div class="field-group">
               <div class="field-wrap">
                 <label>Tipo</label>
@@ -217,10 +221,15 @@
     <div id="ricette-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
     {% for r in ricette %}
     <a href="/ricette/{{ r.id }}" class="ricetta-card-link"
-       data-search="{{ (r.nome ~ ' ' ~ (r.stile.nome if r.stile else '') ~ ' ' ~ (r.tipo or ''))|lower }}">
+       data-search="{{ ((r.codice or '') ~ ' ' ~ r.nome ~ ' ' ~ (r.stile.nome if r.stile else '') ~ ' ' ~ (r.tipo or ''))|lower }}">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-          <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3;">{{ r.nome }}</div>
+          <div>
+            {% if r.codice %}
+            <span class="badge badge-gray" style="font-family:monospace;font-size:10px;padding:1px 5px;letter-spacing:0.5px;margin-bottom:3px;display:inline-block;">{{ r.codice }}</span>
+            {% endif %}
+            <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3;">{{ r.nome }}</div>
+          </div>
           <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
             <span class="badge badge-amber" style="font-size:10px;">{{ r.tipo or 'AG' }}</span>
             {% set n_cotte = cotte_count.get(r.id, 0) %}

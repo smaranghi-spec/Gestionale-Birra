@@ -4,66 +4,100 @@
 
 <div style="margin-bottom:20px;">
   <a href="/cotte/{{ cotta.id }}" class="btn btn-ghost btn-sm" style="margin-bottom:12px;">← {{ cotta.nome }}</a>
-  <h1 style="font-size:22px;margin-bottom:4px;">▶ Avvia Produzione</h1>
-  <p style="color:var(--muted);">Ricetta: <strong style="color:var(--text);">{{ ricetta.nome }}</strong></p>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <h1 style="font-size:22px;margin:0;">▶ Avvia Produzione &amp; Assegna Lotti</h1>
+    {% if cotta.codice %}
+    <span class="badge badge-amber" style="font-family:monospace;font-size:13px;padding:4px 8px;">{{ cotta.codice }}</span>
+    {% else %}
+    <span class="badge badge-gray" style="font-family:monospace;font-size:12px;">Auto: COT-{{ cotta.id }}</span>
+    {% endif %}
+  </div>
+  <p style="color:var(--muted);margin-top:4px;">
+    Ricetta: <strong style="color:var(--text);">{{ ricetta.nome }}</strong>
+    {% if ricetta.codice %}<span class="badge badge-gray" style="font-family:monospace;font-size:11px;margin-left:4px;">{{ ricetta.codice }}</span>{% endif %}
+  </p>
 </div>
 
 <form method="post" action="/cotte/{{ cotta.id }}/vai-produzione">
 <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
 
-  <!-- Ingredienti scalati -->
+  <!-- Ingredienti scalati e selezione lotti -->
   <div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
-          <strong>📦 Ingredienti scalati</strong>
-          <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ ingredienti|length }} ingredienti · fattore ×{{ fattore }}</span>
+          <strong>📦 Selezione Lotti &amp; Scarico Ingredienti</strong>
+          <span style="color:var(--muted);font-size:12px;margin-left:8px;">{{ ingredienti|length }} materie prime · fattore scala ×{{ fattore }}</span>
         </div>
         {% set n_mancanti = ingredienti|selectattr('sufficiente','equalto',false)|list|length %}
         {% if n_mancanti > 0 %}
           <span class="badge badge-red">⚠ {{ n_mancanti }} insufficienti in magazzino</span>
         {% else %}
-          <span class="badge badge-green">✓ Tutti disponibili</span>
+          <span class="badge badge-green">✓ Giacenze sufficienti</span>
         {% endif %}
       </div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table class="tbl">
         <thead>
           <tr>
-            <th>Ingrediente</th>
+            <th>Ingrediente (SKU)</th>
             <th>Cat.</th>
-            <th style="text-align:right;">Ricetta ({{ vol_ricetta }}L)</th>
-            <th style="text-align:right;">Batch ({{ vol_batch }}L)</th>
-            <th style="text-align:right;">Disponibile</th>
+            <th style="text-align:right;">Dose Ricetta</th>
+            <th style="text-align:right;">Fabbisogno Cotta</th>
+            <th style="min-width:260px;">Lotto Fornitore (FEFO)</th>
             <th>Stato</th>
           </tr>
         </thead>
         <tbody>
         {% for ing in ingredienti %}
         <tr>
-          <td style="font-weight:600;">{{ ing.nome }}</td>
-          <td><span class="badge badge-gray" style="font-size:10px;">{{ ing.categoria }}</span></td>
-          <td style="text-align:right;color:var(--muted);">{{ ing.quantita_ricetta }} {{ ing.unita }}</td>
-          <td style="text-align:right;font-weight:600;color:var(--amber);">{{ ing.quantita_scalata }} {{ ing.unita }}</td>
-          <td style="text-align:right;font-size:12px;color:var(--muted);">
-            {% if ing.disponibile is not none %}
-              {{ ing.disponibile }} {{ ing.unita }}
-            {% else %}
-              <span style="color:var(--muted);">non in magaz.</span>
+          <td>
+            <div style="font-weight:600;color:var(--text);">{{ ing.nome }}</div>
+            {% if ing.codice_ingrediente %}
+            <span class="badge badge-gray" style="font-family:monospace;font-size:10px;padding:1px 5px;letter-spacing:0.5px;">{{ ing.codice_ingrediente }}</span>
             {% endif %}
+          </td>
+          <td><span class="badge badge-gray" style="font-size:10px;">{{ ing.categoria }}</span></td>
+          <td style="text-align:right;color:var(--muted);font-size:12px;">{{ ing.quantita_ricetta }} {{ ing.unita }}</td>
+          <td style="text-align:right;font-weight:700;color:var(--amber);">{{ ing.quantita_scalata }} {{ ing.unita }}</td>
+          <td>
+            <select name="lotto_sel_{{ ing.id }}" id="sel-lotto-{{ ing.id }}"
+                    style="width:100%;font-size:12px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);"
+                    onchange="checkLottoCustom({{ ing.id }}, this.value)">
+              {% if ing.lotti %}
+                {% for l in ing.lotti %}
+                <option value="{{ l.id }}" {% if l.id == ing.lotto_default_id %}selected{% endif %}>
+                  Lotto: {{ l.numero_lotto or 'N/D' }} (Scad: {{ l.data_scadenza or 'N/D' }} · Disp: {{ l.quantita }} {{ l.unita }} · {{ l.fornitore or 'Fornitore N/D' }})
+                </option>
+                {% endfor %}
+              {% endif %}
+              <option value="custom" {% if not ing.lotti %}selected{% endif %}>➕ Inserisci lotto manuale/esterno…</option>
+              <option value="none">🚫 Nessun lotto / Non tracciare</option>
+            </select>
+
+            <div id="custom-lotto-box-{{ ing.id }}" style="display:{% if not ing.lotti %}flex{% else %}none{% endif %};gap:6px;margin-top:6px;flex-wrap:wrap;">
+              <input type="text" name="lotto_manuale_{{ ing.id }}" placeholder="N° lotto manuale"
+                     style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;min-width:110px;">
+              <input type="text" name="fornitore_manuale_{{ ing.id }}" placeholder="Fornitore"
+                     style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;min-width:90px;">
+              <input type="date" name="scadenza_manuale_{{ ing.id }}"
+                     style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;min-width:110px;">
+            </div>
           </td>
           <td>
             {% if ing.disponibile is none %}
-              <span class="badge badge-gray" style="font-size:10px;">—</span>
+              <span class="badge badge-gray" style="font-size:10px;">non a magazzino</span>
             {% elif ing.sufficiente %}
-              <span class="badge badge-green" style="font-size:10px;">✓ ok</span>
+              <span class="badge badge-green" style="font-size:10px;" title="Giacenza totale: {{ ing.disponibile }} {{ ing.unita }}">✓ ok ({{ ing.disponibile }})</span>
             {% else %}
-              <span class="badge badge-red" style="font-size:10px;">⚠ basso</span>
+              <span class="badge badge-red" style="font-size:10px;" title="Giacenza totale: {{ ing.disponibile }} {{ ing.unita }}">⚠ basso ({{ ing.disponibile }})</span>
             {% endif %}
           </td>
         </tr>
         {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 
@@ -71,7 +105,7 @@
   <div>
     <div class="card" style="margin-bottom:14px;">
       <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-        Volume batch
+        Volume batch &amp; Scala
       </div>
       <div class="form-row">
         <label>Volume cotta (L)</label>
@@ -86,25 +120,28 @@
         Fattore di scala: <strong id="fattore-display">×{{ fattore }}</strong>
       </div>
       <p style="font-size:12px;color:var(--muted);margin-top:8px;">
-        Cambia il volume per riscalare automaticamente le quantità al momento della conferma.
+        Modificando il volume, le dosi e gli scarichi verranno ricalcolati proporzionalmente al momento della conferma.
       </p>
     </div>
 
     <div class="card" style="margin-bottom:14px;">
       <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-        Magazzino
+        Magazzino &amp; Tracciabilità
       </div>
       <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;">
-        <input type="checkbox" name="scarica_inventario" value="1" style="margin-top:2px;width:16px;height:16px;">
+        <input type="checkbox" name="scarica_inventario" value="1" checked style="margin-top:2px;width:16px;height:16px;">
         <span>
           <strong>Scarica automaticamente dal magazzino</strong>
-          <br><span style="color:var(--muted);font-size:12px;">Deduce le quantità scalate dagli articoli trovati in inventario. Solo gli articoli con nome corrispondente vengono scalati.</span>
+          <br><span style="color:var(--muted);font-size:12px;">Deduce le quantità usate dai lotti selezionati e aggiorna le scorte residue in inventario.</span>
         </span>
       </label>
+      <div style="margin-top:12px;padding:8px 10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:6px;font-size:11px;color:var(--muted);">
+        💡 I lotti selezionati vengono pre-ordinati con algoritmo <strong>FEFO</strong> (First Expired, First Out) per ridurre gli sprechi.
+      </div>
     </div>
 
     <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:700;">
-      ▶ Avvia Produzione
+      ▶ Avvia Produzione &amp; Registra Lotti
     </button>
     <a href="/cotte/{{ cotta.id }}" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;">Annulla</a>
   </div>
@@ -117,6 +154,16 @@ const volRicetta = {{ vol_ricetta }};
 function aggiornaPannel(v) {
   const f = (parseFloat(v) / volRicetta).toFixed(3);
   document.getElementById('fattore-display').textContent = '×' + f;
+}
+
+function checkLottoCustom(ingId, val) {
+  const box = document.getElementById('custom-lotto-box-' + ingId);
+  if (!box) return;
+  if (val === 'custom') {
+    box.style.display = 'flex';
+  } else {
+    box.style.display = 'none';
+  }
 }
 </script>
 {% endblock %}

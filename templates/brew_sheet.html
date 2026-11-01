@@ -216,7 +216,7 @@
     <!-- INTESTAZIONE -->
     <div class="header">
         <div>
-            <h1 class="title">🍺 {{ ricetta.nome }}</h1>
+            <h1 class="title">🍺 {% if ricetta.codice %}<span style="font-family:monospace;font-size:16px;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:6px;margin-right:6px;vertical-align:middle;">{{ ricetta.codice }}</span>{% endif %}{{ ricetta.nome }}</h1>
             <p class="subtitle">
                 {{ stile.nome if stile else (ricetta.stile_nome or 'Stile personalizzato') }}
                 {% if stile and stile.codice_bjcp %} · <strong>BJCP {{ stile.codice_bjcp }}</strong>{% endif %}
@@ -326,7 +326,7 @@
             <tbody>
                 {% for g in grani %}
                 <tr>
-                    <td><strong>{{ g.nome }}</strong>{% if g.fermentable_type %} <span style="font-size:10px;color:#6b7280;">({{ g.fermentable_type }})</span>{% endif %}</td>
+                    <td>{% if g.codice_ingrediente %}<span style="font-family:monospace;font-size:10px;color:#4b5563;background:#e5e7eb;padding:1px 4px;border-radius:3px;margin-right:4px;">{{ g.codice_ingrediente }}</span>{% endif %}<strong>{{ g.nome }}</strong>{% if g.fermentable_type %} <span style="font-size:10px;color:#6b7280;">({{ g.fermentable_type }})</span>{% endif %}</td>
                     <td class="text-right"><strong>{{ g.quantita }}</strong> {{ g.unita }}</td>
                     <td class="text-right">
                         {% if stats.volumi.peso_grani_kg > 0 %}
@@ -402,7 +402,7 @@
             <tbody>
                 {% for h in luppoli %}
                 <tr>
-                    <td><strong>{{ h.nome }}</strong></td>
+                    <td>{% if h.codice_ingrediente %}<span style="font-family:monospace;font-size:10px;color:#4b5563;background:#e5e7eb;padding:1px 4px;border-radius:3px;margin-right:4px;">{{ h.codice_ingrediente }}</span>{% endif %}<strong>{{ h.nome }}</strong></td>
                     <td class="text-center">
                         {% if h.hop_use == 'Dry Hop' %}
                         <span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">Dry Hop</span>
@@ -420,7 +420,7 @@
                 {% endfor %}
                 {% for a in altri %}
                 <tr style="background:#fffbeb;">
-                    <td><strong>{{ a.nome }}</strong> <span style="font-size:10px;color:#92400e;">(Additivo / Spezia)</span></td>
+                    <td>{% if a.codice_ingrediente %}<span style="font-family:monospace;font-size:10px;color:#4b5563;background:#e5e7eb;padding:1px 4px;border-radius:3px;margin-right:4px;">{{ a.codice_ingrediente }}</span>{% endif %}<strong>{{ a.nome }}</strong> <span style="font-size:10px;color:#92400e;">(Additivo / Spezia)</span></td>
                     <td class="text-center"><strong>{{ a.time_min or 0 }} min</strong> ({{ a.misc_use or 'Boil' }})</td>
                     <td class="text-right"><strong>{{ a.quantita }}</strong> {{ a.unita }}</td>
                     <td class="text-center">—</td>
@@ -440,7 +440,7 @@
                 <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;">Ceppo & Inoculo</div>
                 {% for y in lieviti %}
                 <div style="margin-top:4px;">
-                    <strong>{{ y.nome }}</strong> — {{ y.quantita }} {{ y.unita }} (Att. {{ y.attenuation or 75 }}%)
+                    {% if y.codice_ingrediente %}<span style="font-family:monospace;font-size:10px;color:#4b5563;background:#e5e7eb;padding:1px 4px;border-radius:3px;margin-right:4px;">{{ y.codice_ingrediente }}</span>{% endif %}<strong>{{ y.nome }}</strong> — {{ y.quantita }} {{ y.unita }} (Att. {{ y.attenuation or 75 }}%)
                 </div>
                 {% else %}
                 <div style="color:#6b7280;">Nessun lievito specificato.</div>

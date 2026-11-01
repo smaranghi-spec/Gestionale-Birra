@@ -1,132 +1,249 @@
 {% extends "base.html" %}
-{% block title %}Tracciabilità Ingredienti{% endblock %}
+{% block title %}Tracciabilità Bidirezionale Materie Prime &amp; Cotte{% endblock %}
 {% block content %}
 <style>
 .tr-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.3rem; flex-wrap:wrap; gap:.7rem; }
 .tr-search { display:flex; gap:.6rem; flex-wrap:wrap; }
-.tr-input { background:#0a0f1a; border:1px solid var(--border); border-radius:7px; padding:.5rem 1rem; color:var(--text); font-size:.9rem; min-width:220px; }
+.tr-input { background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:.5rem 1rem; color:var(--text); font-size:.9rem; min-width:240px; }
 .tr-input:focus { border-color:var(--amber); outline:none; }
 .btn-cerca { background:var(--amber); color:#000; border:none; border-radius:7px; padding:.5rem 1.2rem; font-weight:700; cursor:pointer; }
+.tr-tabs { display:flex; gap:8px; border-bottom:1px solid var(--border); margin-bottom:18px; padding-bottom:10px; flex-wrap:wrap; }
+.tr-tab-btn { padding:8px 16px; border-radius:8px; border:1px solid transparent; cursor:pointer; font-size:13px; font-weight:700; color:var(--muted); background:transparent; transition:.15s; }
+.tr-tab-btn.active, .tr-tab-btn:hover { background:rgba(245,158,11,.15); color:var(--amber); border-color:rgba(245,158,11,.3); }
+.tr-panel { display:none; }
+.tr-panel.active { display:block; }
 .ing-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:.8rem; overflow:hidden; }
-.ing-header { display:flex; align-items:center; gap:1rem; padding:.75rem 1.1rem; background:#0a0f1a; cursor:pointer; flex-wrap:wrap; }
-.ing-header:hover { background:#131922; }
+.ing-header { display:flex; align-items:center; gap:1rem; padding:.75rem 1.1rem; background:rgba(255,255,255,.02); cursor:pointer; flex-wrap:wrap; }
+.ing-header:hover { background:rgba(255,255,255,.05); }
 .ing-nome { font-weight:700; color:var(--text); font-size:.95rem; flex:1; }
-.ing-badges { display:flex; gap:.4rem; flex-wrap:wrap; }
 .badge-blue { background:rgba(96,165,250,.15); color:#60a5fa; border:1px solid rgba(96,165,250,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
 .badge-amber { background:rgba(245,158,11,.15); color:var(--amber); border:1px solid rgba(245,158,11,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
 .badge-green { background:rgba(74,222,128,.15); color:#4ade80; border:1px solid rgba(74,222,128,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
 .badge-red { background:rgba(248,113,113,.15); color:#f87171; border:1px solid rgba(248,113,113,.3); font-size:.68rem; padding:.15rem .5rem; border-radius:8px; font-weight:600; }
-.ing-body { padding:.9rem 1.1rem; display:none; }
-.ing-body.open { display:block; }
-.sub-section { margin-bottom:.9rem; }
+.ing-body { padding:.9rem 1.1rem; }
 .sub-title { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin:0 0 .5rem; font-weight:600; }
 .pill-list { display:flex; flex-wrap:wrap; gap:.4rem; }
-.pill { font-size:.78rem; background:#131922; border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; color:var(--text); text-decoration:none; }
+.pill { font-size:.78rem; background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; color:var(--text); text-decoration:none; }
 .pill:hover { border-color:var(--amber); color:var(--amber); }
-.inv-row { background:#0a0f1a; border-radius:6px; padding:.55rem .8rem; font-size:.82rem; display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; }
-.inv-label { color:var(--muted); font-size:.7rem; text-transform:uppercase; }
-.inv-val { font-weight:600; color:var(--text); }
-.info-top { background:#131922; border:1px solid var(--border); border-radius:8px; padding:.7rem 1rem; margin-bottom:1rem; font-size:.82rem; color:var(--muted); display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+.info-top { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:.8rem 1.1rem; margin-bottom:1.2rem; font-size:.82rem; color:var(--muted); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
 </style>
 
 <div class="tr-header">
   <div>
-    <h1 style="font-size:1.3rem;font-weight:700;color:var(--text);margin:0">🔍 Tracciabilità Ingredienti</h1>
-    <p style="font-size:.82rem;color:var(--muted);margin:.3rem 0 0">{{ n_ingredienti }} ingredient{% if n_ingredienti != 1 %}i{% else %}e{% endif %} trovati nelle ricette</p>
+    <h1 style="font-size:1.4rem;font-weight:700;color:var(--text);margin:0">🔍 Tracciabilità Bidirezionale</h1>
+    <p style="font-size:.82rem;color:var(--muted);margin:.3rem 0 0">
+      Controllo lotti materie prime, scarico cotte e conformità alimentare.
+    </p>
   </div>
   <form method="get" action="/tracciabilita" class="tr-search">
-    <input class="tr-input" type="text" name="cerca" value="{{ cerca }}" placeholder="Cerca ingrediente…">
-    <button type="submit" class="btn-cerca">🔍</button>
-    {% if cerca %}<a href="/tracciabilita" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:.5rem .9rem;font-size:.82rem;text-decoration:none">✕</a>{% endif %}
+    <input class="tr-input" type="text" name="cerca" value="{{ cerca }}" placeholder="Cerca lotto, SKU, cotta o ingrediente…">
+    <button type="submit" class="btn-cerca">🔍 Cerca</button>
+    {% if cerca %}<a href="/tracciabilita" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:.5rem .9rem;font-size:.82rem;text-decoration:none">✕ Reset</a>{% endif %}
   </form>
 </div>
 
 <div class="info-top">
-  <span>💡 Clicca su un ingrediente per vedere in quali ricette e cotte è stato usato.</span>
-  <span>Usa questo report per verificare l'impatto di un lotto difettoso.</span>
+  <div>
+    <strong>🛡️ Tracciabilità a norma:</strong>
+    <span>Collega ogni lotto di fornitore alle cotte che lo hanno utilizzato e viceversa.</span>
+  </div>
+  <div style="font-size:11px;">
+    {% if cerca %}<span style="color:var(--amber);">Filtro attivo: "{{ cerca }}"</span>{% endif %}
+  </div>
 </div>
 
-{% if report %}
-{% for r in report %}
-<div class="ing-box">
-  <div class="ing-header" onclick="toggle(this)">
-    <span class="ing-nome">{{ r.nome }}</span>
-    <div class="ing-badges">
-      <span class="badge-blue">{{ r.ricette|length }} ricett{% if r.ricette|length != 1 %}e{% else %}a{% endif %}</span>
-      <span class="badge-amber">{{ r.cotte|length }} cott{% if r.cotte|length != 1 %}e{% else %}a{% endif %}</span>
-      {% if r.inventario %}
-        {% if r.inventario.quantita > 0 %}
-        <span class="badge-green">📦 {{ r.inventario.quantita }} {{ r.inventario.unita }} in magazzino</span>
-        {% else %}
-        <span class="badge-red">📦 esaurito</span>
-        {% endif %}
-      {% else %}
-      <span style="font-size:.68rem;color:var(--muted)">non in magazzino</span>
-      {% endif %}
-    </div>
-    <span style="color:var(--muted);font-size:.75rem">▾</span>
-  </div>
-  <div class="ing-body">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;flex-wrap:wrap">
+<!-- Tabs di navigazione -->
+<div class="tr-tabs">
+  <button type="button" class="tr-tab-btn active" onclick="switchTrTab('lotti', this)">
+    📦 Da Lotto Fornitore a Cotte ({{ n_lotti }})
+  </button>
+  <button type="button" class="tr-tab-btn" onclick="switchTrTab('cotte', this)">
+    🍺 Da Cotta a Lotti Impiegati ({{ n_cotte }})
+  </button>
+  <button type="button" class="tr-tab-btn" onclick="switchTrTab('ricette', this)">
+    📖 Consultazione Ricette ({{ n_ingredienti }})
+  </button>
+</div>
 
-      <div class="sub-section">
-        <div class="sub-title">📖 Ricette che lo usano</div>
-        {% if r.ricette %}
-        <div class="pill-list">
-          {% for ricetta in r.ricette %}
-          <a href="/ricette/{{ ricetta.id }}" class="pill">{{ ricetta.nome }}</a>
-          {% endfor %}
+<!-- ── TAB 1: LOTTO FORNITORE -> COTTE ───────────────────── -->
+<div id="tr-panel-lotti" class="tr-panel active">
+  {% if lotti_tracciati %}
+    {% for l in lotti_tracciati %}
+    <div class="ing-box">
+      <div class="ing-header">
+        <div>
+          {% if l.codice_ingrediente %}
+          <span class="badge badge-gray" style="font-family:monospace;font-size:10px;letter-spacing:0.5px;">{{ l.codice_ingrediente }}</span>
+          {% endif %}
+          <strong style="color:var(--text);font-size:14px;margin-left:4px;">{{ l.nome_ingrediente }}</strong>
         </div>
-        {% else %}
-        <span style="font-size:.8rem;color:var(--muted)">Nessuna ricetta</span>
-        {% endif %}
+        <div class="ing-badges">
+          <span class="badge-amber" style="font-family:monospace;font-weight:700;">🏷️ Lotto: {{ l.numero_lotto or 'Non specificato' }}</span>
+          {% if l.fornitore and l.fornitore != '—' %}<span class="badge-blue">🏢 {{ l.fornitore }}</span>{% endif %}
+          {% if l.data_scadenza and l.data_scadenza != '—' %}<span class="badge-gray" style="font-size:11px;">⏳ Scad: {{ l.data_scadenza }}</span>{% endif %}
+          <span class="badge-green">⚖️ Usati: {{ l.totale_usato }} {{ l.unita }} in {{ l.cotte|length }} cott{% if l.cotte|length == 1 %}a{% else %}e{% endif %}</span>
+          {% if l.inventario %}
+            {% if l.inventario.quantita > 0 %}
+            <span class="badge-green">📦 Giacenza residua: {{ l.inventario.quantita }} {{ l.inventario.unita }}</span>
+            {% else %}
+            <span class="badge-red">📦 Lotto esaurito in magazzino</span>
+            {% endif %}
+          {% endif %}
+        </div>
       </div>
-
-      <div class="sub-section">
-        <div class="sub-title">🍺 Cotte collegate</div>
-        {% if r.cotte %}
+      <div class="ing-body">
+        <div class="sub-title">🍺 Cotte che hanno impiegato questo lotto</div>
+        {% if l.cotte %}
         <div class="pill-list">
-          {% for cotta in r.cotte %}
-          <a href="/cotte/{{ cotta.id }}" class="pill" style="{% if cotta.stato == 'pronta' %}border-color:#4ade80;color:#4ade80{% elif cotta.stato == 'archiviata' %}color:var(--muted){% endif %}">
-            {{ cotta.nome }} <span style="font-size:.65rem;opacity:.6">({{ cotta.stato }})</span>
+          {% for c in l.cotte %}
+          <a href="/cotte/{{ c.id }}" class="pill">
+            {% if c.codice %}<strong style="color:var(--amber);margin-right:4px;">{{ c.codice }}</strong>{% endif %}
+            {{ c.nome }}
+            <span style="font-size:10px;color:var(--muted);margin-left:4px;">({{ c.stato }} · {{ c.data_brew or 'senza data' }})</span>
           </a>
           {% endfor %}
         </div>
         {% else %}
-        <span style="font-size:.8rem;color:var(--muted)">Nessuna cotta</span>
+        <span style="font-size:12px;color:var(--muted);">Nessuna cotta registrata con questo lotto.</span>
         {% endif %}
       </div>
-
-      <div class="sub-section">
-        <div class="sub-title">📦 Stato magazzino</div>
-        {% if r.inventario %}
-        <div class="inv-row">
-          <div><div class="inv-label">Disponibile</div><div class="inv-val">{{ r.inventario.quantita }} {{ r.inventario.unita }}</div></div>
-          {% if r.inventario.prezzo_unitario %}<div><div class="inv-label">Prezzo/u</div><div class="inv-val">€{{ '%.3f'|format(r.inventario.prezzo_unitario) }}</div></div>{% endif %}
-          {% if r.inventario.fornitore %}<div><div class="inv-label">Fornitore</div><div class="inv-val">{{ r.inventario.fornitore }}</div></div>{% endif %}
-        </div>
-        <a href="/inventario" style="font-size:.75rem;color:var(--amber);text-decoration:none">→ Vai al magazzino</a>
-        {% else %}
-        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.4rem">Non presente in magazzino</div>
-        <a href="/prezzi/cerca?q={{ r.nome }}" style="font-size:.75rem;color:var(--amber);text-decoration:none">🔍 Cerca prezzi →</a>
-        {% endif %}
-      </div>
-
     </div>
-  </div>
+    {% endfor %}
+  {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">📦</div>
+      <p>Nessun lotto fornitore registrato con i filtri attuali.</p>
+      <span style="font-size:12px;">I lotti vengono registrati automaticamente quando avvii una produzione da una cotta.</span>
+    </div>
+  {% endif %}
 </div>
-{% endfor %}
-{% else %}
-<div style="text-align:center;padding:4rem;color:var(--muted)">
-  <div style="font-size:3rem;margin-bottom:.7rem">🔍</div>
-  <p>Nessun ingrediente trovato nelle ricette.</p>
+
+<!-- ── TAB 2: COTTA -> LOTTI IMPIEGATI ───────────────────── -->
+<div id="tr-panel-cotte" class="tr-panel">
+  {% if cotte_tracciate %}
+    {% for c in cotte_tracciate %}
+    <div class="ing-box">
+      <div class="ing-header">
+        <div>
+          {% if c.codice %}
+          <span class="badge badge-amber" style="font-family:monospace;font-size:11px;font-weight:700;">{{ c.codice }}</span>
+          {% endif %}
+          <strong style="color:var(--text);font-size:14px;margin-left:4px;">{{ c.nome }}</strong>
+          {% if c.ricetta %}
+          <span style="color:var(--muted);font-size:12px;margin-left:6px;">(Ricetta: {{ c.ricetta.nome }}{% if c.ricetta.codice %} · {{ c.ricetta.codice }}{% endif %})</span>
+          {% endif %}
+        </div>
+        <div class="ing-badges">
+          <span class="badge-blue">{{ c.stato }}</span>
+          {% if c.data_brew %}<span class="badge-gray" style="font-size:11px;">📅 {{ c.data_brew }}</span>{% endif %}
+          <span class="badge-green">{{ c.ingredienti_lotti|length }} materie prime tracciate</span>
+          <a href="/cotte/{{ c.id }}" class="btn btn-ghost btn-xs" style="color:var(--amber);text-decoration:none;">Apri Tracker →</a>
+        </div>
+      </div>
+      <div class="ing-body">
+        {% if c.ingredienti_lotti %}
+        <table class="tbl" style="margin:0;">
+          <thead>
+            <tr>
+              <th style="width:80px;">SKU</th>
+              <th>Ingrediente</th>
+              <th>N° Lotto Fornitore</th>
+              <th>Fornitore</th>
+              <th>Scadenza</th>
+              <th style="text-align:right;">Dose Effettiva</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in c.ingredienti_lotti %}
+            <tr>
+              <td>
+                {% if r.codice_ingrediente %}
+                <span class="badge badge-gray" style="font-family:monospace;font-size:10px;">{{ r.codice_ingrediente }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td style="font-weight:600;">{{ r.nome_ingrediente }}</td>
+              <td>
+                {% if r.numero_lotto %}
+                <span class="badge badge-amber" style="font-family:monospace;font-size:11px;">{{ r.numero_lotto }}</span>
+                {% else %}
+                <span style="color:var(--muted);font-size:11px;">Non specificato</span>
+                {% endif %}
+              </td>
+              <td style="font-size:12px;color:var(--muted);">{{ r.fornitore or '—' }}</td>
+              <td style="font-size:12px;color:var(--muted);">{{ r.data_scadenza or '—' }}</td>
+              <td style="text-align:right;font-weight:700;color:var(--amber);">{{ r.quantita_usata }} {{ r.unita }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="font-size:12px;color:var(--muted);">
+          Nessun lotto assegnato in fase di produzione.
+          <a href="/cotte/{{ c.id }}/vai-produzione" style="color:var(--amber);margin-left:6px;">▶ Assegna lotti ora</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">🍺</div>
+      <p>Nessuna cotta trovata con i filtri correnti.</p>
+    </div>
+  {% endif %}
 </div>
-{% endif %}
+
+<!-- ── TAB 3: CONSULTAZIONE RICETTE ──────────────────────── -->
+<div id="tr-panel-ricette" class="tr-panel">
+  {% if report %}
+    {% for r in report %}
+    <div class="ing-box">
+      <div class="ing-header">
+        <div>
+          {% if r.sku %}
+          <span class="badge badge-gray" style="font-family:monospace;font-size:10px;">{{ r.sku }}</span>
+          {% endif %}
+          <span class="ing-nome" style="margin-left:4px;">{{ r.nome }}</span>
+        </div>
+        <div class="ing-badges">
+          <span class="badge-blue">{{ r.ricette|length }} ricett{% if r.ricette|length != 1 %}e{% else %}a{% endif %}</span>
+          {% if r.inventario %}
+            {% if r.inventario.quantita > 0 %}
+            <span class="badge-green">📦 {{ r.inventario.quantita }} {{ r.inventario.unita }} a magazzino</span>
+            {% else %}
+            <span class="badge-red">📦 scorta esaurita</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="ing-body">
+        <div class="sub-title">📖 Ricette che includono questo ingrediente</div>
+        <div class="pill-list">
+          {% for ricetta in r.ricette %}
+          <a href="/ricette/{{ ricetta.id }}" class="pill">
+            {% if ricetta.codice %}<span style="color:var(--amber);margin-right:3px;">{{ ricetta.codice }}</span>{% endif %}
+            {{ ricetta.nome }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">🧪</div>
+      <p>Nessun ingrediente trovato nelle ricette.</p>
+    </div>
+  {% endif %}
+</div>
 
 <script>
-function toggle(header) {
-  const body = header.nextElementSibling;
-  body.classList.toggle('open');
+function switchTrTab(tabKey, btn) {
+  document.querySelectorAll('.tr-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tr-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const panel = document.getElementById('tr-panel-' + tabKey);
+  if (panel) panel.classList.add('active');
 }
 </script>
 {% endblock %}

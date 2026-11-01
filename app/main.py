@@ -94,6 +94,11 @@ def run_migrations():
         ("profilo_birrificio", "assorbimento_grani_l_kg", "REAL DEFAULT 0.96"),
         ("profilo_birrificio", "rapporto_mash_l_kg", "REAL DEFAULT 3.0"),
         ("profilo_birrificio", "contrazione_termica_pct", "REAL DEFAULT 4.0"),
+        ("catalogo_ingredienti", "codice", "TEXT"),
+        ("inventario", "codice", "TEXT"),
+        ("inventario", "codice_ingrediente", "TEXT"),
+        ("ricette", "codice", "TEXT"),
+        ("ingredienti_ricetta", "codice_ingrediente", "TEXT"),
     ]
 
     with engine.connect() as conn:
@@ -125,6 +130,12 @@ def run_migrations():
             ("prezzi_cache",
              f"id {pk_type}, query TEXT NOT NULL, fornitore TEXT NOT NULL, "
              "nome_prodotto TEXT NOT NULL, prezzo REAL, url TEXT, aggiornato_il TEXT"),
+            ("cotta_ingredienti_lotti",
+             f"id {pk_type}, cotta_id INTEGER REFERENCES cotte(id) NOT NULL, "
+             "inventario_id INTEGER, codice_ingrediente TEXT, "
+             "nome_ingrediente TEXT NOT NULL, categoria TEXT, numero_lotto TEXT, "
+             "fornitore TEXT, data_scadenza TEXT, quantita_usata REAL DEFAULT 0.0, "
+             "unita TEXT DEFAULT 'kg', timestamp TEXT, note TEXT"),
         ]
         for tname, tcols in extra_tables:
             if not table_exists(tname):
@@ -172,6 +183,107 @@ def auto_seed_data():
 
 
 auto_seed_data()
+
+
+def assegna_codici_retroattivi():
+    """Assegna codici univoci standard (SKU, Ricetta, Cotta) a tutti i record privi di codice, preservando i dati esistenti."""
+    try:
+        from .db import SessionLocal
+        from .models import CatalogoIngrediente, InventarioItem, Ricetta, Cotta, IngredienteRicetta
+        from .codici import prefisso_per_categoria
+        import re
+
+        db = SessionLocal()
+        try:
+            # 1. CATALOGO INGREDIENTI (Assegna SKU: MAL-001, LUP-001, LIE-001, MIS-001, CHI-001, PAC-001)
+            all_cat = db.query(CatalogoIngrediente).order_by(CatalogoIngrediente.id.asc()).all()
+            conteggi = {"MAL": 0, "LUP": 0, "LIE": 0, "MIS": 0, "CHI": 0, "PAC": 0}
+            pattern = re.compile(r"^([A-Z]+)-(\d+)$")
+
+            for item in all_cat:
+                if item.codice:
+                    m = pattern.match(item.codice.strip())
+                    if m and m.group(1) in conteggi:
+                        conteggi[m.group(1)] = max(conteggi[m.group(1)], int(m.group(2)))
+
+            sku_per_nome = {}
+            for item in all_cat:
+                if not item.codice:
+                    pref = prefisso_per_categoria(item.categoria)
+                    conteggi[pref] += 1
+                    item.codice = f"{pref}-{conteggi[pref]:03d}"
+                sku_per_nome[(item.nome or "").strip().lower()] = item.codice
+
+            # 2. INVENTARIO ITEM (Sincronizza codice_ingrediente ed assegna codice articolo)
+            all_inv = db.query(InventarioItem).all()
+            for inv in all_inv:
+                clean_name = (inv.nome or "").strip().lower()
+                sku = sku_per_nome.get(clean_name)
+                if not sku:
+                    for k, v in sku_per_nome.items():
+                        if k in clean_name or clean_name in k:
+                            sku = v
+                            break
+                if not inv.codice_ingrediente:
+                    inv.codice_ingrediente = sku or f"INV-{inv.id:03d}"
+                if not inv.codice:
+                    inv.codice = inv.codice_ingrediente
+
+            # 3. RICETTE (Assegna RIC-001, RIC-002...)
+            all_ric = db.query(Ricetta).order_by(Ricetta.id.asc()).all()
+            ric_max = 0
+            for r in all_ric:
+                if r.codice:
+                    m = re.match(r"^RIC-(\d+)$", r.codice.strip())
+                    if m:
+                        ric_max = max(ric_max, int(m.group(1)))
+            for r in all_ric:
+                if not r.codice:
+                    ric_max += 1
+                    r.codice = f"RIC-{ric_max:03d}"
+
+            # 4. INGREDIENTI RICETTA (Collega codice_ingrediente SKU)
+            all_ing_ric = db.query(IngredienteRicetta).all()
+            for ing in all_ing_ric:
+                if not ing.codice_ingrediente:
+                    cname = (ing.nome or "").strip().lower()
+                    sku = sku_per_nome.get(cname)
+                    if not sku:
+                        for k, v in sku_per_nome.items():
+                            if k in cname or cname in k:
+                                sku = v
+                                break
+                    ing.codice_ingrediente = sku
+
+            # 5. COTTE (Assegna COT-YYYY-NNN)
+            all_cotte = db.query(Cotta).order_by(Cotta.id.asc()).all()
+            cotte_per_anno = {}
+            for c in all_cotte:
+                if c.codice:
+                    m = re.match(r"^COT-(\d{4})-(\d+)$", c.codice.strip())
+                    if m:
+                        y = m.group(1)
+                        num = int(m.group(2))
+                        cotte_per_anno[y] = max(cotte_per_anno.get(y, 0), num)
+
+            for c in all_cotte:
+                if not c.codice:
+                    anno = "2026"
+                    if c.data_brew and len(c.data_brew) >= 4 and c.data_brew[:4].isdigit():
+                        anno = c.data_brew[:4]
+                    cotte_per_anno[anno] = cotte_per_anno.get(anno, 0) + 1
+                    c.codice = f"COT-{anno}-{cotte_per_anno[anno]:03d}"
+
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
+assegna_codici_retroattivi()
 
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
@@ -264,7 +376,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-11-01_1150_brewfather_full_suite",
+        "build": "2026-11-01_1250_codici_lotti_tracciabilita",
     }
 
 

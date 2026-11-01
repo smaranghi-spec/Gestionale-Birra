@@ -53,6 +53,7 @@ class Stile(Base):
 class Ricetta(Base):
     __tablename__ = "ricette"
     id = Column(Integer, primary_key=True, index=True)
+    codice = Column(String, index=True, nullable=True)  # es. RIC-001
     nome = Column(String, nullable=False)
     tipo = Column(String, default="All Grain")
     volume_target_litri = Column(Float, default=20.0)
@@ -75,6 +76,7 @@ class IngredienteRicetta(Base):
     __tablename__ = "ingredienti_ricetta"
     id = Column(Integer, primary_key=True, index=True)
     ricetta_id = Column(Integer, ForeignKey("ricette.id"), nullable=False)
+    codice_ingrediente = Column(String, nullable=True)  # SKU es. MAL-001
     nome = Column(String, nullable=False)
     categoria = Column(String, nullable=False)
     quantita = Column(Float, default=0.0)
@@ -102,6 +104,7 @@ class IngredienteRicetta(Base):
 class CatalogoIngrediente(Base):
     __tablename__ = "catalogo_ingredienti"
     id = Column(Integer, primary_key=True, index=True)
+    codice = Column(String, index=True, nullable=True)  # SKU univoco es. MAL-001
     nome = Column(String, nullable=False)
     categoria = Column(String, nullable=False)
     fermentable_type = Column(String, nullable=True)
@@ -188,6 +191,27 @@ class Cotta(Base):
     ricetta = relationship("Ricetta", back_populates="cotte")
     log = relationship("LogCotta", back_populates="cotta", cascade="all, delete-orphan", order_by="LogCotta.timestamp")
     degustazioni = relationship("Degustazione", back_populates="cotta", cascade="all, delete-orphan")
+    ingredienti_lotti = relationship("CottaIngredienteLotto", back_populates="cotta", cascade="all, delete-orphan")
+
+
+class CottaIngredienteLotto(Base):
+    """Tracciabilità dei lotti effettivi di materie prime consumati in una cotta."""
+    __tablename__ = "cotta_ingredienti_lotti"
+    id = Column(Integer, primary_key=True, index=True)
+    cotta_id = Column(Integer, ForeignKey("cotte.id"), nullable=False)
+    inventario_id = Column(Integer, ForeignKey("inventario.id"), nullable=True)
+    codice_ingrediente = Column(String, index=True, nullable=True)  # SKU es. MAL-001
+    nome_ingrediente = Column(String, nullable=False)
+    categoria = Column(String, nullable=True)
+    numero_lotto = Column(String, index=True, nullable=True)
+    fornitore = Column(String, nullable=True)
+    data_scadenza = Column(String, nullable=True)
+    quantita_usata = Column(Float, default=0.0)
+    unita = Column(String, default="kg")
+    timestamp = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    note = Column(Text, nullable=True)
+    cotta = relationship("Cotta", back_populates="ingredienti_lotti")
+    inventario_item = relationship("InventarioItem", foreign_keys=[inventario_id])
 
 
 class LogCotta(Base):
@@ -258,6 +282,8 @@ class Attrezzatura(Base):
 class InventarioItem(Base):
     __tablename__ = "inventario"
     id = Column(Integer, primary_key=True, index=True)
+    codice = Column(String, index=True, nullable=True)  # codice articolo / SKU
+    codice_ingrediente = Column(String, index=True, nullable=True)  # SKU che punta a CatalogoIngrediente
     nome = Column(String, nullable=False)
     categoria = Column(String, default="consumabile")  # consumabile / non_consumabile / ingrediente / chimico / packaging
     tipo_ingrediente = Column(String, nullable=True)    # malto / luppolo / lievito / aroma / altro

@@ -169,9 +169,15 @@
         <form method="post" action="/ricette/{{ ricetta.id }}/modifica">
             <div class="form-grid">
 
-                <div class="full">
-                    <label>Nome ricetta</label>
-                    <input type="text" name="nome" value="{{ ricetta.nome }}" required>
+                <div class="full" style="display:grid;grid-template-columns:1fr 180px;gap:16px;">
+                    <div>
+                        <label>Nome ricetta</label>
+                        <input type="text" name="nome" value="{{ ricetta.nome }}" required>
+                    </div>
+                    <div>
+                        <label>Codice Ricetta</label>
+                        <input type="text" name="codice" value="{{ ricetta.codice or '' }}" placeholder="es. RIC-001">
+                    </div>
                 </div>
 
                 <div>

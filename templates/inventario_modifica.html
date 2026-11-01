@@ -77,10 +77,13 @@
   <div class="card" style="margin-bottom:16px;">
     <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
       Lotto e scadenza (TMC)
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
       <div class="form-row">
-        <label>N° lotto</label>
+        <label>Codice SKU Ingrediente</label>
+        <input type="text" name="codice_ingrediente" value="{{ item.codice_ingrediente or item.codice or '' }}" placeholder="es. MAL-001">
+      </div>
+      <div class="form-row">
+        <label>N° lotto fornitore</label>
         <input type="text" name="numero_lotto" value="{{ item.numero_lotto or '' }}" placeholder="es. L2024-001">
       </div>
       <div class="form-row">

@@ -49,6 +49,8 @@ def lista(request: Request, q: str = None, ricetta_id: int = None, db: Session =
 @router.post("/inventario/nuovo")
 def nuovo(
     nome: str = Form(...),
+    codice: str = Form(""),
+    codice_ingrediente: str = Form(""),
     categoria: str = Form("consumabile"),
     tipo_ingrediente: str = Form(""),
     unita: str = Form("pz"),
@@ -66,8 +68,20 @@ def nuovo(
     note: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    from ..codici import genera_prossimo_sku
     def _f(v): return float(v.replace(",", ".")) if v.strip() else None
+
+    sku = (codice_ingrediente or codice or "").strip()
+    if not sku:
+        cat_match = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.nome.ilike(nome.strip())).first()
+        if cat_match and cat_match.codice:
+            sku = cat_match.codice
+        else:
+            sku = genera_prossimo_sku(tipo_ingrediente or categoria, db)
+
     db.add(InventarioItem(
+        codice=sku,
+        codice_ingrediente=sku,
         nome=nome, categoria=categoria,
         tipo_ingrediente=tipo_ingrediente or None,
         unita=unita,
@@ -105,6 +119,8 @@ def modifica_form(iid: int, request: Request, db: Session = Depends(get_db)):
 def modifica_salva(
     iid: int,
     nome: str = Form(...),
+    codice: str = Form(""),
+    codice_ingrediente: str = Form(""),
     categoria: str = Form("consumabile"),
     tipo_ingrediente: str = Form(""),
     unita: str = Form("pz"),
@@ -127,6 +143,10 @@ def modifica_salva(
         return RedirectResponse("/inventario", status_code=303)
     def _f(v): return float(v.replace(",", ".")) if v.strip() else None
     item.nome = nome
+    if codice.strip():
+        item.codice = codice.strip()
+    if codice_ingrediente.strip():
+        item.codice_ingrediente = codice_ingrediente.strip()
     item.categoria = categoria
     item.tipo_ingrediente = tipo_ingrediente or None
     item.unita = unita
@@ -237,6 +257,7 @@ def aggiungi_a_ricetta(
 
     db.add(IngredienteRicetta(
         ricetta_id=ricetta_id,
+        codice_ingrediente=item.codice_ingrediente or item.codice,
         nome=item.nome,
         categoria=cat,
         quantita=quantita,
@@ -272,6 +293,8 @@ def da_catalogo(ing_id: int, db: Session = Depends(get_db)):
         return RedirectResponse(f"/inventario?msg={ing.nome.replace(' ','+')}+già+in+magazzino", status_code=303)
     cat_map = {"grain": "ingrediente", "hop": "ingrediente", "yeast": "ingrediente", "misc": "ingrediente"}
     db.add(InventarioItem(
+        codice=ing.codice,
+        codice_ingrediente=ing.codice,
         nome=ing.nome,
         categoria=cat_map.get(ing.categoria, "consumabile"),
         unita="kg" if ing.categoria in ("grain", "hop") else "pz" if ing.categoria == "yeast" else "g",

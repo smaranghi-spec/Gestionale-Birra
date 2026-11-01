@@ -84,10 +84,13 @@ def form_nuovo_ingrediente(request: Request):
     )
 
 
+from ..codici import genera_prossimo_sku
+
 @router.post("/catalogo/ingredienti/nuovo")
 def crea_ingrediente_catalogo(
     nome: str = Form(...),
     categoria: str = Form(...),
+    codice: str = Form(None),
     fermentable_type: str = Form(None),
     yield_percent: float = Form(None),
     color_srm: float = Form(None),
@@ -101,7 +104,12 @@ def crea_ingrediente_catalogo(
     misc_use: str = Form(None),
     db: Session = Depends(get_db),
 ):
+    sku = (codice or "").strip()
+    if not sku:
+        sku = genera_prossimo_sku(categoria, db)
+
     item = CatalogoIngrediente(
+        codice=sku,
         nome=nome,
         categoria=categoria,
         fermentable_type=fermentable_type or None,
@@ -130,10 +138,15 @@ def popola_catalogo_completo(db: Session) -> int:
     for item_data in TUTTO:
         nome_clean = (item_data.get("nome") or "").strip().lower()
         if nome_clean and nome_clean not in esistenti:
-            da_aggiungere.append(CatalogoIngrediente(**item_data))
+            c = dict(item_data)
+            if not c.get("codice"):
+                c["codice"] = genera_prossimo_sku(c.get("categoria", "misc"), db)
+            obj = CatalogoIngrediente(**c)
+            da_aggiungere.append(obj)
             esistenti.add(nome_clean)
+            db.add(obj)
+            db.flush()
     if da_aggiungere:
-        db.add_all(da_aggiungere)
         db.commit()
     return len(da_aggiungere)
 

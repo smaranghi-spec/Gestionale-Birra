@@ -51,6 +51,10 @@
         <input type="text" name="nome" placeholder="es. Citra Pellet T90" required>
       </div>
       <div class="form-row">
+        <label>Codice SKU (opzionale)</label>
+        <input type="text" name="codice" placeholder="Auto: MAL-001, LUP-001...">
+      </div>
+      <div class="form-row">
         <label>Categoria *</label>
         <select name="categoria" id="sel-categoria" onchange="aggiornaCampi(this.value)">
           <option value="grain">🌾 Malto/Grano</option>
@@ -186,6 +190,7 @@
       <table class="tbl">
         <thead>
           <tr>
+            <th style="width:90px;">SKU</th>
             <th>Nome</th>
             {% if cat_key == 'grain' %}
             <th>Tipo</th><th>Resa</th><th>Colore SRM</th>
@@ -202,6 +207,7 @@
         <tbody>
           {% for i in cat_items %}
           <tr class="ing-row" data-nome="{{ (i.nome or '')|lower }}">
+            <td><span class="badge badge-gray" style="font-family:monospace;font-size:10px;padding:2px 5px;letter-spacing:0.5px;">{{ i.codice or '—' }}</span></td>
             <td style="font-weight:600;color:var(--text);">{{ i.nome or '—' }}</td>
             {% if cat_key == 'grain' %}
             <td><span class="badge badge-amber">{{ i.fermentable_type or '—' }}</span></td>
