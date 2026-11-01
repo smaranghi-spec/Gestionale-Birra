@@ -93,8 +93,9 @@
   <table class="tbl">
     <thead>
       <tr>
-        <th>Lotto</th>
-        <th>Prodotto</th>
+        <th style="width:90px;">SKU</th>
+        <th>Lotto Etichetta</th>
+        <th>Prodotto &amp; Cotta Origine</th>
         <th>Formato</th>
         <th style="text-align:right;">Disponibili</th>
         <th style="text-align:right;">Iniziali</th>
@@ -107,10 +108,19 @@
     <tbody>
     {% for p in prodotti %}
     <tr>
-      <td><code style="font-size:11px;color:var(--amber);">{{ p.codice_lotto or '—' }}</code></td>
+      <td>
+        {% if p.codice %}
+        <span class="badge badge-gray" style="font-family:monospace;font-size:11px;font-weight:700;">{{ p.codice }}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td><code style="font-size:11px;color:var(--amber);font-weight:700;">{{ p.codice_lotto or '—' }}</code></td>
       <td>
         <div style="font-weight:600;">{{ p.nome }}</div>
-        {% if p.cotta %}<div style="font-size:11px;color:var(--muted);">← {{ p.cotta.nome }}</div>{% endif %}
+        {% if p.cotta %}
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          ← Cotta: <a href="/cotte/{{ p.cotta.id }}" style="color:var(--amber);text-decoration:none;font-family:monospace;font-weight:600;">{{ p.cotta.codice or p.cotta.nome }}</a>
+        </div>
+        {% endif %}
       </td>
       <td>
         <span class="badge badge-gray">{{ p.tipo_packaging }}</span>

@@ -97,7 +97,10 @@
   <div class="footer">
     <div class="footer-text">
       <p><strong>Prodotto e confezionato da:</strong> Podere Castelvieto</p>
-      <p><strong>Lotto:</strong> L-{{ prodotto.codice_lotto }}</p>
+      {% if prodotto.codice %}
+      <p style="font-size:9px;color:#555;"><strong>SKU Prodotto:</strong> {{ prodotto.codice }}</p>
+      {% endif %}
+      <p><strong>Lotto:</strong> {% if prodotto.codice_lotto and prodotto.codice_lotto.startswith('L-') %}{{ prodotto.codice_lotto }}{% elif prodotto.codice_lotto %}L-{{ prodotto.codice_lotto }}{% else %}L-LOTTO{% endif %}</p>
       <p><strong>Da consumarsi pref. entro:</strong> {{ prodotto.data_scadenza if prodotto.data_scadenza else 'Vedi lotto' }}</p>
     </div>
     <div id="qrcode"></div>

@@ -8,6 +8,7 @@ from typing import Optional
 
 from ..db import SessionLocal
 from ..models import ProdottoFinito, Cotta
+from ..codici import genera_prossimo_codice_prodotto_finito, genera_codice_lotto_imbottigliamento
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -24,14 +25,8 @@ def get_db():
         db.close()
 
 
-def _gen_codice(cotta: Optional[Cotta]) -> str:
-    now = datetime.now()
-    base = f"{now.strftime('%Y%m')}"
-    if cotta and cotta.codice:
-        return f"{base}-{cotta.codice}"
-    elif cotta:
-        return f"{base}-C{cotta.id}"
-    return f"{base}-LOTTO"
+def _gen_codice(cotta: Optional[Cotta], formato_ml: int = None, tipo_pkg: str = None) -> str:
+    return genera_codice_lotto_imbottigliamento(cotta, formato_ml, tipo_pkg)
 
 
 @router.get("/magazzino-finiti", response_class=HTMLResponse)
@@ -69,15 +64,19 @@ async def nuovo_prodotto(request: Request, db: Session = Depends(get_db)):
         cotta_id = int(cotta_id)
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first() if cotta_id else None
 
-    codice = form.get("codice_lotto", "").strip() or _gen_codice(cotta)
+    fmt_ml = int(form.get("formato_ml", 750) or 750)
+    pkg = form.get("tipo_packaging", "bottiglia")
+    sku = form.get("codice", "").strip() or genera_prossimo_codice_prodotto_finito(db)
+    lotto = form.get("codice_lotto", "").strip() or _gen_codice(cotta, fmt_ml, pkg)
     n = int(form.get("n_pezzi", 0) or 0)
 
     p = ProdottoFinito(
         cotta_id=cotta_id,
+        codice=sku,
         nome=form.get("nome", "").strip() or (cotta.nome if cotta else "Birra"),
-        codice_lotto=codice,
-        formato_ml=int(form.get("formato_ml", 750) or 750),
-        tipo_packaging=form.get("tipo_packaging", "bottiglia"),
+        codice_lotto=lotto,
+        formato_ml=fmt_ml,
+        tipo_packaging=pkg,
         n_pezzi_iniziali=n,
         n_pezzi_disponibili=n,
         data_imbottigliamento=form.get("data_imbottigliamento") or datetime.now().strftime("%Y-%m-%d"),
@@ -174,7 +173,7 @@ def form_imbottiglia(cotta_id: int, request: Request, db: Session = Depends(get_
         "prodotti": prodotti,
         "formati": FORMATI,
         "tipi": TIPI,
-        "codice_suggerito": _gen_codice(cotta),
+        "codice_suggerito": _gen_codice(cotta, 750, "bottiglia"),
         "oggi": datetime.now().strftime("%Y-%m-%d"),
         "session": request.session,
     })
@@ -203,20 +202,25 @@ async def salva_imbottigliamento(cotta_id: int, request: Request, db: Session = 
             pv = float((prezzi_l[i] if i < len(prezzi_l) else "0").replace(",", ".") or 0) or None
         except Exception:
             pv = None
-        codice = (codici_l[i] if i < len(codici_l) else "").strip() or _gen_codice(cotta)
-        db.add(ProdottoFinito(
+        pkg = tipi_pkg[i] if i < len(tipi_pkg) else "bottiglia"
+        lotto = (codici_l[i] if i < len(codici_l) else "").strip() or _gen_codice(cotta, int(fmt), pkg)
+        sku = genera_prossimo_codice_prodotto_finito(db)
+        pf_obj = ProdottoFinito(
             cotta_id=cotta_id,
+            codice=sku,
             nome=cotta.nome,
-            codice_lotto=codice,
+            codice_lotto=lotto,
             formato_ml=int(fmt),
-            tipo_packaging=tipi_pkg[i] if i < len(tipi_pkg) else "bottiglia",
+            tipo_packaging=pkg,
             n_pezzi_iniziali=n,
             n_pezzi_disponibili=n,
             data_imbottigliamento=data_imb,
             data_scadenza=data_scad,
             prezzo_vendita=pv,
             stato="disponibile",
-        ))
+        )
+        db.add(pf_obj)
+        db.flush()
 
     if cotta.stato not in ("condizionamento", "pronta", "archiviata"):
         cotta.stato = "condizionamento"

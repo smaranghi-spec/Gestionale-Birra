@@ -10,12 +10,13 @@ from typing import Any
 
 try:
     from sqlalchemy.orm import Session
-    from .models import CatalogoIngrediente, Ricetta, Cotta
+    from .models import CatalogoIngrediente, Ricetta, Cotta, ProdottoFinito
 except ImportError:
     Session = Any
     CatalogoIngrediente = Any
     Ricetta = Any
     Cotta = Any
+    ProdottoFinito = Any
 
 PREFISSI_CATEGORIE = {
     # Malti e fermentabili
@@ -141,3 +142,51 @@ def genera_prossimo_codice_cotta(anno: int = None, db: Session = None) -> str:
                 except ValueError:
                     pass
     return f"{prefisso}-{max_num + 1:03d}"
+
+
+def genera_prossimo_codice_prodotto_finito(db: Session) -> str:
+    """Genera il prossimo codice SKU univoco per il prodotto finito a magazzino (es. PF-001)."""
+    esistenti = (
+        db.query(ProdottoFinito.codice)
+        .filter(ProdottoFinito.codice.like("PF-%"))
+        .all()
+    )
+    max_num = 0
+    pattern = re.compile(r"^PF-(\d+)$")
+    for (cod,) in esistenti:
+        if cod:
+            m = pattern.match(cod.strip())
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_num:
+                        max_num = num
+                except ValueError:
+                    pass
+    return f"PF-{max_num + 1:03d}"
+
+
+def genera_codice_lotto_imbottigliamento(cotta, formato_ml: int = None, tipo_pkg: str = None) -> str:
+    """
+    Genera il codice lotto a norma di legge per il prodotto finito (D.Lgs 109/92 e Reg. UE 1169/2011).
+    Esempio: L-COT-2026-001-330ML oppure L-COT-2026-001-FUSTO30L.
+    """
+    now = datetime.now()
+    if cotta and getattr(cotta, "codice", None):
+        cotta_id_str = cotta.codice
+    elif cotta and getattr(cotta, "id", None):
+        cotta_id_str = f"COT-{now.year}-{cotta.id:03d}"
+    else:
+        cotta_id_str = f"COT-{now.strftime('%Y%m')}"
+
+    dettaglio = ""
+    if formato_ml:
+        if formato_ml >= 1000:
+            litri = formato_ml / 1000.0
+            dettaglio = f"-{litri:g}L"
+        else:
+            dettaglio = f"-{formato_ml}ML"
+    elif tipo_pkg:
+        dettaglio = f"-{tipo_pkg.upper()[:3]}"
+
+    return f"L-{cotta_id_str}{dettaglio}"

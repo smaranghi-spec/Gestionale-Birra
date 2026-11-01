@@ -521,8 +521,9 @@ class ProdottoFinito(Base):
     __tablename__ = "prodotti_finiti"
     id = Column(Integer, primary_key=True, index=True)
     cotta_id = Column(Integer, ForeignKey("cotte.id"), nullable=True)
+    codice = Column(String, nullable=True)             # SKU Articolo Finito: PF-001, PF-002...
     nome = Column(String, nullable=False)
-    codice_lotto = Column(String, nullable=True)       # auto: YYYY-MM-CODICE
+    codice_lotto = Column(String, nullable=True)       # Lotto confezionamento: L-COT-2026-001-330
     formato_ml = Column(Integer, default=750)          # 330 / 500 / 750 / 1000 / fusto
     tipo_packaging = Column(String, default="bottiglia")  # bottiglia / fusto / lattina
     n_pezzi_iniziali = Column(Integer, default=0)

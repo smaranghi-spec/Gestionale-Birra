@@ -99,6 +99,7 @@ def run_migrations():
         ("inventario", "codice_ingrediente", "TEXT"),
         ("ricette", "codice", "TEXT"),
         ("ingredienti_ricetta", "codice_ingrediente", "TEXT"),
+        ("prodotti_finiti", "codice", "TEXT"),
     ]
 
     with engine.connect() as conn:
@@ -113,7 +114,7 @@ def run_migrations():
              "alpha_acid REAL, hop_use TEXT, hop_form TEXT, attenuation REAL, "
              "yeast_type TEXT, yeast_form TEXT, misc_type TEXT, misc_use TEXT"),
             ("prodotti_finiti",
-             f"id {pk_type}, cotta_id INTEGER REFERENCES cotte(id), "
+             f"id {pk_type}, cotta_id INTEGER REFERENCES cotte(id), codice TEXT, "
              "nome TEXT NOT NULL, codice_lotto TEXT, formato_ml INTEGER DEFAULT 750, "
              "tipo_packaging TEXT DEFAULT 'bottiglia', n_pezzi_iniziali INTEGER DEFAULT 0, "
              "n_pezzi_disponibili INTEGER DEFAULT 0, data_imbottigliamento TEXT, "
@@ -189,7 +190,7 @@ def assegna_codici_retroattivi():
     """Assegna codici univoci standard (SKU, Ricetta, Cotta) a tutti i record privi di codice, preservando i dati esistenti."""
     try:
         from .db import SessionLocal
-        from .models import CatalogoIngrediente, InventarioItem, Ricetta, Cotta, IngredienteRicetta
+        from .models import CatalogoIngrediente, InventarioItem, Ricetta, Cotta, IngredienteRicetta, ProdottoFinito
         from .codici import prefisso_per_categoria
         import re
 
@@ -273,6 +274,24 @@ def assegna_codici_retroattivi():
                         anno = c.data_brew[:4]
                     cotte_per_anno[anno] = cotte_per_anno.get(anno, 0) + 1
                     c.codice = f"COT-{anno}-{cotte_per_anno[anno]:03d}"
+
+            # 6. PRODOTTI FINITI (Assegna SKU PF-NNN e assicura codice_lotto standard)
+            all_pf = db.query(ProdottoFinito).order_by(ProdottoFinito.id.asc()).all()
+            pf_max = 0
+            for pf in all_pf:
+                if pf.codice:
+                    m = re.match(r"^PF-(\d+)$", pf.codice.strip())
+                    if m:
+                        pf_max = max(pf_max, int(m.group(1)))
+
+            for pf in all_pf:
+                if not pf.codice:
+                    pf_max += 1
+                    pf.codice = f"PF-{pf_max:03d}"
+                if not pf.codice_lotto:
+                    cotta_code = pf.cotta.codice if (pf.cotta and pf.cotta.codice) else (f"COT-2026-{pf.cotta_id:03d}" if pf.cotta_id else "LOTTO")
+                    fmt = pf.formato_ml or 330
+                    pf.codice_lotto = f"L-{cotta_code}-{fmt}ML"
 
             db.commit()
         except Exception:
@@ -376,7 +395,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-11-01_1250_codici_lotti_tracciabilita",
+        "build": "2026-11-01_1330_filiera_completa_prodotti_finiti",
     }
 
 
