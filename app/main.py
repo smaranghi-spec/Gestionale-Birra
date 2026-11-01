@@ -256,7 +256,7 @@ def debug_version():
     return {
         "status": "online",
         "app": "Gestionale Birrificio",
-        "build": "2026-10-16_2020_libreria_catalogo",
+        "build": "2026-11-01_1120_brewfather_engine",
     }
 
 

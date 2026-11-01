@@ -285,30 +285,113 @@
     </div>
 
     <div class="card">
-        <h2>Statistiche stimate</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+            <h2 style="margin:0;">Statistiche stimate (Modello Brewfather)</h2>
+            <span style="font-size:12px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:3px 10px;border-radius:12px;font-weight:600;">
+                Tinseth Metrico Esatto · Hall ABV · Morey SRM
+            </span>
+        </div>
         <div class="stats-box">
-            <div class="stat"><div class="stat-label">OG</div><div class="stat-value" id="stat-og">{{ stats.og }}</div></div>
-            <div class="stat"><div class="stat-label">FG</div><div class="stat-value" id="stat-fg">{{ stats.fg }}</div></div>
-            <div class="stat"><div class="stat-label">ABV</div><div class="stat-value" id="stat-abv">{{ stats.abv }}%</div></div>
-            <div class="stat"><div class="stat-label">IBU</div><div class="stat-value" id="stat-ibu">{{ stats.ibu }}</div></div>
-            <div class="stat"><div class="stat-label">SRM</div><div class="stat-value" id="stat-srm">{{ stats.srm }}</div></div>
-            <div class="stat"><div class="stat-label">EBC</div><div class="stat-value" id="stat-ebc">{{ stats.ebc }}</div></div>
-            <div class="stat"><div class="stat-label">BU/GU</div><div class="stat-value" id="stat-bugu">{{ stats.bu_gu }}</div></div>
-            <div class="stat"><div class="stat-label">GU</div><div class="stat-value" id="stat-gu">{{ stats.gu }}</div></div>
-            <div class="stat" style="min-width:90px;">
-                <div class="stat-label">Colore birra</div>
-                <div id="stat-color-swatch" style="width:52px;height:52px;border-radius:8px;background:{{ srm_hex }};border:2px solid rgba(0,0,0,0.18);margin-top:6px;" title="SRM {{ stats.srm }} · EBC {{ stats.ebc }}"></div>
-                <div style="font-size:11px;color:#888;margin-top:4px;">SRM {{ stats.srm }}</div>
+            <div class="stat">
+                <div class="stat-label">OG (Original Gravity)</div>
+                <div class="stat-value" id="stat-og">{{ stats.og }}</div>
+                <div style="font-size:11px;color:#666;margin-top:2px;">
+                    <span id="stat-plato-og" style="font-weight:bold;color:#b45309;">{{ stats.plato_og }}°P</span>
+                    · Pre-boil: <span id="stat-preboil-og">{{ stats.volumi.preboil_og if stats.volumi else '—' }}</span>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">FG (Final Gravity)</div>
+                <div class="stat-value" id="stat-fg">{{ stats.fg }}</div>
+                <div style="font-size:11px;color:#666;margin-top:2px;">
+                    <span id="stat-plato-fg" style="font-weight:bold;color:#b45309;">{{ stats.plato_fg }}°P</span>
+                    · <span id="stat-atten">{{ stats.attenuazione }}%</span> atten.
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alcol (ABV)</div>
+                <div class="stat-value" id="stat-abv" style="color:#15803d;">{{ stats.abv }}%</div>
+                <div style="font-size:11px;color:#666;margin-top:2px;">
+                    <span id="stat-abw">{{ stats.abw }}% w/w</span>
+                    · <span id="stat-cals">{{ stats.calorie_33cl }} kcal/33cl</span>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Amaro (IBU)</div>
+                <div class="stat-value" id="stat-ibu">{{ stats.ibu }}</div>
+                <div style="font-size:11px;color:#666;margin-top:2px;">
+                    Tinseth · Pellet +10%
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Bilanciamento (BU/GU)</div>
+                <div class="stat-value" id="stat-bugu">{{ stats.bu_gu }}</div>
+                <div style="margin-top:3px;">
+                    <span id="stat-bilanciamento" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;background:#e0f2fe;color:#0369a1;">
+                        {{ stats.bilanciamento }}
+                    </span>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Colore EBC / SRM</div>
+                <div class="stat-value" id="stat-ebc">{{ stats.ebc }} <span style="font-size:14px;color:#666;">EBC</span></div>
+                <div style="font-size:11px;color:#666;margin-top:2px;">
+                    SRM: <strong id="stat-srm">{{ stats.srm }}</strong> (Morey)
+                </div>
+            </div>
+            <div class="stat" style="min-width:90px;text-align:center;">
+                <div class="stat-label">Tinta Birra</div>
+                <div id="stat-color-swatch" style="width:52px;height:42px;border-radius:8px;background:{{ srm_hex }};border:2px solid rgba(0,0,0,0.18);margin:6px auto 0;" title="SRM {{ stats.srm }} · EBC {{ stats.ebc }}"></div>
             </div>
             {% if costo.totale > 0 %}
             <div class="stat">
-                <div class="stat-label">💰 Costo MP</div>
-                <div class="stat-value" id="stat-costo" style="font-size:20px;">€ {{ costo.totale }}</div>
-                <div style="font-size:11px;color:#888;margin-top:2px;">{{ costo.dettaglio|length }} voci con prezzo</div>
+                <div class="stat-label">💰 Costo Materie Prime</div>
+                <div class="stat-value" id="stat-costo" style="font-size:20px;color:#0f766e;">€ {{ costo.totale }}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">{{ costo.dettaglio|length }} voci valorizzate</div>
             </div>
             {% endif %}
         </div>
-        <div class="status-msg" id="stats-status">Statistiche caricate.</div>
+        <div class="status-msg" id="stats-status" style="margin-top:10px;font-size:12px;color:#666;">Statistiche sincronizzate con gli algoritmi Brewfather.</div>
+    </div>
+
+    <!-- BOX VOLUMI & ACQUA DI COTTA (STILE BREWFATHER) -->
+    <div class="card" id="card-volumi-acqua">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+            <h2 style="margin:0;">💧 Volumi & Acqua di Cotta (Modello All-Grain)</h2>
+            <span style="font-size:12px;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:12px;font-weight:600;">
+                Rapporto Mash 3.0 L/kg · Boil-off 2.5 L/h · Trub 1.5 L
+            </span>
+        </div>
+        <p style="font-size:13px;color:#666;margin:0 0 14px 0;">
+            Fabbisogno idrico calcolato sul peso totale grani (<strong id="vol-peso-grani">{{ stats.volumi.peso_grani_kg }} kg</strong>) e sul volume target nel fermentatore (<strong id="vol-target">{{ ricetta.volume_target_litri }} L</strong>).
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#166534;text-transform:uppercase;">Acqua Totale</div>
+                <div style="font-size:22px;font-weight:bold;color:#15803d;" id="vol-acqua-tot">{{ stats.volumi.acqua_totale }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Fabbisogno idrico complessivo</div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;">Acqua Mash (Ammostamento)</div>
+                <div style="font-size:22px;font-weight:bold;color:#1d4ed8;" id="vol-acqua-mash">{{ stats.volumi.acqua_mash }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Infuso iniziale a 67°C</div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;">Acqua Sparge (Lavaggio)</div>
+                <div style="font-size:22px;font-weight:bold;color:#1d4ed8;" id="vol-acqua-sparge">{{ stats.volumi.acqua_sparge }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Lavaggio trebbie a 78°C</div>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#92400e;text-transform:uppercase;">Volume Pre-Bollitura</div>
+                <div style="font-size:22px;font-weight:bold;color:#b45309;" id="vol-preboil">{{ stats.volumi.preboil_volume }} L</div>
+                <div style="font-size:11px;color:#4b5563;">OG stim: <strong id="vol-preboil-og">{{ stats.volumi.preboil_og }}</strong> ({{ stats.volumi.preboil_plato }}°P)</div>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:11px;font-weight:bold;color:#4b5563;text-transform:uppercase;">Assorbimento Grani</div>
+                <div style="font-size:22px;font-weight:bold;color:#374151;" id="vol-assorbimento">{{ stats.volumi.assorbimento_grani }} L</div>
+                <div style="font-size:11px;color:#4b5563;">Trattenuta trebbie (~0.96 L/kg)</div>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -1193,14 +1276,42 @@
                 const data = await res.json();
                 const s = data.stats;
 
-                document.getElementById("stat-og").textContent = s.og;
-                document.getElementById("stat-fg").textContent = s.fg;
-                document.getElementById("stat-abv").textContent = s.abv + "%";
-                document.getElementById("stat-ibu").textContent = s.ibu;
-                document.getElementById("stat-srm").textContent = s.srm;
-                document.getElementById("stat-ebc").textContent = s.ebc;
-                document.getElementById("stat-bugu").textContent = s.bu_gu;
-                document.getElementById("stat-gu").textContent = s.gu;
+                const setText = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = (val !== null && val !== undefined) ? val : "—";
+                };
+
+                setText("stat-og", s.og);
+                setText("stat-fg", s.fg);
+                setText("stat-abv", s.abv + "%");
+                setText("stat-ibu", s.ibu);
+                setText("stat-srm", s.srm);
+                setText("stat-ebc", s.ebc + " EBC");
+                setText("stat-bugu", s.bu_gu);
+
+                if (s.plato_og !== undefined) setText("stat-plato-og", s.plato_og + "°P");
+                if (s.plato_fg !== undefined) setText("stat-plato-fg", s.plato_fg + "°P");
+                if (s.attenuazione !== undefined) setText("stat-atten", s.attenuazione + "%");
+                if (s.abw !== undefined) setText("stat-abw", s.abw + "% w/w");
+                if (s.calorie_33cl !== undefined) setText("stat-cals", s.calorie_33cl + " kcal/33cl");
+                if (s.bilanciamento) setText("stat-bilanciamento", s.bilanciamento);
+
+                if (data.srm_hex) {
+                    const swatch = document.getElementById("stat-color-swatch");
+                    if (swatch) swatch.style.backgroundColor = data.srm_hex;
+                }
+
+                if (s.volumi) {
+                    const v = s.volumi;
+                    setText("vol-peso-grani", v.peso_grani_kg + " kg");
+                    setText("vol-acqua-tot", v.acqua_totale + " L");
+                    setText("vol-acqua-mash", v.acqua_mash + " L");
+                    setText("vol-acqua-sparge", v.acqua_sparge + " L");
+                    setText("vol-preboil", v.preboil_volume + " L");
+                    setText("vol-preboil-og", v.preboil_og);
+                    setText("stat-preboil-og", v.preboil_og);
+                    setText("vol-assorbimento", v.assorbimento_grani + " L");
+                }
 
                 if (data.confronto_stile) {
                     const c = data.confronto_stile;
