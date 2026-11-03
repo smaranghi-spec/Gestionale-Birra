@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Stili birra</title>
     <style>
         * { box-sizing: border-box; }
@@ -112,15 +112,63 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        .mobile-bottom-nav { display: none; }
+
         @media (max-width: 768px) {
             .topbar { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
-            .container { margin: 14px auto 40px; padding: 0 10px; }
+            .container { margin: 14px auto calc(80px + env(safe-area-inset-bottom, 0px)); padding: 0 10px; }
             .card { padding: 16px 12px; border-radius: 8px; }
             .form-grid { grid-template-columns: 1fr; }
             .form-grid .span2, .form-grid .span4 { grid-column: auto; }
             table { min-width: 550px; font-size: 12px; }
             input, select { font-size: 16px !important; min-height: 44px; }
             .btn { min-height: 40px; }
+
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: calc(58px + env(safe-area-inset-bottom, 0px));
+                background: rgba(22, 27, 34, 0.98);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border-top: 1px solid #30363d;
+                z-index: 1000;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            }
+            .mobile-nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+                color: #8b949e;
+                background: transparent;
+                border: none;
+                padding: 5px 0;
+                cursor: pointer;
+                font-family: inherit;
+                transition: color .15s;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mobile-nav-item:hover, .mobile-nav-item.active {
+                color: #f59e0b;
+                text-decoration: none;
+            }
+            .mobile-nav-item .nav-icon {
+                font-size: 19px;
+                line-height: 1.1;
+                margin-bottom: 2px;
+            }
+            .mobile-nav-item span:not(.nav-icon) {
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.2px;
+            }
         }
     </style>
 </head>
@@ -222,8 +270,30 @@
         {% else %}
         <p class="empty">Nessuno stile nel database. Importa gli stili BJCP o aggiungine uno manuale.</p>
         {% endif %}
-    </div>
-
 </div>
+
+<!-- Mobile Bottom Navigation Bar -->
+<nav class="mobile-bottom-nav" aria-label="Navigazione rapida mobile">
+    <a href="/" class="mobile-nav-item">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
+    </a>
+    <a href="/ricette" class="mobile-nav-item active">
+        <span class="nav-icon">📜</span>
+        <span>Ricette</span>
+    </a>
+    <a href="/cotte" class="mobile-nav-item">
+        <span class="nav-icon">🍺</span>
+        <span>Cotte</span>
+    </a>
+    <a href="/inventario" class="mobile-nav-item">
+        <span class="nav-icon">📦</span>
+        <span>Giacenze</span>
+    </a>
+    <a href="/catalogo/ingredienti" class="mobile-nav-item">
+        <span class="nav-icon">🌾</span>
+        <span>Catalogo</span>
+    </a>
+</nav>
 </body>
 </html>

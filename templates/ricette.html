@@ -9,8 +9,28 @@
   gap: 24px;
   align-items: start;
 }
+.btn-nuova-mobile {
+  display: none;
+}
 @media (max-width: 900px) {
-  .ricette-layout { grid-template-columns: 1fr; }
+  .ricette-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ricette-crea-col {
+    order: 2;
+  }
+  .ricette-lista-col {
+    order: 1;
+    width: 100%;
+  }
+  .card-crea-sticky {
+    position: static !important;
+  }
+  .btn-nuova-mobile {
+    display: inline-flex !important;
+  }
 }
 .form-section {
   border-top: 2px solid var(--amber);
@@ -90,7 +110,10 @@
     <h1 style="font-size:22px;margin-bottom:4px;">🧪 Ricette</h1>
     <p style="color:var(--muted);font-size:13px;">{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %} · <a href="/ricette/libreria" style="color:var(--amber);font-weight:600;">📚 Libreria Ricette Predefinite (17)</a> · <a href="/catalogo/ingredienti" style="color:var(--amber);">📦 Catalogo ingredienti</a> · <a href="/importa/beerxml" style="color:var(--amber);">📥 Importa BeerXML</a></p>
   </div>
-  <div style="display:flex;gap:10px;align-items:center;">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button type="button" class="btn btn-primary btn-nuova-mobile" onclick="vaiACreaRicetta()">
+      ➕ Nuova Ricetta
+    </button>
     <a href="/ricette/libreria" class="btn btn-secondary" style="border-color:var(--amber);color:var(--amber);background:rgba(245,158,11,0.08);">
       <span>📚</span> Sfoglia Libreria Ricette
     </a>
@@ -100,8 +123,8 @@
 <div class="ricette-layout">
 
   <!-- ── PANNELLO CREA ───────────────────────────────────────── -->
-  <div>
-    <div class="card" style="position:sticky;top:16px;">
+  <div class="ricette-crea-col">
+    <div class="card card-crea-sticky" id="pannello-crea" style="position:sticky;top:16px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
         <span style="font-size:18px;">➕</span>
         <span style="font-size:15px;font-weight:700;color:var(--text);">Nuova ricetta</span>
@@ -220,11 +243,11 @@
   </div>
 
   <!-- ── LISTA RICETTE ──────────────────────────────────────── -->
-  <div>
+  <div class="ricette-lista-col">
     {% if ricette %}
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
       <input type="text" id="search-ricette" placeholder="🔍 Cerca per nome o stile…"
-        style="flex:1;max-width:360px;" oninput="filterRicette(this.value)">
+        style="flex:1;min-width:200px;" oninput="filterRicette(this.value)">
       <span style="font-size:12px;color:var(--muted);" id="count-label">{{ ricette|length }} ricette</span>
     </div>
 
@@ -323,6 +346,15 @@ function showMashPill(sel) {
     pill.style.display = 'inline-flex';
   } else {
     pill.style.display = 'none';
+  }
+}
+
+function vaiACreaRicetta() {
+  const el = document.getElementById('pannello-crea');
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const inputNome = el.querySelector("input[name='nome']");
+    if (inputNome) setTimeout(() => inputNome.focus(), 300);
   }
 }
 </script>

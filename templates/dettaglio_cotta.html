@@ -45,29 +45,37 @@
   .kpi .kv{font-size:1.3rem;}
   .ai-box{width:calc(100vw - 32px);right:16px; bottom:calc(134px + env(safe-area-inset-bottom, 0px)); max-height:55vh;}
   .ai-fab{bottom:calc(72px + env(safe-area-inset-bottom, 0px)); width:46px; height:46px; font-size:18px;}
-  .section-tabs{overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; padding-bottom:8px; gap:6px;}
-  .section-tabs .stab{white-space:nowrap; flex-shrink:0;}
-  .fase-pipeline{-webkit-overflow-scrolling:touch;}
+  .section-tabs{overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; padding-bottom:8px; gap:6px; scrollbar-width:none;}
+  .section-tabs::-webkit-scrollbar { display:none; }
+  .section-tabs .stab{white-space:nowrap; flex-shrink:0; min-height:42px; display:inline-flex; align-items:center; justify-content:center;}
+  .fase-pipeline{-webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .fase-pipeline::-webkit-scrollbar { display:none; }
+  .cotta-header-actions { display:flex; flex-wrap:wrap; gap:6px; width:100%; }
+  .cotta-header-actions .btn, .cotta-header-actions button { flex:1 1 calc(50% - 6px); min-height:42px; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
 }
 {% endblock %}
 {% block content %}
 
 <!-- Topbar breadcrumb -->
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-  <a href="/cotte" class="btn btn-ghost btn-sm">← Cotte</a>
-  <h1 style="font-size:20px;margin:0;flex:1;">
-    {{ cotta.nome }}
-    {% if cotta.codice %}<span class="badge badge-amber" style="font-family:monospace;font-size:12px;margin-left:6px;">{{ cotta.codice }}</span>{% endif %}
-  </h1>
-  <span class="badge badge-amber">{{ fasi_label[cotta.stato] }}</span>
-  {% if cotta.ricetta_id %}
-  <a href="/cotte/{{ cotta.id }}/vai-produzione" class="btn btn-success btn-sm" title="Solo ricette da magazzino">▶ Vai in Produzione</a>
-  <a href="/cotte/{{ cotta.id }}/imbottiglia" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);">🍾 Imbottiglia</a>
-  {% endif %}
-  <a href="/cotte/{{ cotta.id }}/stampa" target="_blank" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);" title="Stampa Scheda di Cotta per sala produzione">🖨️ Scheda di Cotta</a>
-  {% if cotta.ricetta_id %}
-  <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" style="background:transparent;border:1px solid var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">🍺 Push BrewMonk</button>
-  {% endif %}
+  <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:260px;">
+    <a href="/cotte" class="btn btn-ghost btn-sm" style="min-height:36px;">← Cotte</a>
+    <h1 style="font-size:20px;margin:0;flex:1;">
+      {{ cotta.nome }}
+      {% if cotta.codice %}<span class="badge badge-amber" style="font-family:monospace;font-size:12px;margin-left:6px;">{{ cotta.codice }}</span>{% endif %}
+    </h1>
+    <span class="badge badge-amber">{{ fasi_label[cotta.stato] }}</span>
+  </div>
+  <div class="cotta-header-actions">
+    {% if cotta.ricetta_id %}
+    <a href="/cotte/{{ cotta.id }}/vai-produzione" class="btn btn-success btn-sm" title="Solo ricette da magazzino">▶ Produzione</a>
+    <a href="/cotte/{{ cotta.id }}/imbottiglia" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);">🍾 Imbottiglia</a>
+    {% endif %}
+    <a href="/cotte/{{ cotta.id }}/stampa" target="_blank" class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber);" title="Stampa Scheda di Cotta per sala produzione">🖨️ Scheda Stampa</a>
+    {% if cotta.ricetta_id %}
+    <button onclick="pushBrewMonk({{ cotta.ricetta_id }}, this)" style="background:transparent;border:1px solid var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">🍺 Push BrewMonk</button>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Pipeline fasi -->

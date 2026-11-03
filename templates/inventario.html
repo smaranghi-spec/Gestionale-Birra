@@ -1,5 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Inventario{% endblock %}
+{% block extra_style %}
+.inventario-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+@media(max-width: 900px) {
+  .inventario-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+{% endblock %}
 {% block content %}
 
 <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
@@ -8,6 +22,7 @@
     <p>Consumabili e non consumabili. Aggiorna le quantità e monitora le soglie minime.</p>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" class="btn btn-primary btn-sm mobile-only-inline" onclick="document.getElementById('card-nuovo-articolo').scrollIntoView({behavior:'smooth'}); document.querySelector('#card-nuovo-articolo input[name=nome]')?.focus();">➕ Nuovo</button>
     <a href="/inventario/fisico" class="btn btn-ghost btn-sm">📋 Conteggio fisico</a>
     <a href="/tracciabilita" class="btn btn-ghost btn-sm">🔍 Tracciabilità</a>
     <a href="/acquisti/nuovo" class="btn btn-ghost btn-sm">🛒 Nuovo acquisto</a>
@@ -21,12 +36,12 @@
 </div>
 {% endif %}
 
-<form method="get" action="/inventario" style="margin-bottom:14px;display:flex;gap:8px;">
+<form method="get" action="/inventario" style="margin-bottom:16px;display:flex;gap:8px;align-items:center;">
   {% if ricetta_id %}<input type="hidden" name="ricetta_id" value="{{ ricetta_id }}">{% endif %}
-  <input type="text" name="q" value="{{ q }}" placeholder="🔍 Cerca articolo…" style="flex:1;max-width:320px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);">
-  <button type="button" class="btn btn-primary btn-sm" onclick="avviaScannerInventario()" title="Scansiona Codice a Barre / QR">📷</button>
-  <button type="submit" class="btn btn-ghost btn-sm">Filtra</button>
-  {% if q or ricetta_id %}<a href="/inventario" class="btn btn-ghost btn-sm">Reset</a>{% endif %}
+  <input type="text" name="q" value="{{ q }}" placeholder="🔍 Cerca articolo…" style="flex:1;min-width:0;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:16px;">
+  <button type="button" class="btn btn-primary btn-sm" onclick="avviaScannerInventario()" title="Scansiona Codice a Barre / QR" style="min-height:42px;min-width:42px;display:inline-flex;align-items:center;justify-content:center;">📷</button>
+  <button type="submit" class="btn btn-ghost btn-sm" style="min-height:42px;">Filtra</button>
+  {% if q or ricetta_id %}<a href="/inventario" class="btn btn-ghost btn-sm" style="min-height:42px;display:inline-flex;align-items:center;">Reset</a>{% endif %}
 </form>
 
 {% if sotto_soglia %}
@@ -36,7 +51,7 @@
 </div>
 {% endif %}
 
-<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+<div class="inventario-layout">
 
   <div>
     {% if items %}
@@ -116,7 +131,7 @@
     {% endif %}
   </div>
 
-  <div class="card">
+  <div class="card" id="card-nuovo-articolo">
     <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuovo Articolo</h3>
     <form method="post" action="/inventario/nuovo">
       <div class="form-row"><label>Nome *</label><input type="text" name="nome" placeholder="es. Tappi a corona" required></div>

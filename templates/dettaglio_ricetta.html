@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ ricetta.nome }}</title>
     <style>
         * { box-sizing: border-box; }
@@ -204,14 +204,18 @@
             margin-top: 12px;
         }
 
+        .mobile-bottom-nav {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             body {
-                margin: 10px auto 40px;
+                margin: 10px auto calc(76px + env(safe-area-inset-bottom, 0px));
                 padding: 0 10px;
             }
             .card {
                 padding: 14px 12px;
-                border-radius: 8px;
+                border-radius: 10px;
                 margin-bottom: 14px;
             }
             .toolbar {
@@ -220,9 +224,10 @@
             .toolbar .btn, .toolbar a, .toolbar button {
                 flex: 1 1 calc(50% - 6px);
                 text-align: center;
-                padding: 9px 8px;
-                font-size: 12px;
-                min-height: 40px;
+                padding: 10px 8px;
+                font-size: 13px;
+                font-weight: 600;
+                min-height: 42px;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
@@ -233,7 +238,7 @@
             .stat {
                 flex: 1 1 calc(33.3% - 6px);
                 min-width: 85px;
-                padding: 8px;
+                padding: 10px 8px;
             }
             .stat-value {
                 font-size: 18px;
@@ -242,14 +247,62 @@
                 font-size: 11px;
             }
             table {
-                min-width: 600px;
+                min-width: 520px;
                 font-size: 12px;
             }
             input, select, textarea {
                 font-size: 16px !important;
+                min-height: 42px;
             }
             .inline-input, .inline-select, .inline-note {
                 max-width: none;
+            }
+
+            /* Sticky Mobile Bottom Bar */
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: calc(58px + env(safe-area-inset-bottom, 0px));
+                background: rgba(22, 27, 34, 0.98);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border-top: 1px solid #30363d;
+                z-index: 1000;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            }
+            .mb-nav-item, .mobile-nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+                color: #8b949e;
+                background: transparent;
+                border: none;
+                padding: 5px 0;
+                cursor: pointer;
+                font-family: inherit;
+                transition: color .15s;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mb-nav-item:hover, .mb-nav-item.active, .mobile-nav-item:hover, .mobile-nav-item.active {
+                color: #f59e0b;
+                text-decoration: none;
+            }
+            .mb-nav-item .mb-icon, .mobile-nav-item .nav-icon {
+                font-size: 19px;
+                line-height: 1.1;
+                margin-bottom: 2px;
+            }
+            .mb-nav-item .mb-label, .mobile-nav-item span:not(.nav-icon) {
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.2px;
             }
         }
     </style>
@@ -2253,5 +2306,29 @@
             </form>
         </div>
     </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav" aria-label="Navigazione rapida mobile">
+        <a href="/" class="mobile-nav-item">
+            <span class="nav-icon">🏠</span>
+            <span>Home</span>
+        </a>
+        <a href="/ricette" class="mobile-nav-item active">
+            <span class="nav-icon">📜</span>
+            <span>Ricette</span>
+        </a>
+        <a href="/ricette/{{ ricetta.id }}/modifica" class="mobile-nav-item">
+            <span class="nav-icon">✏️</span>
+            <span>Modifica</span>
+        </a>
+        <a href="/cotte" class="mobile-nav-item">
+            <span class="nav-icon">🍺</span>
+            <span>Cotte</span>
+        </a>
+        <a href="/inventario" class="mobile-nav-item">
+            <span class="nav-icon">📦</span>
+            <span>Giacenze</span>
+        </a>
+    </nav>
 </body>
 </html>

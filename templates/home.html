@@ -9,7 +9,17 @@
 .degu-row{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(48,54,61,.4);}
 .degu-row:last-child{border-bottom:none;}
 .badge-purple{background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.3);}
-@media(max-width:600px){.home-hero{padding:20px 18px;}.home-hero::after{display:none;}}
+@media(max-width:768px){
+  .home-hero{padding:18px 16px;margin-bottom:16px;border-radius:12px;}
+  .home-hero::after{display:none;}
+  .quick-link{padding:12px 6px;font-size:11px;border-radius:10px;}
+  .quick-link .qi{font-size:22px;}
+  .home-ai-fab{bottom:calc(72px + env(safe-area-inset-bottom, 0px)) !important;width:46px !important;height:46px !important;font-size:18px !important;}
+  .home-ai-box{bottom:calc(126px + env(safe-area-inset-bottom, 0px)) !important;width:calc(100vw - 32px) !important;right:16px !important;max-height:55vh !important;}
+}
+@media(max-width:480px){
+  .quick-links-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; }
+}
 {% endblock %}
 {% block content %}
 
@@ -53,7 +63,7 @@
 <!-- Accesso rapido -->
 <div style="margin-bottom:24px;">
   <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;font-weight:600;">⚡ Accesso rapido</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;">
+  <div class="quick-links-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;">
     <a href="/dashboard" class="quick-link"><span class="qi">📊</span>Dashboard</a>
     <a href="/ricette/html" class="quick-link"><span class="qi">🧪</span>Ricette</a>
     <a href="/cotte" class="quick-link"><span class="qi">🍺</span>Cotte</a>
@@ -70,6 +80,9 @@
     {% if session.ruolo == 'admin' %}
     <a href="/utenti" class="quick-link" style="border: 1px solid var(--amber);"><span class="qi">🔑</span>Utenti</a>
     {% endif %}
+  </div>
+</div>
+
 <!-- 🏭 STATO DELLA PRODUZIONE & FASI IN CORSO -->
 <div class="card" style="margin-bottom:24px;border:1px solid rgba(245,158,11,0.25);box-shadow:0 4px 20px rgba(0,0,0,0.15);">
   <div class="card-header" style="border-bottom:1px solid rgba(48,54,61,0.5);padding-bottom:14px;margin-bottom:16px;">
@@ -222,7 +235,7 @@
 </div>
 
 <!-- AI assistant box -->
-<div id="ai-box" style="position:fixed;bottom:80px;right:16px;width:310px;max-height:380px;background:var(--card);border:1px solid var(--amber);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;z-index:200;overflow:hidden;display:none;">
+<div id="ai-box" class="home-ai-box" style="position:fixed;bottom:80px;right:16px;width:310px;max-height:380px;background:var(--card);border:1px solid var(--amber);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;z-index:200;overflow:hidden;display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--amber);border-radius:12px 12px 0 0;">
     <span style="font:700 13px/1 inherit;color:#000;">🤖 Assistente AI</span>
     <button onclick="document.getElementById('ai-box').style.display='none'" style="background:none;border:none;cursor:pointer;color:#000;font-size:16px;padding:0;">✕</button>
@@ -233,7 +246,7 @@
     <button onclick="sendAI()" class="btn btn-primary btn-xs">→</button>
   </div>
 </div>
-<button style="position:fixed;bottom:20px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--amber);border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(245,158,11,.4);z-index:201;"
+<button class="home-ai-fab" style="position:fixed;bottom:20px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--amber);border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(245,158,11,.4);z-index:201;"
   onclick="const b=document.getElementById('ai-box');b.style.display=b.style.display==='none'?'flex':'none';if(b.style.display==='flex'&&document.getElementById('ai-msgs').children.length===0)addAIMsg('bot','Ciao! 🍺 Sono il tuo assistente birraio. Posso aiutarti con ricette, calcoli, fermentazione e tutto ciò che riguarda la tua birra!');"
   title="Assistente AI">🤖</button>
 

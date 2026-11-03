@@ -1,5 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Magazzino Prodotti Finiti{% endblock %}
+{% block extra_style %}
+.mf-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.mf-grid-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.mf-grid-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media(max-width: 768px) {
+  .mf-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .mf-stats-grid > div:last-child {
+    grid-column: 1 / -1;
+  }
+  .mf-grid-top, .mf-grid-bottom {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+{% endblock %}
 {% block content %}
 
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
@@ -14,7 +47,7 @@
 </div>
 
 <!-- Stats -->
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+<div class="mf-stats-grid">
   <div class="card" style="text-align:center;padding:16px;">
     <div style="font-size:28px;font-weight:800;color:var(--amber);">{{ totale_pezzi }}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:4px;">Pezzi disponibili</div>
@@ -34,7 +67,7 @@
 <div class="card">
   <h3 style="font-size:15px;margin-bottom:16px;">📦 Registra nuovo lotto</h3>
   <form method="post" action="/magazzino-finiti/nuovo">
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+    <div class="mf-grid-top">
       <div class="form-row" style="margin:0;">
         <label>Nome prodotto *</label>
         <input type="text" name="nome" placeholder="es. IPA Summer 2025" required>
@@ -53,7 +86,7 @@
         <input type="text" name="codice_lotto" placeholder="auto-generato">
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+    <div class="mf-grid-bottom">
       <div class="form-row" style="margin:0;">
         <label>Tipo</label>
         <select name="tipo_packaging">
@@ -90,6 +123,7 @@
 <!-- Tabella prodotti -->
 {% if prodotti %}
 <div class="card" style="padding:0;overflow:hidden;">
+  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
   <table class="tbl">
     <thead>
       <tr>
@@ -153,6 +187,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% else %}
 <div class="card empty">

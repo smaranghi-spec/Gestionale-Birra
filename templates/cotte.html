@@ -14,11 +14,11 @@
 
 <!-- Stats bar -->
 {% if cotte %}
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+<div class="scroll-chips" style="gap:8px;margin-bottom:18px;">
   {% for stato in stati %}
   {% if contatori[stato] > 0 %}
   <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;
-    padding:6px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;">
+    padding:6px 14px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;flex-shrink:0;">
     <span style="width:8px;height:8px;border-radius:50%;display:inline-block;
       background:{% if stato=='brewday' %}#fb923c{% elif stato=='fermentazione' %}#34d399{% elif stato=='secondaria' %}#38bdf8{% elif stato=='pronta' %}#4ade80{% elif stato=='archiviata' %}#6b7280{% elif stato=='imbottigliamento' %}#60a5fa{% elif stato=='maturazione' %}#a78bfa{% elif stato=='condizionamento' %}#c084fc{% else %}#9ca3af{% endif %};"></span>
     <span style="color:var(--muted);">{{ fasi_label[stato] }}</span>
@@ -35,7 +35,7 @@
   <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova Cotta</h3>
   <form method="post" action="/cotte/nuova">
     <div class="form-grid">
-      <div class="form-row" style="grid-column:span 2;">
+      <div class="form-row" style="grid-column:1/-1;">
         <label>Nome cotta *</label>
         <input type="text" name="nome" placeholder="es. IPA Estiva #3" required>
       </div>
@@ -71,7 +71,7 @@
 
 <!-- Lista cotte -->
 {% if cotte %}
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%, 300px),1fr));gap:14px;">
   {% for c in cotte %}
   {% set stato_color = {'brewday':'#fb923c','fermentazione':'#34d399','secondaria':'#38bdf8',
     'pronta':'#4ade80','archiviata':'#6b7280','imbottigliamento':'#60a5fa',
