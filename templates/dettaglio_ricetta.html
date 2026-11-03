@@ -1253,101 +1253,121 @@
     }
     </script>
 
-    <div class="card" id="profilo-mash">
-        <h2>🌡️ Profilo di ammostamento</h2>
-        <style>
-            .mash-step-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 10px 14px; background: #fff8f0; border-radius: 8px; border-left: 4px solid #c8873e; }
-            .mash-step-num { font-size: 11px; font-weight: bold; color: #888; min-width: 22px; text-align: center; }
-            .mash-step-name { font-weight: bold; color: #333; flex: 2; font-size: 14px; }
-            .mash-step-temp { background: #ffe0b2; color: #8a4300; border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: bold; }
-            .mash-step-dur  { background: #e8f5e9; color: #1b5e20; border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: bold; }
-            .mash-form-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; flex-wrap: wrap; }
-            .mash-form-row input[type="text"]   { flex: 2; min-width: 140px; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
-            .mash-form-row input[type="number"] { width: 80px; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
-            .mash-form-row label { font-size: 11px; font-weight: bold; color: #666; }
-            .mash-form-field { display: flex; flex-direction: column; gap: 3px; }
-            .btn-remove-step { background: none; border: 1px solid #ddd; color: #c00; cursor: pointer; border-radius: 4px; padding: 4px 8px; font-size: 12px; }
-            .btn-add-step { background: #f5ede2; color: #8b5a2b; border: 1px dashed #c8873e; cursor: pointer; border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: bold; margin-top: 4px; }
-        </style>
-
-        {% if profilo_mash %}
-        <p style="margin-bottom:12px;">
-            <strong>{{ profilo_mash.nome }}</strong> ·
-            <span style="font-size:13px;color:#666;">{{ mash_steps|length }} step</span>
-        </p>
-        {% if mash_steps %}
-        <div style="margin-bottom:16px;">
-            {% for step in mash_steps %}
-            <div class="mash-step-row">
-                <div class="mash-step-num">{{ loop.index }}</div>
-                <div class="mash-step-name">{{ step.nome }}</div>
-                <span class="mash-step-temp">{{ step.temp_gradi }}°C</span>
-                <span class="mash-step-dur">{{ step.durata_min }} min</span>
+    <div class="card" id="profilo-mash" style="border-top: 4px solid #c8873e;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+            <div>
+                <h2 style="margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+                    <span>🌡️ Profilo di Ammostamento</span>
+                    <span style="font-size: 13px; font-weight: normal; color: var(--muted, #666);">(Mash Profile)</span>
+                </h2>
+                <div style="font-size: 12px; color: #666;">
+                    Configura e visualizza gli step di ammostamento in stile Brewfather con stima del corpo e della fermentabilità.
+                </div>
             </div>
-            {% endfor %}
+            <!-- Header Badges -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="badge" id="mash-header-time" style="background: #e8f5e9; color: #1b5e20; font-weight: 600; padding: 5px 12px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                    ⏱️ <strong id="mash-kpi-time">{{ mash_totale_minuti }}</strong> min
+                </span>
+                <span class="badge" id="mash-header-count" style="background: #fff3e0; color: #e65100; font-weight: 600; padding: 5px 12px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                    🔢 <strong id="mash-kpi-count">{{ mash_steps|length if mash_steps else 0 }}</strong> step
+                </span>
+                <span class="badge" id="mash-header-body" style="font-weight: 600; padding: 5px 12px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; background: #e0f2fe; color: #0369a1;">
+                    ⚖️ <span id="mash-kpi-body">Calcolo corpo...</span>
+                </span>
+            </div>
         </div>
-        {% endif %}
-        {% else %}
-        <p style="color:#888;font-size:14px;margin-bottom:14px;">Nessun profilo di ammostamento. Aggiungine uno con il modulo.</p>
-        {% endif %}
 
-        <details {% if not profilo_mash %}open{% endif %}>
-            <summary>{{ '✏️ Modifica profilo ammostamento' if profilo_mash else '+ Inserisci profilo ammostamento' }}</summary>
-            <form method="post" action="/ricette/{{ ricetta.id }}/profilo-mash-save" style="margin-top:16px;" id="mash-form">
-                <div style="margin-bottom:12px;">
-                    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">Nome profilo</label>
-                    <input type="text" name="nome_profilo"
-                           value="{{ profilo_mash.nome if profilo_mash else 'Singolo infuso' }}"
-                           style="padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;width:300px;">
-                </div>
+        <!-- Visual Timeline / Diagram (Brewfather style) -->
+        <div id="mash-visual-timeline-box" style="margin-bottom: 16px; padding: 12px 14px; background: #faf6f0; border-radius: 8px; border: 1px solid #ebd9c8;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #8b5a2b;">
+                    Schema Termico Step Ammostamento
+                </span>
+                <span id="mash-timeline-subtitle" style="font-size: 12px; color: #777;"></span>
+            </div>
+            <div id="mash-steps-timeline-bar" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
 
-                <div id="mash-steps-container">
-                    {% if mash_steps %}
-                    {% for step in mash_steps %}
-                    <div class="mash-form-row step-row">
-                        <div class="mash-form-field">
-                            <label>Nome step</label>
-                            <input type="text" name="step_nome" value="{{ step.nome }}" placeholder="es. Saccarificazione">
-                        </div>
-                        <div class="mash-form-field">
-                            <label>Temp. (°C)</label>
-                            <input type="number" name="step_temp" step="0.5" value="{{ step.temp_gradi }}" min="30" max="100">
-                        </div>
-                        <div class="mash-form-field">
-                            <label>Durata (min)</label>
-                            <input type="number" name="step_durata" value="{{ step.durata_min }}" min="1" max="300">
-                        </div>
-                        <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <div class="mash-form-row step-row">
-                        <div class="mash-form-field">
-                            <label>Nome step</label>
-                            <input type="text" name="step_nome" value="Saccarificazione" placeholder="es. Saccarificazione">
-                        </div>
-                        <div class="mash-form-field">
-                            <label>Temp. (°C)</label>
-                            <input type="number" name="step_temp" step="0.5" value="67" min="30" max="100">
-                        </div>
-                        <div class="mash-form-field">
-                            <label>Durata (min)</label>
-                            <input type="number" name="step_durata" value="60" min="1" max="300">
-                        </div>
-                        <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <button type="button" class="btn-add-step" onclick="aggiungiStep()">+ Aggiungi step</button>
-
-                <div style="margin-top:14px;">
-                    <button type="submit" style="background:#8b5a2b;color:white;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-weight:bold;">
-                        🌡️ Salva profilo ammostamento
+        <!-- Preset Selector Bar -->
+        <div style="background: #fff8f0; border: 1px solid #ebd9c8; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 300px;">
+                    <label for="sel-preset-mash" style="font-weight: bold; font-size: 13px; color: #8b5a2b; white-space: nowrap;">⚡ Preset Rapido:</label>
+                    <select id="sel-preset-mash" style="padding: 7px 10px; border: 1px solid #d4bda8; border-radius: 6px; font-size: 13px; flex: 1; max-width: 480px; background: white;" onchange="anteprimaPresetSelezionato(this.value)">
+                        <option value="">— Seleziona preset predefinito (Brewfather / BJCP) —</option>
+                        {% for k, tmpl in mash_templates.items() %}
+                        <option value="{{ k }}">{{ k }} ({% for s in tmpl %}{{ s.temp_gradi }}°{% if not loop.last %} → {% endif %}{% endfor %})</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" onclick="caricaPresetSelezionato()" class="btn btn-sm" style="background: #8b5a2b; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; white-space: nowrap;" title="Carica questo profilo nella tabella">
+                        Carica Preset 📥
                     </button>
                 </div>
-            </form>
-        </details>
+                {% if profilo_mash %}
+                <form method="post" action="/ricette/{{ ricetta.id }}/profilo-mash-elimina" onsubmit="return confirm('Vuoi davvero eliminare il profilo di ammostamento di questa ricetta?');" style="margin: 0;">
+                    <button type="submit" class="btn btn-sm btn-ghost" style="color: #c62828; font-size: 12px; background: none; border: 1px solid #ffcdd2; border-radius: 6px; padding: 6px 12px; cursor: pointer;">
+                        🗑️ Rimuovi Profilo
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Interactive Form -->
+        <form id="form-profilo-mash" method="post" action="/ricette/{{ ricetta.id }}/profilo-mash-save" onsubmit="salvaProfiloMashAjax(event)">
+            <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 14px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 260px;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 4px;">Nome Profilo Ammostamento</label>
+                    <input type="text" id="mash_nome_profilo" name="nome_profilo"
+                           value="{{ profilo_mash.nome if profilo_mash else 'Singolo Infuso - Medio (Bilanciato)' }}"
+                           placeholder="es. Singolo Infuso Medio, Hochkurz..."
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; font-weight: 600; color: #333;" required>
+                </div>
+                <div style="display: flex; align-items: flex-end; gap: 8px;">
+                    <button type="button" onclick="aggiungiStepVuoto()" style="background: #f5ede2; color: #8b5a2b; border: 1px solid #c8873e; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        ➕ Aggiungi Step
+                    </button>
+                    <button type="submit" id="btn-save-mash" style="background: #2e7d32; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        <span>💾 Salva Profilo</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Steps Table -->
+            <div style="overflow-x: auto; margin-bottom: 12px; border: 1px solid #e0e0e0; border-radius: 8px; background: white;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;" id="mash-table-steps">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                            <th style="padding: 10px 12px; width: 44px; text-align: center; color: #64748b;">#</th>
+                            <th style="padding: 10px 12px; width: 190px; color: #475569;">Fase / Tipologia</th>
+                            <th style="padding: 10px 12px; color: #475569;">Nome Step</th>
+                            <th style="padding: 10px 12px; width: 140px; color: #475569;">Temp. (°C)</th>
+                            <th style="padding: 10px 12px; width: 140px; color: #475569;">Durata (min)</th>
+                            <th style="padding: 10px 12px; width: 48px; text-align: center; color: #64748b;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="mash-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Quick Add Shortcut Pills -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; padding: 6px 0;">
+                <span style="font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase;">Aggiungi step rapido:</span>
+                <button type="button" onclick="aggiungiStepRapido('Saccarificazione (Beta)', 64.5, 60, 'Infusion')" style="background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500;">+ Beta 64.5°C (Secco)</button>
+                <button type="button" onclick="aggiungiStepRapido('Saccarificazione', 66.5, 60, 'Infusion')" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500;">+ Sacc. 66.5°C (Bilanciato)</button>
+                <button type="button" onclick="aggiungiStepRapido('Saccarificazione (Alfa)', 68.5, 60, 'Infusion')" style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500;">+ Alfa 68.5°C (Corpo pieno)</button>
+                <button type="button" onclick="aggiungiStepRapido('Protein Rest', 52.0, 20, 'Temperature')" style="background: #fdf2f8; border: 1px solid #fbcfe8; color: #9d174d; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500;">+ Protein Rest 52°C</button>
+                <button type="button" onclick="aggiungiStepRapido('Mash Out', 76.0, 10, 'Temperature')" style="background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500;">+ Mash Out 76°C</button>
+            </div>
+
+            <!-- Feedback banner -->
+            <div id="mash-save-feedback" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-top: 10px;"></div>
+        </form>
     </div>
 
     <div class="card avvia-panel" id="avvia-cotta">
@@ -1666,28 +1686,367 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             aggiornaStats(true);
+            if (typeof renderMashSteps === "function") {
+                renderMashSteps(INITIAL_MASH_STEPS);
+            }
         });
 
+        // ── PROFILO AMMOSTAMENTO CONTROLLER (Brewfather Style) ───────────────────
+        const MASH_PRESETS = {{ mash_templates_json|safe }};
+        const INITIAL_MASH_STEPS = {{ mash_steps_json|safe }};
+
+        function getStepColor(temp) {
+            if (temp < 50) return { bg: '#e0f2fe', text: '#0369a1', border: '#7dd3fc' }; // Acid / Ferulic
+            if (temp < 60) return { bg: '#fdf2f8', text: '#9d174d', border: '#fbcfe8' }; // Protein rest
+            if (temp < 66) return { bg: '#eef2ff', text: '#3730a3', border: '#c7d2fe' }; // Beta-amilasi (Secco)
+            if (temp < 68) return { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' }; // Sacc bilanciata
+            if (temp < 74) return { bg: '#fffbeb', text: '#92400e', border: '#fde68a' }; // Alfa-amilasi (Corpo pieno)
+            return { bg: '#fff1f2', text: '#9f1239', border: '#fecdd3' }; // Mash-out (>75°C)
+        }
+
+        function renderMashSteps(steps) {
+            const tbody = document.getElementById("mash-table-body");
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            if (!steps || steps.length === 0) {
+                steps = [
+                    { nome: "Saccarificazione", temp_gradi: 66.5, durata_min: 60, tipo: "Infusion" },
+                    { nome: "Mash Out", temp_gradi: 76.0, durata_min: 10, tipo: "Temperature" }
+                ];
+            }
+
+            steps.forEach((st, idx) => {
+                const tr = document.createElement("tr");
+                tr.className = "mash-step-row-item";
+                tr.style.borderBottom = "1px solid #f1f5f9";
+
+                const tempVal = st.temp_gradi !== undefined ? st.temp_gradi : 67.0;
+                const durVal = st.durata_min !== undefined ? st.durata_min : 60;
+                const nomeVal = st.nome || `Step ${idx + 1}`;
+                const tipoVal = st.tipo || "Temperature";
+
+                tr.innerHTML = `
+                    <td style="padding:8px 10px; text-align:center; font-weight:bold; color:#888;">${idx + 1}</td>
+                    <td style="padding:8px 10px;">
+                        <select name="step_tipo" onchange="onStepTipoChange(this)" style="width:100%; padding:6px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; background:white;">
+                            <option value="Infusion" ${tipoVal === 'Infusion' ? 'selected' : ''}>Infusione</option>
+                            <option value="Temperature" ${tipoVal === 'Temperature' ? 'selected' : ''}>Temperatura (Riscaldamento)</option>
+                            <option value="Decoction" ${tipoVal === 'Decoction' ? 'selected' : ''}>Decozione</option>
+                        </select>
+                    </td>
+                    <td style="padding:8px 10px;">
+                        <input type="text" name="step_nome" value="${nomeVal.replace(/"/g, '&quot;')}" placeholder="es. Saccarificazione"
+                               oninput="updateMashMetrics()" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;" required>
+                    </td>
+                    <td style="padding:8px 10px;">
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <input type="text" name="step_temp" value="${tempVal}" placeholder="66.5"
+                                   pattern="[0-9]*[.,]?[0-9]+" inputmode="decimal"
+                                   oninput="sanitizeTempInput(this); updateMashMetrics()"
+                                   style="width:80px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:600; text-align:right;" required>
+                            <span style="font-size:12px; color:#64748b; font-weight:600;">°C</span>
+                        </div>
+                    </td>
+                    <td style="padding:8px 10px;">
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <input type="number" name="step_durata" value="${durVal}" min="1" max="300" placeholder="60"
+                                   oninput="updateMashMetrics()"
+                                   style="width:75px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:600; text-align:right;" required>
+                            <span style="font-size:12px; color:#64748b; font-weight:600;">min</span>
+                        </div>
+                    </td>
+                    <td style="padding:8px 10px; text-align:center;">
+                        <button type="button" onclick="rimuoviStep(this)" title="Elimina questo step"
+                                style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:4px 8px; border-radius:4px; line-height:1;">
+                            ✕
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updateMashMetrics();
+        }
+
+        function sanitizeTempInput(input) {
+            let val = input.value;
+            input.value = val.replace(/[^0-9.,]/g, '');
+        }
+
+        function parseTempValue(val) {
+            if (!val) return 0;
+            const clean = String(val).replace(',', '.').trim();
+            const num = parseFloat(clean);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function parseDurataValue(val) {
+            if (!val) return 0;
+            const num = parseInt(val, 10);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function reindexStepRows() {
+            const rows = document.querySelectorAll("#mash-table-body tr.mash-step-row-item");
+            rows.forEach((r, idx) => {
+                const tdNum = r.querySelector("td");
+                if (tdNum) tdNum.textContent = idx + 1;
+            });
+        }
+
+        function rimuoviStep(btn) {
+            const tr = btn.closest("tr.mash-step-row-item");
+            if (tr) {
+                tr.remove();
+                reindexStepRows();
+                updateMashMetrics();
+            }
+        }
+
+        function aggiungiStepVuoto() {
+            const tbody = document.getElementById("mash-table-body");
+            const count = tbody.querySelectorAll("tr.mash-step-row-item").length;
+            const defaultTemp = count === 0 ? 66.5 : (count === 1 ? 76.0 : 70.0);
+            const defaultName = count === 0 ? "Saccarificazione" : (count === 1 ? "Mash Out" : `Step ${count + 1}`);
+            const defaultDur = count === 0 ? 60 : 10;
+            const defaultTipo = count === 0 ? "Infusion" : "Temperature";
+
+            const steps = raccogliStepsAttuali();
+            steps.push({
+                nome: defaultName,
+                temp_gradi: defaultTemp,
+                durata_min: defaultDur,
+                tipo: defaultTipo
+            });
+            renderMashSteps(steps);
+
+            const rows = tbody.querySelectorAll("tr.mash-step-row-item");
+            if (rows.length > 0) {
+                const lastRow = rows[rows.length - 1];
+                const inputName = lastRow.querySelector("input[name='step_nome']");
+                if (inputName) inputName.focus();
+            }
+        }
+
         function aggiungiStep() {
-            const container = document.getElementById("mash-steps-container");
-            const div = document.createElement("div");
-            div.className = "mash-form-row step-row";
-            div.innerHTML = `
-                <div class="mash-form-field">
-                    <label>Nome step</label>
-                    <input type="text" name="step_nome" placeholder="es. Mash-out">
-                </div>
-                <div class="mash-form-field">
-                    <label>Temp. (°C)</label>
-                    <input type="number" name="step_temp" step="0.5" value="76" min="30" max="100">
-                </div>
-                <div class="mash-form-field">
-                    <label>Durata (min)</label>
-                    <input type="number" name="step_durata" value="10" min="1" max="300">
-                </div>
-                <button type="button" class="btn-remove-step" onclick="this.closest('.step-row').remove()">✕</button>
-            `;
-            container.appendChild(div);
+            aggiungiStepVuoto();
+        }
+
+        function aggiungiStepRapido(nome, temp, durata, tipo) {
+            const steps = raccogliStepsAttuali();
+            steps.push({
+                nome: nome,
+                temp_gradi: temp,
+                durata_min: durata,
+                tipo: tipo || "Temperature"
+            });
+            renderMashSteps(steps);
+        }
+
+        function onStepTipoChange(sel) {
+            const tr = sel.closest("tr.mash-step-row-item");
+            if (!tr) return;
+            const inputNome = tr.querySelector("input[name='step_nome']");
+            const inputTemp = tr.querySelector("input[name='step_temp']");
+            const inputDur = tr.querySelector("input[name='step_durata']");
+
+            if (sel.value === 'Infusion' && (!inputNome.value || inputNome.value.startsWith('Step'))) {
+                inputNome.value = 'Saccarificazione';
+                if (!inputTemp.value) inputTemp.value = '66.5';
+                if (!inputDur.value) inputDur.value = '60';
+            } else if (sel.value === 'Decoction' && (!inputNome.value || inputNome.value.startsWith('Step'))) {
+                inputNome.value = 'Sosta post-decozione';
+                if (!inputTemp.value) inputTemp.value = '72.0';
+                if (!inputDur.value) inputDur.value = '30';
+            }
+            updateMashMetrics();
+        }
+
+        function raccogliStepsAttuali() {
+            const rows = document.querySelectorAll("#mash-table-body tr.mash-step-row-item");
+            const steps = [];
+            rows.forEach((r, idx) => {
+                const nomeInput = r.querySelector("input[name='step_nome']");
+                const tempInput = r.querySelector("input[name='step_temp']");
+                const durInput = r.querySelector("input[name='step_durata']");
+                const tipoSel = r.querySelector("select[name='step_tipo']");
+
+                const nome = (nomeInput && nomeInput.value.trim()) ? nomeInput.value.trim() : `Step ${idx + 1}`;
+                const temp = parseTempValue(tempInput ? tempInput.value : 67.0);
+                const durata = parseDurataValue(durInput ? durInput.value : 60);
+                const tipo = (tipoSel && tipoSel.value) ? tipoSel.value : "Temperature";
+
+                steps.push({ nome, temp_gradi: temp, durata_min: durata, tipo });
+            });
+            return steps;
+        }
+
+        function caricaPresetSelezionato() {
+            const sel = document.getElementById("sel-preset-mash");
+            if (!sel || !sel.value) {
+                alert("Seleziona prima un preset dall'elenco.");
+                return;
+            }
+            const presetKey = sel.value;
+            const template = MASH_PRESETS[presetKey];
+            if (!template) {
+                alert("Preset non trovato: " + presetKey);
+                return;
+            }
+
+            const inputNome = document.getElementById("mash_nome_profilo");
+            if (inputNome) inputNome.value = presetKey;
+
+            const newSteps = template.map(s => Object.assign({}, s));
+            renderMashSteps(newSteps);
+
+            const feedback = document.getElementById("mash-save-feedback");
+            if (feedback) {
+                feedback.style.display = "block";
+                feedback.style.background = "#eff6ff";
+                feedback.style.color = "#1e40af";
+                feedback.style.border = "1px solid #bfdbfe";
+                feedback.innerHTML = `⚡ Preset <strong>${presetKey}</strong> caricato con ${newSteps.length} step. Clicca su "Salva Profilo" per confermare.`;
+            }
+        }
+
+        function anteprimaPresetSelezionato(val) {}
+
+        function updateMashMetrics() {
+            const steps = raccogliStepsAttuali();
+            const totalMin = steps.reduce((acc, s) => acc + (s.durata_min || 0), 0);
+
+            const kpiTime = document.getElementById("mash-kpi-time");
+            if (kpiTime) kpiTime.textContent = totalMin;
+
+            const kpiCount = document.getElementById("mash-kpi-count");
+            if (kpiCount) kpiCount.textContent = steps.length;
+
+            const saccSteps = steps.filter(s => {
+                const n = s.nome.toLowerCase();
+                return n.includes("sacc") || n.includes("beta") || n.includes("alfa") || (s.temp_gradi >= 62 && s.temp_gradi <= 72);
+            });
+
+            let sacTemp = 66.5;
+            if (saccSteps.length > 0) {
+                sacTemp = saccSteps.reduce((acc, s) => acc + s.temp_gradi, 0) / saccSteps.length;
+            } else if (steps.length > 0) {
+                sacTemp = steps[0].temp_gradi;
+            }
+
+            const bodyBadge = document.getElementById("mash-header-body");
+            const bodyTxt = document.getElementById("mash-kpi-body");
+            if (bodyBadge && bodyTxt) {
+                if (sacTemp < 65.0) {
+                    bodyBadge.style.background = "#eef2ff";
+                    bodyBadge.style.color = "#3730a3";
+                    bodyBadge.style.border = "1px solid #c7d2fe";
+                    bodyTxt.innerHTML = `Corpo Secco / Alta Attenuazione (${sacTemp.toFixed(1)}°C)`;
+                } else if (sacTemp <= 67.5) {
+                    bodyBadge.style.background = "#f0fdf4";
+                    bodyBadge.style.color = "#166534";
+                    bodyBadge.style.border = "1px solid #bbf7d0";
+                    bodyTxt.innerHTML = `Corpo Medio / Bilanciato (${sacTemp.toFixed(1)}°C)`;
+                } else {
+                    bodyBadge.style.background = "#fffbeb";
+                    bodyBadge.style.color = "#92400e";
+                    bodyBadge.style.border = "1px solid #fde68a";
+                    bodyTxt.innerHTML = `Corpo Pieno / Destrine (${sacTemp.toFixed(1)}°C)`;
+                }
+            }
+
+            const timelineBar = document.getElementById("mash-steps-timeline-bar");
+            if (timelineBar) {
+                if (steps.length === 0) {
+                    timelineBar.innerHTML = `<span style="font-size:12px; color:#888; font-style:italic;">Nessuno step configurato.</span>`;
+                } else {
+                    let html = "";
+                    steps.forEach((s, idx) => {
+                        const col = getStepColor(s.temp_gradi);
+                        html += `
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <div style="background:${col.bg}; color:${col.text}; border:1px solid ${col.border}; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; display:flex; flex-direction:column; min-width:110px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                                        <span style="font-size:10px; opacity:0.8;">#${idx + 1} ${s.tipo || ''}</span>
+                                        <span style="font-size:11px; font-weight:bold;">${s.durata_min}m</span>
+                                    </div>
+                                    <div style="font-size:13px; font-weight:bold; margin:2px 0;">${s.temp_gradi}°C</div>
+                                    <div style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${s.nome}</div>
+                                </div>
+                                ${idx < steps.length - 1 ? '<span style="color:#d4bda8; font-weight:bold; font-size:16px;">→</span>' : ''}
+                            </div>
+                        `;
+                    });
+                    timelineBar.innerHTML = html;
+                }
+            }
+        }
+
+        async function salvaProfiloMashAjax(e) {
+            e.preventDefault();
+            const btn = document.getElementById("btn-save-mash");
+            const feedback = document.getElementById("mash-save-feedback");
+            const nomeProfilo = document.getElementById("mash_nome_profilo").value.trim() || "Profilo Ammostamento";
+            const steps = raccogliStepsAttuali();
+
+            if (steps.length === 0) {
+                alert("Aggiungi almeno uno step di ammostamento prima di salvare.");
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<span>⏳ Salvataggio...</span>`;
+            }
+
+            try {
+                const payload = {
+                    nome_profilo: nomeProfilo,
+                    steps: steps
+                };
+
+                const res = await fetch("/ricette/{{ ricetta.id }}/profilo-mash-save", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    if (feedback) {
+                        feedback.style.display = "block";
+                        feedback.style.background = "#f0fdf4";
+                        feedback.style.color = "#166534";
+                        feedback.style.border = "1px solid #bbf7d0";
+                        feedback.innerHTML = `✅ Profilo ammostamento <strong>${nomeProfilo}</strong> salvato con successo (${steps.length} step)!`;
+                        setTimeout(() => {
+                            feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 100);
+                    }
+                } else {
+                    throw new Error("Salvataggio fallito con stato " + res.status);
+                }
+            } catch (err) {
+                console.error("Errore salvataggio mash:", err);
+                if (feedback) {
+                    feedback.style.display = "block";
+                    feedback.style.background = "#fef2f2";
+                    feedback.style.color = "#991b1b";
+                    feedback.style.border = "1px solid #fecaca";
+                    feedback.innerHTML = `❌ Errore durante il salvataggio: ${err.message}. Invio standard del modulo...`;
+                }
+                setTimeout(() => {
+                    document.getElementById("form-profilo-mash").submit();
+                }, 1000);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<span>💾 Salva Profilo</span>`;
+                }
+            }
         }
 
         function toggleAddIngrediente() {

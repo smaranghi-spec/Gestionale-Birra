@@ -5,8 +5,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+import json
 from ..db import SessionLocal
-from ..models import IngredienteRicetta, Ricetta
+from ..models import IngredienteRicetta, Ricetta, ProfiloAmmostamento
+from ..codici import genera_prossimo_codice_ricetta
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -111,6 +113,27 @@ def _parse_beerxml(content: bytes) -> list[dict]:
                 }
             )
 
+        # MASH & MASH_STEPS (Profilo di ammostamento BeerXML)
+        mash_el = recipe_el.find("MASH")
+        if mash_el is not None:
+            mash_name = _txt(mash_el, "NAME", "Ammostamento")
+            mash_steps = []
+            for step_el in mash_el.iter("MASH_STEP"):
+                s_name = _txt(step_el, "NAME", "Step")
+                s_temp = _flt(step_el, "STEP_TEMP") or 67.0
+                s_dur = _int_v(step_el, "STEP_TIME") or 60
+                mash_steps.append({
+                    "nome": s_name,
+                    "temp_gradi": s_temp,
+                    "durata_min": s_dur,
+                    "tipo": _txt(step_el, "TYPE", "Temperature"),
+                })
+            if mash_steps:
+                r["mash_profile"] = {
+                    "nome": mash_name,
+                    "steps": mash_steps,
+                }
+
         results.append(r)
 
     return results
@@ -155,12 +178,25 @@ async def importa_beerxml(
     importate = []
     for rd in ricette_data:
         ingredienti_data = rd.pop("ingredienti")
+        mash_profile = rd.pop("mash_profile", None)
+
+        if not rd.get("codice"):
+            rd["codice"] = genera_prossimo_codice_ricetta(db)
+
         ricetta = Ricetta(**rd)
         db.add(ricetta)
         db.flush()
 
         for idata in ingredienti_data:
             db.add(IngredienteRicetta(ricetta_id=ricetta.id, **idata))
+
+        if mash_profile and mash_profile.get("steps"):
+            pm = ProfiloAmmostamento(
+                ricetta_id=ricetta.id,
+                nome=mash_profile.get("nome", "Ammostamento BeerXML"),
+                steps_json=json.dumps(mash_profile["steps"], ensure_ascii=False),
+            )
+            db.add(pm)
 
         importate.append((ricetta.id, ricetta.nome))
 

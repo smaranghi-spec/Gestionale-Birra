@@ -228,6 +228,35 @@
                 </div>
 
                 <div class="full">
+                    <label>🌡️ Profilo Ammostamento (Mash Schedule)</label>
+                    <select name="tipo_mash">
+                        <option value="" {% if not profilo_mash %}selected{% endif %}>-- Mantieni profilo attuale --</option>
+                        {% if mash_templates %}
+                        {% for t_nome, t_steps in mash_templates.items() %}
+                        <option value="{{ t_nome }}" {% if profilo_mash and profilo_mash.nome == t_nome %}selected{% endif %}>
+                            {{ t_nome }} ({{ t_steps|length }} step)
+                        </option>
+                        {% endfor %}
+                        {% endif %}
+                        {% if profilo_mash and profilo_mash.nome not in mash_templates %}
+                        <option value="{{ profilo_mash.nome }}" selected>
+                            {{ profilo_mash.nome }} (Profilo personalizzato esistente)
+                        </option>
+                        {% endif %}
+                        {% if profilo_mash %}
+                        <option value="none">-- 🗑️ Rimuovi profilo ammostamento --</option>
+                        {% endif %}
+                    </select>
+                    <div class="hint">
+                        {% if profilo_mash %}
+                        Profilo attivo: <strong>{{ profilo_mash.nome }}</strong>. Puoi cambiare preset o modificare i singoli step dalla <a href="/ricette/{{ ricetta.id }}#profilo-mash">scheda ricetta</a>.
+                        {% else %}
+                        Nessun profilo assegnato. Seleziona un preset veloce o personalizzalo dalla scheda ricetta.
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="full">
                     <label>Note</label>
                     <textarea name="note">{{ ricetta.note or '' }}</textarea>
                 </div>

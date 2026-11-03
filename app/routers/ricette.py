@@ -32,10 +32,33 @@ from ..stats import (
     srm_to_hex,
 )
 from ..codici import genera_prossimo_codice_ricetta, genera_prossimo_codice_cotta
+from ..mash_templates import MASH_TEMPLATES, MASH_TEMPLATES_ALIASES, get_template_steps
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["srm_to_hex"] = srm_to_hex
+
+
+def _parse_temp(val, default=67.0) -> float:
+    if val is None:
+        return default
+    s = str(val).replace(",", ".").strip()
+    try:
+        f = float(s)
+        return round(f, 1)
+    except (ValueError, TypeError):
+        return default
+
+
+def _parse_durata(val, default=60) -> int:
+    if val is None:
+        return default
+    s = str(val).replace(",", ".").strip().split(".")[0]
+    digits = "".join(c for c in s if c.isdigit())
+    try:
+        return max(1, int(digits)) if digits else default
+    except (ValueError, TypeError):
+        return default
 
 
 def get_db():
@@ -70,6 +93,7 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
             "stili": stili,
             "profili_preset": profili_preset,
             "cotte_count": cotte_count,
+            "mash_templates": MASH_TEMPLATES,
         },
     )
 
@@ -114,30 +138,16 @@ def crea_ricetta(
             )
             db.add(pa)
 
-    MASH_TEMPLATES = {
-        "Singolo Infuso": [{"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 60}],
-        "BIAB": [
-            {"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 60},
-            {"nome": "Mash Out", "temp_gradi": 77, "durata_min": 10},
-        ],
-        "Step Mash": [
-            {"nome": "Protein Rest", "temp_gradi": 52, "durata_min": 15},
-            {"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 45},
-            {"nome": "Mash Out", "temp_gradi": 77, "durata_min": 10},
-        ],
-        "Decozione": [
-            {"nome": "Ammostamento 1", "temp_gradi": 62, "durata_min": 30},
-            {"nome": "Decozione", "temp_gradi": 72, "durata_min": 30},
-        ],
-        "No-Sparge": [{"nome": "Saccarificazione", "temp_gradi": 67, "durata_min": 75}],
-    }
-    if tipo_mash and tipo_mash in MASH_TEMPLATES:
-        pm = ProfiloAmmostamento(
-            ricetta_id=r.id,
-            nome=tipo_mash,
-            steps_json=_json.dumps(MASH_TEMPLATES[tipo_mash], ensure_ascii=False),
-        )
-        db.add(pm)
+    if tipo_mash:
+        t_steps = get_template_steps(tipo_mash)
+        if t_steps:
+            nome_clean = MASH_TEMPLATES_ALIASES.get(tipo_mash, tipo_mash)
+            pm = ProfiloAmmostamento(
+                ricetta_id=r.id,
+                nome=nome_clean,
+                steps_json=_json.dumps(t_steps, ensure_ascii=False),
+            )
+            db.add(pm)
 
     try:
         db.commit()
@@ -371,6 +381,10 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
         except Exception:
             mash_steps = []
 
+    mash_totale_minuti = sum(s.get("durata_min", 0) for s in mash_steps)
+    sac_temps = [s.get("temp_gradi", 67.0) for s in mash_steps if "sacc" in s.get("nome", "").lower() or (60.0 <= s.get("temp_gradi", 0) <= 72.0)]
+    sac_temp_media = round(sum(sac_temps) / len(sac_temps), 1) if sac_temps else (mash_steps[0].get("temp_gradi", 67.0) if mash_steps else 67.0)
+
     profili_preset_acqua = db.query(ProfiloAcquaPreset).order_by(ProfiloAcquaPreset.nome).all()
     catalogo_items = db.query(CatalogoIngrediente).order_by(CatalogoIngrediente.categoria, CatalogoIngrediente.nome).all()
     inventario_items = db.query(InventarioItem).order_by(InventarioItem.categoria, InventarioItem.nome).all()
@@ -403,6 +417,11 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
             "profilo_acqua": profilo_acqua,
             "profilo_mash": profilo_mash,
             "mash_steps": mash_steps,
+            "mash_steps_json": json.dumps(mash_steps, ensure_ascii=False),
+            "mash_templates": MASH_TEMPLATES,
+            "mash_templates_json": json.dumps(MASH_TEMPLATES, ensure_ascii=False),
+            "mash_totale_minuti": mash_totale_minuti,
+            "sac_temp_media": sac_temp_media,
             "profili_preset_acqua": profili_preset_acqua,
             "catalogo_items": catalogo_items,
             "inventario_items": inventario_items,
@@ -580,16 +599,6 @@ def salva_profilo_acqua(
 
 
 @router.post("/ricette/{ricetta_id}/profilo-mash")
-def salva_profilo_mash_placeholder(
-    ricetta_id: int,
-    db: Session = Depends(get_db),
-):
-    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
-    if not ricetta:
-        return RedirectResponse("/ricette/html", status_code=303)
-    return RedirectResponse(f"/ricette/{ricetta_id}#profilo-mash", status_code=303)
-
-
 @router.post("/ricette/{ricetta_id}/profilo-mash-save")
 async def salva_profilo_mash_full(
     ricetta_id: int,
@@ -600,25 +609,65 @@ async def salva_profilo_mash_full(
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
 
-    form = await request.form()
-    nome_profilo = form.get("nome_profilo", "Singolo infuso")
-    nomi = form.getlist("step_nome")
-    tempi = form.getlist("step_temp")
-    durate = form.getlist("step_durata")
+    is_json = False
+    data = {}
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            data = await request.json()
+            is_json = True
+        except Exception:
+            data = {}
+    else:
+        form = await request.form()
+        data = dict(form)
 
+    # 1. Controllo se richiesta eliminazione
+    if data.get("action") == "elimina" or data.get("elimina") in ("1", "true", True):
+        db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).delete(synchronize_session=False)
+        db.commit()
+        if is_json or "application/json" in request.headers.get("accept", ""):
+            return JSONResponse({"status": "deleted"})
+        return RedirectResponse(f"/ricette/{ricetta_id}?msg=Profilo+ammostamento+rimosso#profilo-mash", status_code=303)
+
+    # 2. Controllo se selezionato un preset
+    template_preset = data.get("template_preset") or data.get("preset") or data.get("tipo_mash")
+    nome_profilo = (data.get("nome_profilo") or "").strip()
     steps = []
-    for n, t, d in zip(nomi, tempi, durate):
-        if n.strip():
-            try:
-                steps.append(
-                    {
-                        "nome": n.strip(),
-                        "temp_gradi": float(t) if t else 0.0,
-                        "durata_min": int(d) if d else 0,
-                    }
-                )
-            except Exception:
-                pass
+
+    if template_preset and get_template_steps(template_preset):
+        steps = get_template_steps(template_preset)
+        if not nome_profilo:
+            nome_profilo = MASH_TEMPLATES_ALIASES.get(template_preset, template_preset)
+    elif is_json and "steps" in data and isinstance(data["steps"], list):
+        for i, s in enumerate(data["steps"]):
+            if isinstance(s, dict):
+                s_name = str(s.get("nome") or f"Step {i+1}").strip()
+                s_temp = _parse_temp(s.get("temp_gradi") or s.get("temp") or 67.0)
+                s_dur = _parse_durata(s.get("durata_min") or s.get("durata") or 60)
+                s_tipo = str(s.get("tipo") or "Temperature").strip()
+                steps.append({"nome": s_name, "temp_gradi": s_temp, "durata_min": s_dur, "tipo": s_tipo})
+    else:
+        form = await request.form() if not is_json else {}
+        nomi = form.getlist("step_nome") if hasattr(form, "getlist") else []
+        tempi = form.getlist("step_temp") if hasattr(form, "getlist") else []
+        durate = form.getlist("step_durata") if hasattr(form, "getlist") else []
+        tipi = form.getlist("step_tipo") if hasattr(form, "getlist") else []
+
+        for i, (n, t, d) in enumerate(zip(nomi, tempi, durate)):
+            s_name = str(n).strip() if (n and str(n).strip()) else f"Step {i+1}"
+            s_temp = _parse_temp(t)
+            s_dur = _parse_durata(d)
+            s_tipo = (tipi[i] if i < len(tipi) and tipi[i] else "Temperature").strip()
+            steps.append({
+                "nome": s_name,
+                "temp_gradi": s_temp,
+                "durata_min": s_dur,
+                "tipo": s_tipo,
+            })
+
+    if not nome_profilo:
+        nome_profilo = "Singolo infuso"
 
     pm = (
         db.query(ProfiloAmmostamento)
@@ -635,9 +684,24 @@ async def salva_profilo_mash_full(
         db.commit()
     except Exception:
         db.rollback()
+        if is_json:
+            return JSONResponse({"status": "error", "message": "Errore salvataggio database"}, status_code=500)
         return RedirectResponse(f"/ricette/{ricetta_id}?msg=Errore+salvataggio+profilo+mash#profilo-mash", status_code=303)
 
-    return RedirectResponse(f"/ricette/{ricetta_id}#profilo-mash", status_code=303)
+    if is_json or "application/json" in request.headers.get("accept", ""):
+        return JSONResponse({"status": "ok", "nome": pm.nome, "steps": steps, "count": len(steps)})
+
+    return RedirectResponse(f"/ricette/{ricetta_id}?msg=Profilo+ammostamento+salvato#profilo-mash", status_code=303)
+
+
+@router.post("/ricette/{ricetta_id}/profilo-mash-elimina")
+def elimina_profilo_mash(
+    ricetta_id: int,
+    db: Session = Depends(get_db),
+):
+    db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).delete(synchronize_session=False)
+    db.commit()
+    return RedirectResponse(f"/ricette/{ricetta_id}?msg=Profilo+ammostamento+rimosso#profilo-mash", status_code=303)
 
 
 @router.post("/ricette/{ricetta_id}/avvia-cotta")
@@ -783,6 +847,7 @@ def form_modifica_ricetta(
         else None
     )
 
+    profilo_mash = db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).first()
     return templates.TemplateResponse(
         "modifica_ricetta.html",
         {
@@ -791,6 +856,8 @@ def form_modifica_ricetta(
             "stili": stili,
             "stile_corrente": stile_corrente,
             "saved": saved,
+            "profilo_mash": profilo_mash,
+            "mash_templates": MASH_TEMPLATES,
         },
     )
 
@@ -806,6 +873,7 @@ def salva_modifica_ricetta(
     versione: int = Form(...),
     stile_id: int = Form(0),
     note: str = Form(""),
+    tipo_mash: str = Form(""),
     db: Session = Depends(get_db),
 ):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
@@ -823,6 +891,21 @@ def salva_modifica_ricetta(
     ricetta.versione = versione
     ricetta.stile_id = stile_id if stile_id != 0 else None
     ricetta.note = note or None
+
+    if tipo_mash:
+        if tipo_mash == "none":
+            db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).delete(synchronize_session=False)
+        else:
+            t_steps = get_template_steps(tipo_mash)
+            if t_steps:
+                nome_clean = MASH_TEMPLATES_ALIASES.get(tipo_mash, tipo_mash)
+                pm = db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).first()
+                if not pm:
+                    pm = ProfiloAmmostamento(ricetta_id=ricetta_id)
+                    db.add(pm)
+                pm.nome = nome_clean
+                pm.steps_json = json.dumps(t_steps, ensure_ascii=False)
+
     try:
         db.commit()
     except Exception:

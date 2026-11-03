@@ -178,11 +178,21 @@
               <label>🌡️ Profilo ammostamento</label>
               <select name="tipo_mash" id="sel-mash" onchange="showMashPill(this)">
                 <option value="">— Nessuno (imposta dopo) —</option>
-                <option value="Singolo Infuso">Singolo Infuso · 67°C × 60 min</option>
-                <option value="BIAB">BIAB · 67°C × 60 min + mash out 77°C</option>
-                <option value="Step Mash">Step Mash · Protein 52°C → Sacca 67°C → Out 77°C</option>
-                <option value="Decozione">Decozione · 62°C → 72°C</option>
-                <option value="No-Sparge">No-Sparge / Batch Sparge · 67°C × 75 min</option>
+                {% if mash_templates %}
+                  {% for t_nome, t_steps in mash_templates.items() %}
+                  <option value="{{ t_nome }}">{{ t_nome }} ({% for s in t_steps %}{{ s.temp_gradi }}°C{% if not loop.last %} → {% endif %}{% endfor %})</option>
+                  {% endfor %}
+                {% else %}
+                  <option value="Singolo Infuso - Medio (Bilanciato)">Singolo Infuso · 66.5°C × 60m + 76°C</option>
+                  <option value="Singolo Infuso - Bassa Temp (Secco/Attenuato)">Singolo Infuso Bassa Temp · 64.5°C × 75m</option>
+                  <option value="Singolo Infuso - Alta Temp (Corpo Pieno/Dolce)">Singolo Infuso Alta Temp · 68.5°C × 60m</option>
+                  <option value="BIAB (Brew In A Bag)">BIAB · 66°C × 60m + 76°C</option>
+                  <option value="Step Mash - Hochkurz (Lager Tedesche)">Step Mash Hochkurz · 63°C → 72°C → 77°C</option>
+                  <option value="Step Mash - Tradizionale 4 Step (Weizen/Frumento)">Step Weizen 4 Step · 44°C → 52°C → 66°C → 77°C</option>
+                  <option value="Decozione Singola (Pilsner/Bock)">Decozione Singola · 64°C → 72°C → 77°C</option>
+                  <option value="Decozione Doppia (Bavarese)">Decozione Doppia · 50°C → 65°C → 72°C → 77°C</option>
+                  <option value="No-Sparge">No-Sparge · 67°C × 75 min</option>
+                {% endif %}
               </select>
               <div id="mash-pill" style="display:none;" class="preset-pill">🌡️ <span id="mash-pill-text"></span></div>
             </div>
