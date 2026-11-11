@@ -114,41 +114,35 @@ def elimina_prodotto(pid: int, db: Session = Depends(get_db)):
 
 @router.get("/etichetta/{prodotto_id}", response_class=HTMLResponse)
 def stampa_etichetta(prodotto_id: int, request: Request, db: Session = Depends(get_db)):
-    from ..models import Cotta, Ricetta, AggiuntaRicetta, CatalogoIngrediente
+    from ..models import Cotta, Ricetta, IngredienteRicetta
     
     prodotto = db.query(ProdottoFinito).filter(ProdottoFinito.id == prodotto_id).first()
     if not prodotto:
-        return RedirectResponse("/magazzino-prodotti")
+        return RedirectResponse("/magazzino-finiti", status_code=303)
         
     cotta = db.query(Cotta).filter(Cotta.id == prodotto.cotta_id).first() if prodotto.cotta_id else None
     ricetta = db.query(Ricetta).filter(Ricetta.id == cotta.ricetta_id).first() if cotta and cotta.ricetta_id else None
     
     ingredienti = []
     if ricetta:
-        aggiunte = db.query(AggiuntaRicetta).filter(AggiuntaRicetta.ricetta_id == ricetta.id).all()
-        # Calcola quantità in grammi per ordinamento corretto
+        aggiunte = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta.id).all()
+        # Calcola quantità in grammi per ordinamento corretto (Reg. UE 1169/2011)
         ing_dict = {}
         for a in aggiunte:
-            cat = db.query(CatalogoIngrediente).filter(CatalogoIngrediente.id == a.ingrediente_id).first()
-            if cat:
-                nome = cat.nome
-                # Convertiamo tutto in grammi approssimativi per ordinare
-                q_gr = a.quantita
-                if a.unita == "kg": q_gr = a.quantita * 1000
-                elif a.unita == "ml": q_gr = a.quantita
-                
-                if nome in ing_dict:
-                    ing_dict[nome] += q_gr
-                else:
-                    ing_dict[nome] = q_gr
+            nome = (a.nome or "").strip()
+            if not nome:
+                continue
+            q_gr = float(a.quantita or 0)
+            if a.unita == "kg":
+                q_gr *= 1000.0
+            ing_dict[nome] = ing_dict.get(nome, 0.0) + q_gr
                     
         # Ordina per quantità decrescente (legge europea etichettatura)
         ingredienti_ordinati = sorted(ing_dict.items(), key=lambda x: x[1], reverse=True)
         ingredienti = [i[0] for i in ingredienti_ordinati]
-        # Aggiungi Acqua (che è sempre il primo in realtà per la birra) e Lievito (se non specificato)
         if "Acqua" not in ingredienti:
             ingredienti.insert(0, "Acqua")
-        if not any("Lievito" in i for i in ingredienti):
+        if not any("lievit" in i.lower() for i in ingredienti):
             ingredienti.append("Lievito")
 
     return templates.TemplateResponse(request, "etichetta.html", {

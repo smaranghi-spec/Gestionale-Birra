@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import date
 from ..db import SessionLocal
-from ..models import Vendita, Ricetta
+from ..models import Vendita, Ricetta, ProdottoFinito
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -25,6 +25,12 @@ def lista_vendite(request: Request, stato: str = None, db: Session = Depends(get
         query = query.filter(Vendita.stato == stato)
     vendite = query.order_by(Vendita.data.desc(), Vendita.id.desc()).all()
     ricette = db.query(Ricetta).order_by(Ricetta.nome).all()
+    lotti_finiti = (
+        db.query(ProdottoFinito)
+        .filter(ProdottoFinito.n_pezzi_disponibili > 0)
+        .order_by(ProdottoFinito.data_imbottigliamento.asc(), ProdottoFinito.id.asc())
+        .all()
+    )
 
     confermate = [v for v in vendite if (v.stato or "confermata") == "confermata"]
     n_bozze = db.query(Vendita).filter(Vendita.stato == "bozza").count()
@@ -43,6 +49,7 @@ def lista_vendite(request: Request, stato: str = None, db: Session = Depends(get
     return templates.TemplateResponse(request, "vendite.html", {
         "vendite": vendite,
         "ricette": ricette,
+        "lotti_finiti": lotti_finiti,
         "fatturato": round(fatturato, 2),
         "litri": round(litri, 1),
         "n_clienti": n_clienti,
@@ -60,6 +67,7 @@ def crea_vendita(
     cliente: str = Form(""),
     prodotto: str = Form(...),
     ricetta_id: int = Form(0),
+    prodotto_finito_id: int = Form(0),
     quantita_litri: float = Form(None),
     n_bottiglie: int = Form(None),
     prezzo_euro: float = Form(None),
@@ -67,6 +75,26 @@ def crea_vendita(
     stato: str = Form("confermata"),
     db: Session = Depends(get_db),
 ):
+    pf = db.query(ProdottoFinito).filter(ProdottoFinito.id == prodotto_finito_id).first() if prodotto_finito_id else None
+    stato_eff = stato if stato in ("bozza", "confermata") else "confermata"
+    note_eff = note.strip()
+
+    if pf:
+        if not ricetta_id and pf.cotta and pf.cotta.ricetta_id:
+            ricetta_id = pf.cotta.ricetta_id
+        pezzi = n_bottiglie or 1
+        if not quantita_litri and pf.formato_ml:
+            quantita_litri = round((pezzi * pf.formato_ml) / 1000.0, 2)
+        if prezzo_euro is None and pf.prezzo_vendita:
+            prezzo_euro = round(pezzi * pf.prezzo_vendita, 2)
+        lotto_tag = f"[Lotto {pf.codice_lotto or pf.codice}]"
+        if lotto_tag not in note_eff:
+            note_eff = f"{lotto_tag} {note_eff}".strip()
+        if stato_eff == "confermata":
+            pf.n_pezzi_disponibili = max(0, (pf.n_pezzi_disponibili or 0) - pezzi)
+            if pf.n_pezzi_disponibili == 0:
+                pf.stato = "esaurito"
+
     db.add(Vendita(
         data=data,
         cliente=cliente.strip() or None,
@@ -75,8 +103,8 @@ def crea_vendita(
         quantita_litri=quantita_litri,
         n_bottiglie=n_bottiglie,
         prezzo_euro=prezzo_euro,
-        note=note.strip() or None,
-        stato=stato if stato in ("bozza", "confermata") else "confermata",
+        note=note_eff or None,
+        stato=stato_eff,
     ))
     db.commit()
     return RedirectResponse("/vendite", status_code=303)

@@ -51,7 +51,8 @@ def view_dashboard(request: Request, db: Session = Depends(get_db)):
         if c.ricetta_id:
             r = db.query(Ricetta).filter(Ricetta.id == c.ricetta_id).first()
             if r and r.stile:
-                stili_count[r.stile] = stili_count.get(r.stile, 0) + 1
+                nome_stile = r.stile.nome if hasattr(r.stile, "nome") else str(r.stile)
+                stili_count[nome_stile] = stili_count.get(nome_stile, 0) + 1
     
     stili_labels = list(stili_count.keys())
     stili_data = list(stili_count.values())

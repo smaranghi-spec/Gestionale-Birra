@@ -1900,6 +1900,7 @@ def get_db():
 def lista_stili(request: Request, msg: str = None, db: Session = Depends(get_db)):
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
     return templates.TemplateResponse(
+        request,
         "stili.html",
         {"request": request, "stili": stili, "msg": msg},
     )

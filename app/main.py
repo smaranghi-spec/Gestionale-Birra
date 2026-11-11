@@ -235,6 +235,17 @@ def assegna_codici_retroattivi():
 
         db = SessionLocal()
         try:
+            # Fast-check: se nessun record ha codice mancante, evita la scansione completa
+            missing_any = (
+                db.query(CatalogoIngrediente).filter((CatalogoIngrediente.codice == None) | (CatalogoIngrediente.codice == "")).first()
+                or db.query(InventarioItem).filter((InventarioItem.codice == None) | (InventarioItem.codice == "")).first()
+                or db.query(Ricetta).filter((Ricetta.codice == None) | (Ricetta.codice == "")).first()
+                or db.query(Cotta).filter((Cotta.codice == None) | (Cotta.codice == "")).first()
+                or db.query(ProdottoFinito).filter((ProdottoFinito.codice == None) | (ProdottoFinito.codice == "")).first()
+            )
+            if not missing_any:
+                return
+
             # 1. CATALOGO INGREDIENTI (Assegna SKU: MAL-001, LUP-001, LIE-001, MIS-001, CHI-001, PAC-001)
             all_cat = db.query(CatalogoIngrediente).order_by(CatalogoIngrediente.id.asc()).all()
             conteggi = {"MAL": 0, "LUP": 0, "LIE": 0, "MIS": 0, "CHI": 0, "PAC": 0}

@@ -233,6 +233,23 @@ def conferma_review(oid: int, request: Request, db: Session = Depends(get_db)):
     })
 
 
+def _converti_unita(qty: float, da_unita: str, a_unita: str) -> float:
+    """Converte la quantità dall'unità dell'ordine all'unità dell'articolo in magazzino."""
+    u_da = (da_unita or "").strip().lower()
+    u_a = (a_unita or "").strip().lower()
+    if not qty or u_da == u_a:
+        return float(qty or 0)
+    if u_da == "g" and u_a == "kg":
+        return round(float(qty) / 1000.0, 4)
+    if u_da == "kg" and u_a == "g":
+        return round(float(qty) * 1000.0, 2)
+    if u_da == "ml" and u_a == "l":
+        return round(float(qty) / 1000.0, 4)
+    if u_da == "l" and u_a == "ml":
+        return round(float(qty) * 1000.0, 2)
+    return float(qty or 0)
+
+
 @router.post("/acquisti/{oid}/conferma")
 def conferma_ordine(
     oid: int,
@@ -241,6 +258,7 @@ def conferma_ordine(
 ):
     """Segna ordine come 'ricevuto' e aggiunge tutto al magazzino, usando eventuali
     correzioni fatte nella pagina di revisione (nome/categoria/unità/soglia per riga nuova)."""
+    from ..codici import genera_prossimo_sku
     ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
     if not ordine or ordine.stato == "ricevuto":
         return RedirectResponse(f"/acquisti/{oid}", status_code=303)
@@ -250,7 +268,8 @@ def conferma_ordine(
             InventarioItem.nome.ilike(f"%{r.nome[:25]}%")
         ).first()
         if existing:
-            existing.quantita = (existing.quantita or 0) + (r.quantita or 0)
+            qty_conv = _converti_unita(r.quantita or 0, r.unita, existing.unita)
+            existing.quantita = round((existing.quantita or 0) + qty_conv, 3)
             existing.ultimo_aggiornamento = datetime.now().strftime("%Y-%m-%d %H:%M")
             if ordine.fornitore and not existing.fornitore:
                 existing.fornitore = ordine.fornitore
@@ -258,7 +277,10 @@ def conferma_ordine(
                 existing.prezzo_unitario = r.prezzo_unitario
         else:
             cat = r.categoria if r.categoria in ["consumabile", "non_consumabile", "ingrediente", "chimico", "packaging"] else "consumabile"
+            sku = genera_prossimo_sku(cat, db)
             db.add(InventarioItem(
+                codice=sku,
+                codice_ingrediente=sku,
                 nome=r.nome,
                 categoria=cat,
                 unita=r.unita or "pz",
@@ -268,6 +290,7 @@ def conferma_ordine(
                 fornitore=ordine.fornitore or None,
                 ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),
             ))
+            db.flush()
 
     ordine.stato = "ricevuto"
     db.commit()
@@ -277,6 +300,7 @@ def conferma_ordine(
 @router.post("/acquisti/{oid}/conferma-review")
 async def conferma_ordine_review(oid: int, request: Request, db: Session = Depends(get_db)):
     """Conferma l'ordine applicando le correzioni fatte sui nuovi articoli nella pagina di revisione."""
+    from ..codici import genera_prossimo_sku
     ordine = db.query(OrdineAcquisto).filter(OrdineAcquisto.id == oid).first()
     if not ordine or ordine.stato == "ricevuto":
         return RedirectResponse(f"/acquisti/{oid}", status_code=303)
@@ -288,7 +312,8 @@ async def conferma_ordine_review(oid: int, request: Request, db: Session = Depen
             InventarioItem.nome.ilike(f"%{r.nome[:25]}%")
         ).first()
         if existing:
-            existing.quantita = (existing.quantita or 0) + (r.quantita or 0)
+            qty_conv = _converti_unita(r.quantita or 0, r.unita, existing.unita)
+            existing.quantita = round((existing.quantita or 0) + qty_conv, 3)
             existing.ultimo_aggiornamento = datetime.now().strftime("%Y-%m-%d %H:%M")
             if ordine.fornitore and not existing.fornitore:
                 existing.fornitore = ordine.fornitore
@@ -304,7 +329,10 @@ async def conferma_ordine_review(oid: int, request: Request, db: Session = Depen
                 soglia_edit = float(form.get(f"soglia_{r.id}") or 0)
             except ValueError:
                 soglia_edit = 0
+            sku = genera_prossimo_sku(categoria_edit, db)
             db.add(InventarioItem(
+                codice=sku,
+                codice_ingrediente=sku,
                 nome=nome_edit,
                 categoria=categoria_edit,
                 unita=unita_edit,
@@ -314,6 +342,7 @@ async def conferma_ordine_review(oid: int, request: Request, db: Session = Depen
                 fornitore=ordine.fornitore or None,
                 ultimo_aggiornamento=datetime.now().strftime("%Y-%m-%d %H:%M"),
             ))
+            db.flush()
 
     ordine.stato = "ricevuto"
     db.commit()

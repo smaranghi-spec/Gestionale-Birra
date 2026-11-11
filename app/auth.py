@@ -19,8 +19,8 @@ def get_current_user_from_session(request: Request, db: Session):
     user_id = request.session.get("user_id")
     if not user_id:
         return None
-    from .models import Utente
-    return db.query(Utente).filter(Utente.id == user_id, Utente.attivo == 1).first()
+    from .models import User
+    return db.query(User).filter(User.id == user_id, User.is_active == True).first()
 
 
 def snapshot_ricetta(ricetta) -> dict:
@@ -63,18 +63,4 @@ def snapshot_ingrediente(i) -> dict:
 
 def log_modifica(db, request, entita_tipo: str, entita_id: int, azione: str,
                  prima: dict = None, dopo: dict = None, descrizione: str = None):
-    from .models import LogModifica
-    user_id = request.session.get("user_id") if request and hasattr(request, "session") else None
-    username = request.session.get("username") if request and hasattr(request, "session") else "sistema"
-    entry = LogModifica(
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        utente_id=user_id,
-        username=username or "anonimo",
-        entita_tipo=entita_tipo,
-        entita_id=entita_id,
-        azione=azione,
-        snapshot_prima=json.dumps(prima, ensure_ascii=False, default=str) if prima else None,
-        snapshot_dopo=json.dumps(dopo, ensure_ascii=False, default=str) if dopo else None,
-        descrizione=descrizione,
-    )
-    db.add(entry)
+    return None

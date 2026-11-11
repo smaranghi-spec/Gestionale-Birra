@@ -69,6 +69,7 @@ def lista_cotte(request: Request, db: Session = Depends(get_db)):
             contatori[c.stato] += 1
 
     return templates.TemplateResponse(
+        request,
         "cotte.html",
         {
             "request": request,
@@ -757,9 +758,9 @@ def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if cotta:
         try:
-            from ..models import LetturaDensita, LogCotta, Degustazione, AggiuntaCotta, CottaIngredienteLotto
+            from ..models import LogCotta, Degustazione, AggiuntaCotta, CottaIngredienteLotto, ProdottoFinito
+            db.query(ProdottoFinito).filter(ProdottoFinito.cotta_id == cotta_id).update({"cotta_id": None}, synchronize_session=False)
             db.query(CottaIngredienteLotto).filter(CottaIngredienteLotto.cotta_id == cotta_id).delete(synchronize_session=False)
-            db.query(LetturaDensita).filter(LetturaDensita.cotta_id == cotta_id).delete(synchronize_session=False)
             db.query(LogCotta).filter(LogCotta.cotta_id == cotta_id).delete(synchronize_session=False)
             db.query(Degustazione).filter(Degustazione.cotta_id == cotta_id).delete(synchronize_session=False)
             db.query(AggiuntaCotta).filter(AggiuntaCotta.cotta_id == cotta_id).delete(synchronize_session=False)
@@ -768,7 +769,7 @@ def elimina_cotta(cotta_id: int, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
             return RedirectResponse("/cotte?msg=Errore+durante+l+eliminazione+della+cotta", status_code=303)
-    return RedirectResponse("/cotte", status_code=303)
+    return RedirectResponse("/cotte?msg=Cotta+eliminata", status_code=303)
 
 
 @router.get("/degustazioni", response_class=HTMLResponse)

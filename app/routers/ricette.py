@@ -86,6 +86,7 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
     cotte_count = {rid: cnt for rid, cnt in counts_q if rid is not None}
 
     return templates.TemplateResponse(
+        request,
         "ricette.html",
         {
             "request": request,
@@ -195,6 +196,7 @@ def libreria_ricette_view(
         ]
 
     return templates.TemplateResponse(
+        request,
         "libreria_ricette.html",
         {
             "request": request,
@@ -399,6 +401,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
             fermentazione_steps = []
 
     return templates.TemplateResponse(
+        request,
         "dettaglio_ricetta.html",
         {
             "request": request,
@@ -849,6 +852,7 @@ def form_modifica_ricetta(
 
     profilo_mash = db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).first()
     return templates.TemplateResponse(
+        request,
         "modifica_ricetta.html",
         {
             "request": request,
@@ -928,11 +932,11 @@ def elimina_ricetta(ricetta_id: int, db: Session = Depends(get_db)):
                 status_code=303,
             )
         try:
-            from ..models import CondivisioneRicetta
+            from ..models import Vendita
+            db.query(Vendita).filter(Vendita.ricetta_id == ricetta_id).update({"ricetta_id": None}, synchronize_session=False)
             db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).delete(synchronize_session=False)
             db.query(ProfiloAcqua).filter(ProfiloAcqua.ricetta_id == ricetta_id).delete(synchronize_session=False)
             db.query(ProfiloAmmostamento).filter(ProfiloAmmostamento.ricetta_id == ricetta_id).delete(synchronize_session=False)
-            db.query(CondivisioneRicetta).filter(CondivisioneRicetta.ricetta_id == ricetta_id).delete(synchronize_session=False)
             db.delete(ricetta)
             db.commit()
         except Exception:
@@ -1204,6 +1208,7 @@ def scheda_cotta_stampa(
             ferm_steps = []
 
     return templates.TemplateResponse(
+        request,
         "brew_sheet.html",
         {
             "request": request,

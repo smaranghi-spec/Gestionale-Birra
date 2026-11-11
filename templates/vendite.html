@@ -88,19 +88,37 @@
     <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova Vendita</h3>
     <form method="post" action="/vendite">
       <div class="form-row"><label>Data *</label><input type="date" name="data" value="{{ oggi }}" required></div>
-      <div class="form-row"><label>Prodotto *</label><input type="text" name="prodotto" placeholder="Nome birra / prodotto" required></div>
+      {% if lotti_finiti %}
+      <div class="form-row">
+        <label>🍾 Preleva da Lotto Magazzino Finiti (opz.)</label>
+        <select name="prodotto_finito_id" id="v-lotto-sel" onchange="applicaLottoFinito(this)">
+          <option value="0">— Vendita libera (senza scarico lotto) —</option>
+          {% for pf in lotti_finiti %}
+          <option value="{{ pf.id }}"
+                  data-nome="{{ pf.nome }}"
+                  data-formato="{{ pf.formato_ml or 330 }}"
+                  data-prezzo="{{ pf.prezzo_vendita or 0 }}"
+                  data-ricetta="{{ pf.cotta.ricetta_id if (pf.cotta and pf.cotta.ricetta_id) else 0 }}"
+                  data-disp="{{ pf.n_pezzi_disponibili }}">
+            {{ pf.nome }} · {{ pf.codice_lotto or pf.codice }} ({{ pf.formato_ml }}ml — {{ pf.n_pezzi_disponibili }} disp.{% if pf.prezzo_vendita %} · €{{ '%.2f'|format(pf.prezzo_vendita) }}{% endif %})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="form-row"><label>Prodotto *</label><input type="text" name="prodotto" id="v-prodotto" placeholder="Nome birra / prodotto" required></div>
       <div class="form-row"><label>Ricetta (opz.)</label>
-        <select name="ricetta_id">
+        <select name="ricetta_id" id="v-ricetta">
           <option value="0">— nessuna —</option>
           {% for r in ricette %}<option value="{{ r.id }}">{{ r.nome }}</option>{% endfor %}
         </select>
       </div>
       <div class="form-row"><label>Cliente</label><input type="text" name="cliente" placeholder="Nome cliente"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="form-row"><label>Litri</label><input type="number" name="quantita_litri" step="0.1" placeholder="0.0"></div>
-        <div class="form-row"><label>N° bottiglie</label><input type="number" name="n_bottiglie" placeholder="0"></div>
+        <div class="form-row"><label>Litri</label><input type="number" name="quantita_litri" id="v-litri" step="0.1" placeholder="0.0"></div>
+        <div class="form-row"><label>N° bottiglie/fusti</label><input type="number" name="n_bottiglie" id="v-pezzi" placeholder="0" oninput="ricalcolaDaLotto()"></div>
       </div>
-      <div class="form-row"><label>Prezzo (€)</label><input type="number" name="prezzo_euro" step="0.01" placeholder="0.00"></div>
+      <div class="form-row"><label>Prezzo Totale (€)</label><input type="number" name="prezzo_euro" id="v-prezzo" step="0.01" placeholder="0.00"></div>
       <div class="form-row"><label>Note</label><textarea name="note" rows="2" placeholder="Note aggiuntive…"></textarea></div>
       <div class="form-row">
         <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
@@ -109,9 +127,37 @@
         </label>
         <input type="hidden" id="stato-field" name="stato" value="confermata">
       </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;">💾 Registra</button>
+      <button type="submit" class="btn btn-primary" style="width:100%;">💾 Registra Vendita</button>
     </form>
   </div>
 
 </div>
+
+<script>
+function applicaLottoFinito(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || opt.value === "0") return;
+  const nome = opt.dataset.nome || "";
+  const ricId = opt.dataset.ricetta || "0";
+  if (nome) document.getElementById("v-prodotto").value = nome;
+  if (ricId !== "0") document.getElementById("v-ricetta").value = ricId;
+  const pezziInput = document.getElementById("v-pezzi");
+  if (!pezziInput.value) pezziInput.value = 1;
+  ricalcolaDaLotto();
+}
+function ricalcolaDaLotto() {
+  const sel = document.getElementById("v-lotto-sel");
+  if (!sel || sel.value === "0") return;
+  const opt = sel.options[sel.selectedIndex];
+  const fmtMl = parseFloat(opt.dataset.formato || 0);
+  const prezzoUnit = parseFloat(opt.dataset.prezzo || 0);
+  const pezzi = parseInt(document.getElementById("v-pezzi").value || 0, 10);
+  if (pezzi > 0 && fmtMl > 0) {
+    document.getElementById("v-litri").value = ((pezzi * fmtMl) / 1000).toFixed(2);
+  }
+  if (pezzi > 0 && prezzoUnit > 0) {
+    document.getElementById("v-prezzo").value = (pezzi * prezzoUnit).toFixed(2);
+  }
+}
+</script>
 {% endblock %}
