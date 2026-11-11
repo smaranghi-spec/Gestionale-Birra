@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Procedure Operative di Lavorazione (SOP) — Birrificio{% endblock %}
+{% block extra_style %}
+.sop-grid { display:grid; grid-template-columns:1fr; gap:16px; }
+.sop-card { background:var(--card); border:1px solid var(--border); border-left:4px solid var(--amber); border-radius:12px; padding:20px 22px; transition:.15s; }
+.sop-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.sop-code { font-family:monospace; font-size:13px; font-weight:800; background:var(--amber); color:#000; padding:3px 10px; border-radius:6px; letter-spacing:.5px; }
+.sop-meta { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:12px; }
+.sop-step { display:flex; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.02); border:1px solid rgba(48,54,61,.6); border-radius:8px; margin-bottom:8px; align-items:flex-start; }
+.sop-step-num { width:26px; height:26px; border-radius:50%; background:var(--amber-dim); border:1px solid var(--amber); color:var(--amber); font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.sop-ccp { display:inline-block; margin-top:5px; padding:3px 8px; border-radius:6px; background:rgba(248,81,73,0.12); border:1px solid rgba(248,81,73,0.4); color:#f87171; font-size:11px; font-weight:600; }
+@media print {
+  .navbar, .mobile-bottom-nav, .no-print { display:none !important; }
+  body, .page, .sop-card { background:#fff !important; color:#000 !important; border-color:#ccc !important; }
+  .sop-meta, .sop-step { background:#f9f9f9 !important; border-color:#ddd !important; color:#000 !important; }
+  p, div, span { color:#000 !important; }
+}
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 style="font-size:22px;margin-bottom:4px;">📋 Procedure Operative di Lavorazione (SOP &amp; HACCP)</h1>
+    <p style="margin:0;">Istruzioni operative standardizzate per ogni fase produttiva, parametri critici di controllo (CCP) e checklist di sala cotta.</p>
+  </div>
+  <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Stampa Manuale SOP</button>
+    <form method="post" action="/procedure/ripristina-default" style="display:inline;">
+      <button type="submit" class="btn btn-secondary btn-sm" title="Ripristina eventuali SOP standard eliminate">🔄 Ripristina SOP Standard</button>
+    </form>
+    <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('box-nuova-sop').style.display=document.getElementById('box-nuova-sop').style.display==='none'?'block':'none'">
+      ➕ Nuova Procedura SOP
+    </button>
+  </div>
+</div>
+
+<!-- Filtri per fase produttiva -->
+<div class="scroll-chips no-print" style="margin-bottom:18px;gap:8px;">
+  <a href="/procedure" class="btn btn-sm {% if not fase_attiva %}btn-primary{% else %}btn-secondary{% endif %}">Tutte ({{ tutte_sops|length }})</a>
+  {% for k, lbl in fasi_sop.items() %}
+  <a href="/procedure?fase={{ k }}" class="btn btn-sm {% if fase_attiva == k %}btn-primary{% else %}btn-secondary{% endif %}">{{ lbl }}</a>
+  {% endfor %}
+</div>
+
+<!-- Form Nuova Procedura -->
+<div id="box-nuova-sop" class="card no-print" style="display:none;margin-bottom:20px;border-color:var(--amber);">
+  <h3 style="font-size:16px;color:var(--amber);margin-bottom:14px;">➕ Crea Nuova Procedura Operativa (SOP)</h3>
+  <form method="post" action="/procedure/nuova">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Codice SOP</label>
+        <input type="text" name="codice" placeholder="es. SOP-09">
+      </div>
+      <div class="form-row" style="grid-column:span 2;">
+        <label>Titolo Procedura *</label>
+        <input type="text" name="titolo" placeholder="es. Gestione Propagazione Lievito / Lavaggio Fusti" required>
+      </div>
+      <div class="form-row">
+        <label>Fase Associata</label>
+        <select name="fase">
+          {% for k, lbl in fasi_sop.items() %}
+          <option value="{{ k }}">{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Revisione</label>
+        <input type="text" name="revisione" value="Rev. 1.0">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Scopo e Campo di Applicazione</label>
+      <textarea name="scopo" rows="2" placeholder="Obiettivo tecnico e qualitativo della procedura..."></textarea>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>DPI e Strumentazione Necessaria</label>
+        <input type="text" name="dpi_attrezzature" placeholder="es. Guanti termici, pH-metro, rifrattometro...">
+      </div>
+      <div class="form-row">
+        <label>Parametri Critici di Controllo (Range Target)</label>
+        <input type="text" name="parametri_critici" placeholder="es. pH 5.2–5.4 | T° 66°C ±0.5°C">
+      </div>
+    </div>
+
+    <div style="margin:14px 0 8px;font-size:12px;font-weight:700;color:var(--amber);text-transform:uppercase;">Passaggi Operativi (Step-by-Step)</div>
+    <div id="sop-steps-container">
+      {% for idx in range(3) %}
+      <div style="display:grid;grid-template-columns:1fr 2fr 1.2fr;gap:8px;margin-bottom:8px;">
+        <input type="text" name="step_titolo_{{ idx }}" placeholder="Titolo step {{ idx + 1 }} (es. Controllo pH)">
+        <input type="text" name="step_desc_{{ idx }}" placeholder="Descrizione operativa dettagliata...">
+        <input type="text" name="step_crit_{{ idx }}" placeholder="Punto critico / Attenzione (opz.)">
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn btn-ghost btn-xs" onclick="addSopStepRow()" style="margin-bottom:14px;">+ Aggiungi altro step operativo</button>
+
+    <div style="display:flex;gap:8px;">
+      <button type="submit" class="btn btn-primary">💾 Salva Procedura SOP</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('box-nuova-sop').style.display='none'">Annulla</button>
+    </div>
+  </form>
+</div>
+
+<!-- Elenco SOP -->
+<div class="sop-grid">
+  {% for s in sops %}
+  <div class="sop-card" id="sop-{{ s.codice }}">
+    <div class="sop-header">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="sop-code">{{ s.codice }}</span>
+        <h2 style="font-size:17px;margin:0;color:var(--text);">{{ s.titolo }}</h2>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="badge badge-amber">{{ s.fase_label }}</span>
+        <span class="badge badge-gray">{{ s.revisione }}</span>
+        <form method="post" action="/procedure/{{ s.id }}/elimina" class="no-print" style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Eliminare questa procedura?')">✕</button>
+        </form>
+      </div>
+    </div>
+
+    {% if s.scopo %}
+    <p style="font-size:13px;color:var(--text);margin-bottom:12px;line-height:1.5;">
+      <strong style="color:var(--amber);">Obiettivo:</strong> {{ s.scopo }}
+    </p>
+    {% endif %}
+
+    <div class="sop-meta">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:3px;">🎯 Parametri Critici / Target</div>
+        <div style="font-weight:700;color:var(--amber);">{{ s.parametri_critici or 'Standard di ricetta' }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:3px;">🥽 DPI &amp; Strumentazione</div>
+        <div style="color:var(--text);">{{ s.dpi_attrezzature or 'Dotazione standard sala cotta' }}</div>
+      </div>
+    </div>
+
+    <div>
+      {% for st in s.steps %}
+      <div class="sop-step">
+        <div class="sop-step-num">{{ loop.index }}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:2px;">{{ st.titolo }}</div>
+          <div style="font-size:12.5px;color:var(--muted);line-height:1.45;">{{ st.descrizione }}</div>
+          {% if st.critico %}
+          <div class="sop-ccp">⚠️ CCP / Controllo Critico: {{ st.critico }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+let sopStepIdx = 3;
+function addSopStepRow() {
+  const c = document.getElementById('sop-steps-container');
+  const d = document.createElement('div');
+  d.style = 'display:grid;grid-template-columns:1fr 2fr 1.2fr;gap:8px;margin-bottom:8px;';
+  d.innerHTML = `
+    <input type="text" name="step_titolo_${sopStepIdx}" placeholder="Titolo step ${sopStepIdx + 1}">
+    <input type="text" name="step_desc_${sopStepIdx}" placeholder="Descrizione operativa dettagliata...">
+    <input type="text" name="step_crit_${sopStepIdx}" placeholder="Punto critico / Attenzione (opz.)">
+  `;
+  c.appendChild(d);
+  sopStepIdx++;
+}
+</script>
+{% endblock %}

@@ -89,17 +89,29 @@ def nuova_cotta(
     data_brew: str = Form(""),
     fermentatore: str = Form(""),
     note: str = Form(""),
+    avvia_subito: str = Form("0"),
+    scarica_magazzino: str = Form("0"),
+    volume_batch: Optional[float] = Form(None),
     db: Session = Depends(get_db),
 ):
     c_codice = codice.strip().upper() if codice and codice.strip() else genera_prossimo_codice_cotta(date.today().year, db)
+    stato_iniziale = "brewday" if avvia_subito == "1" else "pianificata"
+    data_effettiva = data_brew or (date.today().isoformat() if avvia_subito == "1" else None)
+
+    ricetta_obj = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first() if ricetta_id else None
+    vol_ricetta = (ricetta_obj.volume_target_litri or 20.0) if ricetta_obj else 20.0
+    vol_effettivo = volume_batch if (volume_batch and volume_batch > 0) else vol_ricetta
+
     cotta = Cotta(
         nome=nome,
         codice=c_codice,
         ricetta_id=ricetta_id if ricetta_id else None,
-        data_brew=data_brew or None,
+        data_brew=data_effettiva,
         fermentatore=fermentatore or None,
         note=note or None,
-        stato="pianificata",
+        stato=stato_iniziale,
+        volume_post_bollitura=vol_effettivo if ricetta_obj else None,
+        checklist_json="{}",
     )
     db.add(cotta)
     db.flush()
@@ -108,11 +120,59 @@ def nuova_cotta(
         LogCotta(
             cotta_id=cotta.id,
             timestamp=_now_str(),
-            fase="pianificata",
+            fase=stato_iniziale,
             tipo="evento",
-            descrizione="Cotta creata",
+            descrizione=f"Cotta creata ({FASI_LABEL.get(stato_iniziale, stato_iniziale)})",
         )
     )
+
+    # Se collegata a una ricetta e avviata in modalità rapida, pre-assegna automaticamente i lotti FEFO
+    if ricetta_obj and avvia_subito == "1":
+        fattore = vol_effettivo / vol_ricetta if vol_ricetta else 1.0
+        for ing in ricetta_obj.ingredienti:
+            qty_scalata = round((ing.quantita or 0.0) * fattore, 3)
+            inv_query = db.query(InventarioItem)
+            if ing.codice_ingrediente:
+                inv_query = inv_query.filter(
+                    (InventarioItem.codice_ingrediente == ing.codice_ingrediente) |
+                    (InventarioItem.codice == ing.codice_ingrediente) |
+                    (InventarioItem.nome.ilike(f"%{ing.nome[:15]}%"))
+                )
+            else:
+                inv_query = inv_query.filter(InventarioItem.nome.ilike(f"%{ing.nome[:15]}%"))
+
+            lotti_db = inv_query.order_by(
+                InventarioItem.data_scadenza.asc().nullslast(),
+                InventarioItem.id.asc()
+            ).all()
+
+            inv_item = None
+            for l in lotti_db:
+                if (l.quantita or 0.0) >= qty_scalata:
+                    inv_item = l
+                    break
+            if not inv_item and lotti_db:
+                inv_item = next((l for l in lotti_db if (l.quantita or 0.0) > 0), lotti_db[0])
+
+            if inv_item and scarica_magazzino == "1":
+                inv_item.quantita = max(0.0, round((inv_item.quantita or 0.0) - qty_scalata, 4))
+                inv_item.ultimo_aggiornamento = _now_str()
+
+            db.add(CottaIngredienteLotto(
+                cotta_id=cotta.id,
+                inventario_id=inv_item.id if inv_item else None,
+                codice_ingrediente=ing.codice_ingrediente or (inv_item.codice_ingrediente if inv_item else None) or (inv_item.codice if inv_item else None),
+                nome_ingrediente=ing.nome,
+                categoria=ing.categoria,
+                numero_lotto=inv_item.numero_lotto if inv_item else ing.numero_lotto,
+                fornitore=inv_item.fornitore if inv_item else ing.fornitore_lotto,
+                data_scadenza=inv_item.data_scadenza if inv_item else ing.data_scadenza_lotto,
+                quantita_usata=qty_scalata,
+                unita=ing.unita,
+                timestamp=_now_str(),
+                note=f"Auto-FEFO cotta {c_codice}",
+            ))
+
     db.commit()
     return RedirectResponse(f"/cotte/{cotta.id}", status_code=303)
 
@@ -127,15 +187,42 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     idx_stato = STATI_COTTA.index(cotta.stato) if cotta.stato in STATI_COTTA else 0
 
     attenuation = None
+    stats_target = {}
+    tot_grani_kg = 0.0
+    litri_mash = 0.0
+    litri_sparge = 0.0
+    litri_pre_boil = 0.0
+    vol_target = 20.0
+
     if cotta.ricetta:
+        vol_target = cotta.ricetta.volume_target_litri or 20.0
         for ing in cotta.ricetta.ingredienti:
-            if ing.categoria == "yeast" and ing.attenuation:
+            cat = (ing.categoria or "").lower()
+            if cat in ("yeast", "lievito") and ing.attenuation and not attenuation:
                 attenuation = ing.attenuation
-                break
+            if cat in ("grain", "fermentabile", "malto"):
+                q = ing.quantita or 0.0
+                u = (ing.unita or "kg").lower()
+                tot_grani_kg += (q * 0.001) if u in ("g", "gr") else q
+        try:
+            from ..stats import calcola_stats
+            stats_target = calcola_stats(cotta.ricetta, cotta.ricetta.ingredienti)
+            litri_mash = stats_target.get("acqua_mash_l") or round(tot_grani_kg * 3.0, 1)
+            litri_sparge = stats_target.get("acqua_sparge_l") or round(max(0.0, vol_target * 1.25 - (litri_mash - tot_grani_kg * 0.96)), 1)
+            litri_pre_boil = stats_target.get("volume_pre_boil_l") or round(vol_target + 3.5, 1)
+        except Exception:
+            litri_mash = round(tot_grani_kg * 3.0, 1)
+            litri_pre_boil = round(vol_target * 1.2, 1)
+            litri_sparge = round(max(0.0, litri_pre_boil - (litri_mash - tot_grani_kg)), 1)
 
     fg_stimata = None
     if cotta.og_reale and attenuation:
         fg_stimata = round(1 + (cotta.og_reale - 1) * (1 - attenuation / 100), 3)
+    elif stats_target.get("fg") and stats_target.get("fg") != "—":
+        try:
+            fg_stimata = float(stats_target["fg"])
+        except Exception:
+            pass
 
     abv_calcolato = None
     if cotta.og_reale and cotta.fg_reale:
@@ -143,8 +230,14 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     elif cotta.og_reale and fg_stimata:
         abv_calcolato = round((cotta.og_reale - fg_stimata) * 131.25, 1)
 
-    # Dati grafico — misurazioni SG e temperatura in ordine cronologico
+    # Calcolo Pitch Rate consigliato stile BeerSmith (cellule e grammi lievito secco)
+    og_ref = cotta.og_reale or (float(stats_target["og"]) if stats_target.get("og") and stats_target.get("og") != "—" else 1.050)
+    vol_ref = cotta.volume_post_bollitura or vol_target
+    plato_ref = max(1.0, (og_ref - 1.0) * 1000.0 / 4.0)
+    cellule_miliardi = round(0.75 * vol_ref * plato_ref)
+    grammi_lievito_secco = round(cellule_miliardi / 10.0, 1)
 
+    # Dati grafico — misurazioni SG e temperatura in ordine cronologico
     misure_sg = [
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
@@ -156,7 +249,6 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
         if (e.unita == "°C" or e.tipo in ("temperatura", "temp")) and e.valore is not None and e.unita != "SG"
     ]
 
-    # Aggiungi OG al grafico come primo punto se disponibile e non già registrato
     if cotta.og_reale and cotta.data_inoculo:
         og_entry = {"t": cotta.data_inoculo + " 00:00", "v": cotta.og_reale}
         if not misure_sg or misure_sg[0]["v"] != cotta.og_reale:
@@ -173,6 +265,14 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
         .all()
     )
 
+    # Procedure Operative Standard (SOP) e stato checklist cotta
+    from .procedure import get_sops_parsed
+    sops = get_sops_parsed(db)
+    try:
+        checklist_state = json.loads(cotta.checklist_json or "{}")
+    except Exception:
+        checklist_state = {}
+
     return templates.TemplateResponse(
         request,
         "dettaglio_cotta.html",
@@ -186,6 +286,16 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             "fasi_label": FASI_LABEL,
             "fg_stimata": fg_stimata,
             "abv_calcolato": abv_calcolato,
+            "stats_target": stats_target,
+            "tot_grani_kg": round(tot_grani_kg, 2),
+            "litri_mash": litri_mash,
+            "litri_sparge": litri_sparge,
+            "litri_pre_boil": litri_pre_boil,
+            "vol_target": vol_target,
+            "cellule_miliardi": cellule_miliardi,
+            "grammi_lievito_secco": grammi_lievito_secco,
+            "sops": sops,
+            "checklist_state": checklist_state,
             "oggi": date.today().strftime("%Y-%m-%d"),
             "misure_sg": misure_sg,
             "misure_temp": misure_temp,
@@ -193,7 +303,6 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             "session": request.session,
         },
     )
-
 
 
 @router.post("/cotte/{cotta_id}/avanza")
@@ -207,6 +316,8 @@ def avanza_stato(cotta_id: int, db: Session = Depends(get_db)):
         vecchio = cotta.stato
         cotta.stato = prossimo
 
+        if prossimo == "brewday" and not cotta.data_brew:
+            cotta.data_brew = date.today().isoformat()
         if prossimo == "fermentazione" and not cotta.data_inoculo:
             cotta.data_inoculo = date.today().isoformat()
         if prossimo == "imbottigliamento" and not cotta.data_imbottigliamento:
@@ -226,71 +337,148 @@ def avanza_stato(cotta_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
 
 
+@router.post("/cotte/{cotta_id}/stato")
+def imposta_stato(cotta_id: int, nuovo_stato: str = Form(...), db: Session = Depends(get_db)):
+    """Cambio stato rapido con 1 click direttamente sulla barra pipeline."""
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta or nuovo_stato not in STATI_COTTA:
+        return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
+
+    if cotta.stato != nuovo_stato:
+        vecchio = cotta.stato
+        cotta.stato = nuovo_stato
+        if nuovo_stato == "brewday" and not cotta.data_brew:
+            cotta.data_brew = date.today().isoformat()
+        elif nuovo_stato == "fermentazione" and not cotta.data_inoculo:
+            cotta.data_inoculo = date.today().isoformat()
+        elif nuovo_stato == "imbottigliamento" and not cotta.data_imbottigliamento:
+            cotta.data_imbottigliamento = date.today().isoformat()
+
+        db.add(
+            LogCotta(
+                cotta_id=cotta_id,
+                timestamp=_now_str(),
+                fase=nuovo_stato,
+                tipo="avanzamento",
+                descrizione=f"Cambio fase: {FASI_LABEL.get(vecchio, vecchio)} → {FASI_LABEL.get(nuovo_stato, nuovo_stato)}",
+            )
+        )
+        db.commit()
+
+    return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
+
+
+@router.post("/cotte/{cotta_id}/checklist")
+async def aggiorna_checklist_cotta(cotta_id: int, request: Request, db: Session = Depends(get_db)):
+    """Salva lo stato delle checklist SOP spuntate durante la lavorazione della cotta."""
+    cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
+    if not cotta:
+        return {"ok": False}
+
+    try:
+        payload = await request.json()
+        key = payload.get("key")
+        checked = bool(payload.get("checked"))
+        label = payload.get("label", "")
+        state = json.loads(cotta.checklist_json or "{}")
+        if key:
+            state[key] = checked
+            cotta.checklist_json = json.dumps(state, ensure_ascii=False)
+            if checked and label:
+                db.add(LogCotta(
+                    cotta_id=cotta_id,
+                    timestamp=_now_str(),
+                    fase=cotta.stato,
+                    tipo="evento",
+                    descrizione=f"✓ SOP completato: {label}",
+                ))
+            db.commit()
+        return {"ok": True, "state": state}
+    except Exception as e:
+        db.rollback()
+        return {"ok": False, "error": str(e)}
+
+
+def _parse_float(val: Optional[str]) -> Optional[float]:
+    if val is None:
+        return None
+    s = str(val).strip().replace(",", ".")
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _parse_int(val: Optional[str]) -> Optional[int]:
+    f = _parse_float(val)
+    return int(round(f)) if f is not None else None
+
+
 @router.post("/cotte/{cotta_id}/aggiorna")
-def aggiorna_cotta(
+async def aggiorna_cotta(
     cotta_id: int,
-    volume_pre_bollitura: Optional[float] = Form(None),
-    volume_post_bollitura: Optional[float] = Form(None),
-    ph_mash: Optional[float] = Form(None),
-    ph_pre_bollitura: Optional[float] = Form(None),
-    temp_mash_gradi: Optional[float] = Form(None),
-    durata_bollitura_min: Optional[int] = Form(None),
-    efficienza_reale: Optional[float] = Form(None),
-    og_reale: Optional[float] = Form(None),
-    fg_reale: Optional[float] = Form(None),
-    fermentatore: Optional[str] = Form(None),
-    temp_fermentazione: Optional[float] = Form(None),
-    data_inoculo: Optional[str] = Form(None),
-    data_travasamento: Optional[str] = Form(None),
-    temp_secondaria: Optional[float] = Form(None),
-    data_imbottigliamento: Optional[str] = Form(None),
-    tipo_packaging: Optional[str] = Form(None),
-    volume_imbottigliato: Optional[float] = Form(None),
-    carbonatazione_vols: Optional[float] = Form(None),
-    priming_sugar_g: Optional[float] = Form(None),
-    colore_visivo: Optional[str] = Form(None),
-    limpidezza: Optional[str] = Form(None),
-    note: Optional[str] = Form(None),
+    request: Request,
     db: Session = Depends(get_db),
 ):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if not cotta:
         return RedirectResponse("/cotte", status_code=303)
 
-    fields = {
-        "volume_pre_bollitura": volume_pre_bollitura,
-        "volume_post_bollitura": volume_post_bollitura,
-        "ph_mash": ph_mash,
-        "ph_pre_bollitura": ph_pre_bollitura,
-        "temp_mash_gradi": temp_mash_gradi,
-        "durata_bollitura_min": durata_bollitura_min,
-        "efficienza_reale": efficienza_reale,
-        "og_reale": og_reale,
-        "fg_reale": fg_reale,
-        "fermentatore": fermentatore,
-        "temp_fermentazione": temp_fermentazione,
-        "data_inoculo": data_inoculo,
-        "data_travasamento": data_travasamento,
-        "temp_secondaria": temp_secondaria,
-        "data_imbottigliamento": data_imbottigliamento,
-        "tipo_packaging": tipo_packaging,
-        "volume_imbottigliato": volume_imbottigliato,
-        "carbonatazione_vols": carbonatazione_vols,
-        "priming_sugar_g": priming_sugar_g,
-        "colore_visivo": colore_visivo,
-        "limpidezza": limpidezza,
-        "note": note,
-    }
+    form = await request.form()
 
-    for k, v in fields.items():
-        if v is not None and v != "":
-            setattr(cotta, k, v)
+    float_fields = [
+        "volume_pre_bollitura", "volume_post_bollitura", "ph_mash", "ph_pre_bollitura",
+        "temp_mash_gradi", "efficienza_reale", "og_reale", "fg_reale", "temp_fermentazione",
+        "temp_secondaria", "volume_imbottigliato", "carbonatazione_vols", "priming_sugar_g",
+        "temp_ambiente", "acqua_totale_litri", "pressione_bar",
+    ]
+    int_fields = ["durata_bollitura_min"]
+    str_fields = [
+        "fermentatore", "data_brew", "data_inoculo", "data_travasamento", "data_imbottigliamento",
+        "tipo_packaging", "colore_visivo", "limpidezza", "note", "note_ferm", "note_cond",
+        "note_imbott", "codice",
+    ]
 
-    if og_reale and fg_reale:
-        cotta.abv_reale = round((og_reale - fg_reale) * 131.25, 1)
+    for k in float_fields:
+        if k in form:
+            val = _parse_float(form.get(k))
+            if val is not None:
+                setattr(cotta, k, val)
+
+    for k in int_fields:
+        if k in form:
+            val = _parse_int(form.get(k))
+            if val is not None:
+                setattr(cotta, k, val)
+
+    for k in str_fields:
+        if k in form:
+            val = form.get(k)
+            if val is not None and str(val).strip() != "":
+                setattr(cotta, k, str(val).strip())
+
+    # Calcolo automatico Efficienza Reale (stile BeerSmith) se OG Reale e Volume Post-Bollitura sono presenti
+    if cotta.og_reale and cotta.volume_post_bollitura and cotta.ricetta and not _parse_float(form.get("efficienza_reale")):
+        punti_potenziali_tot = 0.0
+        for ing in cotta.ricetta.ingredienti:
+            if (ing.categoria or "").lower() in ("grain", "fermentabile", "malto"):
+                q_kg = (ing.quantita or 0.0) * (0.001 if (ing.unita or "").lower() in ("g", "gr") else 1.0)
+                resa = (ing.yield_percent or 78.0) / 100.0
+                # 384 punti litro/kg per saccarosio 100%
+                punti_potenziali_tot += q_kg * 384.0 * resa
+        if punti_potenziali_tot > 0:
+            punti_ottenuti = (cotta.og_reale - 1.0) * 1000.0 * cotta.volume_post_bollitura
+            cotta.efficienza_reale = round((punti_ottenuti / punti_potenziali_tot) * 100.0, 1)
+
+    if cotta.og_reale and cotta.fg_reale:
+        cotta.abv_reale = round((cotta.og_reale - cotta.fg_reale) * 131.25, 1)
 
     db.commit()
-    return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
+    tab = form.get("tab_attiva", "")
+    suffix = f"?tab={tab}" if tab else ""
+    return RedirectResponse(f"/cotte/{cotta_id}{suffix}", status_code=303)
 
 
 @router.post("/cotte/{cotta_id}/log-bulk")

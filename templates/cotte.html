@@ -31,43 +31,78 @@
 
 <!-- Form nuova cotta -->
 <div id="form-nuova" style="display:none;margin-bottom:20px;">
-<div class="card">
-  <h3 style="font-size:15px;margin-bottom:16px;">➕ Nuova Cotta</h3>
+<div class="card" style="border-color:var(--amber);">
+  <h3 style="font-size:16px;color:var(--amber);margin-bottom:6px;">➕ Nuova Cotta Rapida (1-Click Produzione)</h3>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Seleziona una ricetta per compilare automaticamente nome, litri e pre-assegnare i lotti FEFO dal magazzino senza passaggi intermedi.</p>
   <form method="post" action="/cotte/nuova">
     <div class="form-grid">
-      <div class="form-row" style="grid-column:1/-1;">
-        <label>Nome cotta *</label>
-        <input type="text" name="nome" placeholder="es. IPA Estiva #3" required>
-      </div>
-      <div class="form-row">
-        <label>Codice batch</label>
-        <input type="text" name="codice" placeholder="es. 2024-003">
-      </div>
       <div class="form-row">
         <label>Ricetta base</label>
-        <select name="ricetta_id">
-          <option value="0">— Nessuna —</option>
+        <select name="ricetta_id" id="sel-ricetta-nuova" onchange="autoFillCottaFromRicetta(this)">
+          <option value="0" data-nome="" data-vol="20">— Ricetta libera / Nessuna —</option>
           {% for r in ricette %}
-          <option value="{{ r.id }}">{{ r.nome }}</option>
+          <option value="{{ r.id }}" data-nome="{{ r.nome }}" data-vol="{{ r.volume_target_litri or 20 }}">{{ r.codice or '' }} {{ r.nome }} ({{ r.volume_target_litri or 20 }}L)</option>
           {% endfor %}
         </select>
       </div>
       <div class="form-row">
+        <label>Nome cotta *</label>
+        <input type="text" name="nome" id="inp-nome-cotta" placeholder="es. IPA Estiva #3" required>
+      </div>
+      <div class="form-row">
+        <label>Volume Batch (Litri)</label>
+        <input type="number" step="0.5" name="volume_batch" id="inp-vol-cotta" value="20" placeholder="20">
+      </div>
+      <div class="form-row">
+        <label>Codice batch (auto se vuoto)</label>
+        <input type="text" name="codice" placeholder="Auto: COT-2026-NNN">
+      </div>
+      <div class="form-row">
         <label>Data brew</label>
-        <input type="date" name="data_brew">
+        <input type="date" name="data_brew" id="inp-data-brew">
       </div>
       <div class="form-row">
         <label>Fermentatore</label>
-        <input type="text" name="fermentatore" placeholder="es. Fermentatore A">
+        <input type="text" name="fermentatore" placeholder="es. Fermentatore 1">
       </div>
     </div>
+
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:8px 0 14px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:13px;color:var(--text);margin:0;">
+        <input type="checkbox" name="avvia_subito" value="1" checked style="width:18px;height:18px;min-height:18px;accent-color:var(--amber);">
+        <span>⚡ <strong>Avvia subito in Sala Cotta (Brew Day)</strong> e abbina automaticamente i lotti FEFO</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:13px;color:var(--text);margin:0;">
+        <input type="checkbox" name="scarica_magazzino" value="1" checked style="width:18px;height:18px;min-height:18px;accent-color:var(--green);">
+        <span>📦 <strong>Scarica subito le quantità dal magazzino</strong></span>
+      </label>
+    </div>
+
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button type="submit" class="btn btn-primary">🚀 Crea Cotta</button>
+      <button type="submit" class="btn btn-primary">🚀 Crea e Apri Cotta</button>
       <button type="button" class="btn btn-ghost" onclick="document.getElementById('form-nuova').style.display='none'">Annulla</button>
     </div>
   </form>
 </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const d = document.getElementById('inp-data-brew');
+  if (d && !d.value) d.value = new Date().toISOString().slice(0,10);
+});
+function autoFillCottaFromRicetta(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const nome = opt.getAttribute('data-nome');
+  const vol = opt.getAttribute('data-vol');
+  const inpNome = document.getElementById('inp-nome-cotta');
+  const inpVol = document.getElementById('inp-vol-cotta');
+  if (nome && (!inpNome.value || inpNome.dataset.autofilled === '1')) {
+    inpNome.value = nome;
+    inpNome.dataset.autofilled = '1';
+  }
+  if (vol && inpVol) inpVol.value = vol;
+}
+</script>
 
 <!-- Lista cotte -->
 {% if cotte %}

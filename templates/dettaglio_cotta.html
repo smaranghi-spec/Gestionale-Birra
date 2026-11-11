@@ -78,45 +78,55 @@
   </div>
 </div>
 
-<!-- Pipeline fasi -->
+<!-- Pipeline fasi interattiva (1-Click cambio fase) -->
 <div class="card" style="padding:14px 16px;margin-bottom:16px;">
-  <div class="fase-pipeline">
-    {% set icons = {'pianificata':'📋','brewday':'🔥','fermentazione':'🧫','secondaria':'🔬','condizionamento':'❄️','imbottigliamento':'🍾','maturazione':'⏳','pronta':'✅','archiviata':'📦'} %}
-    {% for s in stati %}
-    {% set s_idx = loop.index0 %}
-    <div class="fase-step {% if s_idx < idx_stato %}done{% elif s == cotta.stato %}active{% endif %}">
-      <span class="fi">{{ icons[s] }}</span>{{ fasi_label[s] }}
-    </div>
-    {% endfor %}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+    <span style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.5px;">🔄 Pipeline Operativa (clicca su qualsiasi fase per passare direttamente)</span>
+    <a href="/procedure?fase={{ cotta.stato }}" target="_blank" style="font-size:11px;font-weight:700;color:var(--amber);">📋 Apri Manuale SOP di Fase →</a>
   </div>
+  <form id="form-cambio-stato" method="post" action="/cotte/{{ cotta.id }}/stato" style="margin:0;">
+    <input type="hidden" name="nuovo_stato" id="inp-nuovo-stato" value="{{ cotta.stato }}">
+    <div class="fase-pipeline">
+      {% set icons = {'pianificata':'📋','brewday':'🔥','fermentazione':'🧫','secondaria':'🔬','condizionamento':'❄️','imbottigliamento':'🍾','maturazione':'⏳','pronta':'✅','archiviata':'📦'} %}
+      {% for s in stati %}
+      {% set s_idx = loop.index0 %}
+      <div class="fase-step {% if s_idx < idx_stato %}done{% elif s == cotta.stato %}active{% endif %}"
+           style="cursor:pointer;"
+           title="Passa alla fase {{ fasi_label[s] }}"
+           onclick="cambiaFaseRapida('{{ s }}')">
+        <span class="fi">{{ icons[s] }}</span>{{ fasi_label[s] }}
+      </div>
+      {% endfor %}
+    </div>
+  </form>
 
   {% if prossimo_stato and cotta.stato != 'archiviata' %}
   <div class="avanza-bar">
-    <div class="txt">Prossima fase: <strong>{{ prossimo_label }}</strong></div>
-    <form method="post" action="/cotte/{{ cotta.id }}/avanza">
+    <div class="txt">Fase attuale: <strong>{{ fasi_label[cotta.stato] }}</strong> &nbsp;→&nbsp; Prossimo step: <strong>{{ prossimo_label }}</strong></div>
+    <form method="post" action="/cotte/{{ cotta.id }}/avanza" style="margin:0;">
       <button type="submit" class="btn-avanza">Avanza → {{ prossimo_label }}</button>
     </form>
   </div>
   {% endif %}
 </div>
 
-<!-- KPI -->
+<!-- KPI Confronto BeerSmith: Design (Target Ricetta) vs Session (Misurato in Cotta) -->
 <div class="kpi-row" style="margin-bottom:16px;">
   <div class="kpi">
     <div class="kv">{{ cotta.og_reale or '—' }}</div>
-    <div class="kl">OG Reale</div>
+    <div class="kl">OG Reale {% if stats_target.og and stats_target.og != '—' %}<span style="display:block;font-size:10px;color:var(--amber);margin-top:2px;">Target: {{ stats_target.og }}</span>{% endif %}</div>
   </div>
   <div class="kpi">
     <div class="kv">{% if cotta.fg_reale %}{{ cotta.fg_reale }}{% elif fg_stimata %}{{ fg_stimata }}*{% else %}—{% endif %}</div>
-    <div class="kl">{% if not cotta.fg_reale and fg_stimata %}FG stimata{% else %}FG Reale{% endif %}</div>
+    <div class="kl">{% if not cotta.fg_reale and fg_stimata %}FG Stimata{% else %}FG Reale{% endif %} {% if stats_target.fg and stats_target.fg != '—' %}<span style="display:block;font-size:10px;color:var(--amber);margin-top:2px;">Target: {{ stats_target.fg }}</span>{% endif %}</div>
   </div>
   <div class="kpi">
     <div class="kv">{% if cotta.abv_reale %}{{ cotta.abv_reale }}%{% elif abv_calcolato %}{{ abv_calcolato }}%*{% else %}—{% endif %}</div>
-    <div class="kl">ABV</div>
+    <div class="kl">ABV {% if stats_target.abv and stats_target.abv != '—' %}<span style="display:block;font-size:10px;color:var(--amber);margin-top:2px;">Target: {{ stats_target.abv }}%</span>{% endif %}</div>
   </div>
   <div class="kpi">
-    <div class="kv">{{ cotta.volume_imbottigliato or cotta.volume_post_bollitura or '—' }}</div>
-    <div class="kl">{{ 'L imbottigliati' if cotta.volume_imbottigliato else 'L post-bollitura' }}</div>
+    <div class="kv">{{ cotta.volume_imbottigliato or cotta.volume_post_bollitura or '—' }}{% if cotta.efficienza_reale %} <span style="font-size:13px;color:var(--green);">({{ cotta.efficienza_reale }}%)</span>{% endif %}</div>
+    <div class="kl">{{ 'L imbottigliati' if cotta.volume_imbottigliato else 'L post-boil & Eff.' }} {% if cotta.ricetta %}<span style="display:block;font-size:10px;color:var(--amber);margin-top:2px;">Target: {{ vol_target }}L ({{ cotta.ricetta.efficienza or 75 }}%)</span>{% endif %}</div>
   </div>
 </div>
 
@@ -125,19 +135,20 @@
   {% if cotta.data_brew %}📅 Brew day: <strong style="color:var(--text)">{{ cotta.data_brew }}</strong>{% endif %}
   {% if cotta.data_inoculo %} · 🧫 Inoculo: <strong style="color:var(--text)">{{ cotta.data_inoculo }}</strong>{% endif %}
   {% if cotta.data_imbottigliamento %} · 🍾 Imbottigliamento: <strong style="color:var(--text)">{{ cotta.data_imbottigliamento }}</strong>{% endif %}
-  {% if cotta.ricetta %} · 🧪 <a href="/ricette/{{ cotta.ricetta.id }}">{{ cotta.ricetta.nome }}</a>{% endif %}
+  {% if cotta.ricetta %} · 🧪 <a href="/ricette/{{ cotta.ricetta.id }}">{{ cotta.ricetta.nome }}</a> ({{ tot_grani_kg }} kg grani · Mash {{ litri_mash }}L + Sparge {{ litri_sparge }}L){% endif %}
 </div>
 
 <!-- Sezione tabs -->
 <div class="section-tabs">
-  <button class="stab active" onclick="showStab('brewday', this)">🔥 Brew Day</button>
-  <button class="stab" onclick="showStab('ferm', this)">🧫 Fermentazione</button>
-  <button class="stab" onclick="showStab('cond', this)">❄️ Condizionamento</button>
-  <button class="stab" onclick="showStab('imbott', this)">🍾 Imbottigliamento</button>
-  <button class="stab" onclick="showStab('aggiunte', this)">🌿 Aggiunte fuori ricetta</button>
-  <button class="stab" onclick="showStab('diario', this)">📖 Diario</button>
-  <button class="stab" onclick="showStab('grafici', this)">📈 Grafici</button>
-  <button class="stab" onclick="showStab('tracciabilita', this)" id="tab-tracciabilita-btn">🏷️ Lotti &amp; Tracciabilità</button>
+  <button class="stab active" id="btn-tab-brewday" onclick="showStab('brewday', this)">🔥 Brew Day</button>
+  <button class="stab" id="btn-tab-ferm" onclick="showStab('ferm', this)">🧫 Fermentazione</button>
+  <button class="stab" id="btn-tab-cond" onclick="showStab('cond', this)">❄️ Condizionamento</button>
+  <button class="stab" id="btn-tab-imbott" onclick="showStab('imbott', this)">🍾 Imbottigliamento</button>
+  <button class="stab" id="btn-tab-sop" onclick="showStab('sop', this)">📋 Checklist SOP</button>
+  <button class="stab" id="btn-tab-aggiunte" onclick="showStab('aggiunte', this)">🌿 Aggiunte Extra</button>
+  <button class="stab" id="btn-tab-diario" onclick="showStab('diario', this)">📖 Diario</button>
+  <button class="stab" id="btn-tab-grafici" onclick="showStab('grafici', this)">📈 Grafici</button>
+  <button class="stab" id="tab-tracciabilita-btn" onclick="showStab('tracciabilita', this)">🏷️ Lotti &amp; Tracciabilità</button>
   {% if cotta.stato in ['pronta','maturazione','imbottigliamento','condizionamento','archiviata'] %}
   <button class="stab" onclick="showStab('deg', this)" id="tab-deg-btn">🍷 Degustazione</button>
   {% endif %}
@@ -146,42 +157,92 @@
 <!-- ── BREW DAY ──────────────────────────────────────────── -->
 <div id="stab-brewday" class="stab-panel active">
 
-  <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+  <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
     <div>
-      <div style="font-size:15px;font-weight:bold;color:#f59e0b;">⏱️ Modalità Brew Day Interattiva</div>
-      <div style="font-size:12px;color:var(--muted);">Timer ammostamento con suoni, allarmi gittate luppoli e calcolo automatico efficienze reali.</div>
+      <div style="font-size:15px;font-weight:bold;color:#f59e0b;">⏱️ Modalità Brew Day Interattiva &amp; Strumenti BeerSmith</div>
+      <div style="font-size:12px;color:var(--muted);">Timer ammostamento con allarmi gittate luppoli, più correzioni rapide di temperatura Mash e densità Pre-Boil qui sotto.</div>
     </div>
-    <a href="/cotte/{{ cotta.id }}/brew-day" class="btn btn-primary" style="background:#f59e0b;color:#000;font-weight:bold;padding:8px 18px;">Apri Brew Day Live →</a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="showStab('sop', document.getElementById('btn-tab-sop'))">📋 Checklist SOP Sala Cotta</button>
+      <a href="/cotte/{{ cotta.id }}/brew-day" class="btn btn-primary" style="background:#f59e0b;color:#000;font-weight:bold;padding:8px 18px;">Apri Timer Live →</a>
+    </div>
   </div>
 
+  <!-- Strumenti Rapidi Stile BeerSmith in Sala Cotta -->
+  <details style="margin-bottom:16px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
+    <summary style="cursor:pointer;font-weight:700;color:var(--amber);font-size:13px;display:flex;align-items:center;justify-content:space-between;">
+      <span>🛠️ Strumenti Rapidi BeerSmith (Strike Water, Correzione Densità Pre-Boil &amp; Rifrattometro)</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:400;">Clicca per aprire/chiudere</span>
+    </summary>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin-top:14px;">
+      <!-- 1. Strike Water & Correzione T Mash -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;">🌡️ 1. Temp. Acqua di Mash-In (Strike Water)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <div><label style="font-size:10px;">Grani (kg)</label><input type="number" id="bs-grani" value="{{ tot_grani_kg or 5 }}" step="0.1" oninput="calcStrike()"></div>
+          <div><label style="font-size:10px;">Acqua Mash (L)</label><input type="number" id="bs-acqua" value="{{ litri_mash or 15 }}" step="0.5" oninput="calcStrike()"></div>
+          <div><label style="font-size:10px;">T° Grani (°C)</label><input type="number" id="bs-tgrani" value="20" step="0.5" oninput="calcStrike()"></div>
+          <div><label style="font-size:10px;">T° Mash Target (°C)</label><input type="number" id="bs-tmash" value="{{ cotta.temp_mash_gradi or 66.5 }}" step="0.5" oninput="calcStrike()"></div>
+        </div>
+        <div id="bs-strike-res" style="font-size:12px;color:var(--green);font-weight:700;padding-top:4px;"></div>
+      </div>
+
+      <!-- 2. Correzione Densità Pre-Boil / Diluizione / DME -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;">⚖️ 2. Correzione Densità / Volume (Gravity Adjust)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <div><label style="font-size:10px;">Litri Attuali</label><input type="number" id="bs-vol-cur" value="{{ cotta.volume_post_bollitura or vol_target or 20 }}" step="0.5" oninput="calcGravityAdj()"></div>
+          <div><label style="font-size:10px;">SG Misurata</label><input type="number" id="bs-sg-cur" value="{{ cotta.og_reale or 1.048 }}" step="0.001" oninput="calcGravityAdj()"></div>
+          <div style="grid-column:span 2;"><label style="font-size:10px;">SG Target Ricetta</label><input type="number" id="bs-sg-tgt" value="{{ stats_target.og if (stats_target.og and stats_target.og != '—') else 1.052 }}" step="0.001" oninput="calcGravityAdj()"></div>
+        </div>
+        <div id="bs-grav-res" style="font-size:12px;color:var(--text);line-height:1.4;padding-top:4px;"></div>
+      </div>
+
+      <!-- 3. Rifrattometro (°Brix -> SG) & Temp Densimetro -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;">🔭 3. Convertitore °Brix → SG &amp; Uso Rapido</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+          <div><label style="font-size:10px;">Lettura °Brix (Mosto)</label><input type="number" id="bs-brix" value="12.5" step="0.1" oninput="calcBrixToSg()"></div>
+          <div><label style="font-size:10px;">Wort Correction</label><input type="number" id="bs-wcf" value="1.04" step="0.01" oninput="calcBrixToSg()"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <div id="bs-brix-res" style="font-size:13px;color:var(--amber);font-weight:700;">SG: 1.048</div>
+          <button type="button" class="btn btn-primary btn-xs" onclick="applicaSgToOg()">Usa come OG →</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+  <input type="hidden" name="tab_attiva" value="brewday">
 
   <div class="form-section">
     <h4>🌾 Ammostamento (Mash)</h4>
     <div class="form-grid">
       <div class="form-row"><label>Temp. mash (°C)</label><input type="number" step="0.5" name="temp_mash_gradi" value="{{ cotta.temp_mash_gradi or '' }}" placeholder="67"></div>
-      <div class="form-row"><label>pH mash</label><input type="number" step="0.01" name="ph_mash" value="{{ cotta.ph_mash or '' }}" placeholder="5.4"></div>
+      <div class="form-row"><label>pH mash (target 5.2–5.5)</label><input type="number" step="0.01" name="ph_mash" value="{{ cotta.ph_mash or '' }}" placeholder="5.35"></div>
       <div class="form-row"><label>pH pre-bollitura</label><input type="number" step="0.01" name="ph_pre_bollitura" value="{{ cotta.ph_pre_bollitura or '' }}" placeholder="5.2"></div>
-      <div class="form-row"><label>Durata bollitura (min)</label><input type="number" name="durata_bollitura_min" value="{{ cotta.durata_bollitura_min or '' }}" placeholder="60"></div>
+      <div class="form-row"><label>Durata bollitura (min)</label><input type="number" name="durata_bollitura_min" value="{{ cotta.durata_bollitura_min or 60 }}" placeholder="60"></div>
     </div>
   </div>
 
   <div class="form-section">
-    <h4>📊 Volumi & Efficienza</h4>
+    <h4>📊 Volumi, OG &amp; Efficienza (Auto-calcolata se lasciata vuota)</h4>
     <div class="form-grid">
-      <div class="form-row"><label>Vol. pre-bollitura (L)</label><input type="number" step="0.1" name="volume_pre_bollitura" value="{{ cotta.volume_pre_bollitura or '' }}" placeholder="28"></div>
-      <div class="form-row"><label>Vol. post-bollitura (L)</label><input type="number" step="0.1" name="volume_post_bollitura" value="{{ cotta.volume_post_bollitura or '' }}" placeholder="23"></div>
-      <div class="form-row"><label>Efficienza reale (%)</label><input type="number" step="0.1" name="efficienza_reale" value="{{ cotta.efficienza_reale or '' }}" placeholder="74"></div>
+      <div class="form-row"><label>Vol. pre-bollitura (L) [Tgt: {{ litri_pre_boil }}L]</label><input type="number" step="0.1" name="volume_pre_bollitura" value="{{ cotta.volume_pre_bollitura or '' }}" placeholder="{{ litri_pre_boil or 26 }}"></div>
+      <div class="form-row"><label>Vol. post-bollitura (L) [Tgt: {{ vol_target }}L]</label><input type="number" step="0.1" name="volume_post_bollitura" value="{{ cotta.volume_post_bollitura or '' }}" placeholder="{{ vol_target or 20 }}"></div>
+      <div class="form-row"><label>OG Reale [Tgt: {{ stats_target.og or '1.050' }}]</label><input type="number" step="0.001" id="inp-og-brewday" name="og_reale" value="{{ cotta.og_reale or '' }}" placeholder="{{ stats_target.og or '1.050' }}"></div>
+      <div class="form-row"><label>Efficienza reale (%)</label><input type="number" step="0.1" name="efficienza_reale" value="{{ cotta.efficienza_reale or '' }}" placeholder="Auto da OG e Litri"></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h4>🌡️ Condizioni ambientali &amp; Acqua</h4>
+    <div class="form-grid">
       <div class="form-row"><label>Data brew</label><input type="date" name="data_brew" value="{{ cotta.data_brew or oggi }}"></div>
-    </div>
-  </div>
-
-  <div class="form-section">
-    <h4>🌡️ Condizioni ambientali</h4>
-    <div class="form-grid">
       <div class="form-row"><label>Temperatura ambiente (°C)</label><input type="number" step="0.5" name="temp_ambiente" value="{{ cotta.temp_ambiente or '' }}" placeholder="20"></div>
-      <div class="form-row"><label>Acqua di processo (L)</label><input type="number" step="0.5" name="acqua_totale_litri" value="{{ cotta.acqua_totale_litri or '' }}" placeholder="30"></div>
-      <div class="form-row"><label>Lotto / Codice</label><input type="text" name="codice" value="{{ cotta.codice or '' }}" placeholder="es. BR-2025-01"></div>
+      <div class="form-row"><label>Acqua totale impiegata (L)</label><input type="number" step="0.5" name="acqua_totale_litri" value="{{ cotta.acqua_totale_litri or (litri_mash + litri_sparge if litri_mash else '') }}" placeholder="30"></div>
+      <div class="form-row"><label>Lotto / Codice Cotta</label><input type="text" name="codice" value="{{ cotta.codice or '' }}" placeholder="es. COT-2026-001"></div>
     </div>
   </div>
 
@@ -190,12 +251,40 @@
     <textarea name="note" rows="3" placeholder="Osservazioni generali sul brew day, problemi riscontrati…">{{ cotta.note or '' }}</textarea>
   </div>
 
-  <button type="submit" class="btn btn-primary">💾 Salva Brew Day</button>
+  <button type="submit" class="btn btn-primary">💾 Salva Dati Brew Day</button>
 </form>
 </div>
 
 <!-- ── FERMENTAZIONE ─────────────────────────────────────── -->
 <div id="stab-ferm" class="stab-panel">
+
+  <!-- Box BeerSmith Pitch Rate & Rifrattometro in Fermentazione -->
+  <div class="card" style="margin-bottom:14px;padding:12px 16px;background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.3);">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--green);">🧫 Target Inoculo Lievito (BeerSmith Pitch Rate)</div>
+        <div style="font-size:12px;color:var(--text);">
+          Fabbisogno stimato per <strong>{{ cotta.volume_post_bollitura or vol_target }} L</strong> a OG <strong>{{ cotta.og_reale or stats_target.og or '1.050' }}</strong>:
+          <strong style="color:var(--amber);">{{ cellule_miliardi }} Miliardi di cellule</strong> (pari a circa <strong>{{ grammi_lievito_secco }} g</strong> di lievito secco).
+        </div>
+      </div>
+      <details style="font-size:12px;">
+        <summary style="cursor:pointer;color:var(--amber);font-weight:700;">🔭 Rifrattometro in Fermentazione (Correzione Alcol) →</summary>
+        <div style="margin-top:8px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div>
+            <label style="font-size:10px;">OG Iniziale (SG)</label>
+            <input type="number" id="ferm-og-init" value="{{ cotta.og_reale or stats_target.og or 1.050 }}" step="0.001" style="width:95px;padding:5px;" oninput="calcFermRefract()">
+          </div>
+          <div>
+            <label style="font-size:10px;">°Brix Attuali</label>
+            <input type="number" id="ferm-brix-cur" value="6.5" step="0.1" style="width:85px;padding:5px;" oninput="calcFermRefract()">
+          </div>
+          <div id="ferm-refract-res" style="font-weight:700;color:var(--amber);font-size:12px;padding:4px 6px;">SG corretta: 1.012</div>
+          <button type="button" class="btn btn-primary btn-xs" onclick="usaSgCorrettaFerm()">Usa nel Diario →</button>
+        </div>
+      </details>
+    </div>
+  </div>
 
   <!-- Banner Curva & Registrazione Rapida -->
   <div class="card" style="margin-bottom:14px;padding:14px 16px;background:rgba(255,255,255,0.02);border:1px solid var(--border);">
@@ -204,7 +293,7 @@
         <span style="font-size:14px;font-weight:700;color:var(--text);">📈 Monitoraggio Fermentazione</span>
         <span style="font-size:12px;color:var(--muted);margin-left:8px;">({{ misure_sg|length }} letture densità, {{ misure_temp|length }} temp)</span>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="showStab('grafici', document.querySelector('.stab[onclick*=\'grafici\']'))" style="color:var(--amber);border-color:var(--amber);">Visualizza Grafico Completo →</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="showStab('grafici', document.getElementById('btn-tab-grafici'))" style="color:var(--amber);border-color:var(--amber);">Visualizza Grafico Completo →</button>
     </div>
 
     <!-- Form rapido inserimento lettura densimetro/temperatura -->
@@ -214,11 +303,11 @@
       <input type="hidden" name="fase" value="fermentazione">
       <div style="flex:1;min-width:120px;">
         <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;">Valore *</label>
-        <input type="number" step="0.001" name="valore" placeholder="es. 1.020 o 20.5" required style="width:100%;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+        <input type="number" step="0.001" id="inp-rapido-valore" name="valore" placeholder="es. 1.020 o 20.5" required style="width:100%;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
       </div>
       <div style="width:100px;">
         <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;">Unità</label>
-        <select name="unita" style="width:100%;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+        <select name="unita" id="sel-rapido-unita" style="width:100%;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
           <option value="SG">SG (Densità)</option>
           <option value="°C">°C (Temp)</option>
         </select>
@@ -254,9 +343,10 @@
   </details>
 
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+  <input type="hidden" name="tab_attiva" value="ferm">
 
   <div class="form-section">
-    <h4>🧫 Inoculo & Lievito</h4>
+    <h4>🧫 Inoculo &amp; Lievito</h4>
     <div class="form-grid">
       <div class="form-row"><label>OG reale</label><input type="number" step="0.001" name="og_reale" value="{{ cotta.og_reale or '' }}" placeholder="1.056"></div>
       <div class="form-row"><label>Data inoculo</label><input type="datetime-local" name="data_inoculo" value="{{ cotta.data_inoculo or '' }}"></div>
@@ -284,15 +374,15 @@
 
   <div class="form-section">
     <h4>📝 Note fermentazione</h4>
-    <textarea name="note_ferm" rows="3" placeholder="Attività lievito, aromi, problemi riscontrati…"></textarea>
+    <textarea name="note_ferm" rows="3" placeholder="Attività lievito, aromi, problemi riscontrati…">{{ cotta.note_ferm or '' }}</textarea>
   </div>
 
   <button type="submit" class="btn btn-primary">💾 Salva Fermentazione</button>
 </form>
 
-{% if fg_stimata %}
+{% if fg_stimata and cotta.og_reale %}
 <div class="alert alert-amber" style="margin-top:12px;">
-  ℹ️ FG stimata: <strong>{{ fg_stimata }}</strong> (attenuazione {{ ((cotta.og_reale - 1) - (fg_stimata - 1)) / (cotta.og_reale - 1) * 100 | round(1) }}%)
+  ℹ️ FG stimata: <strong>{{ fg_stimata }}</strong> (attenuazione {{ (((cotta.og_reale - 1) - (fg_stimata - 1)) / (cotta.og_reale - 1) * 100) | round(1) }}%)
 </div>
 {% endif %}
 </div>
@@ -300,8 +390,9 @@
 <!-- ── CONDIZIONAMENTO ───────────────────────────────────── -->
 <div id="stab-cond" class="stab-panel">
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+  <input type="hidden" name="tab_attiva" value="cond">
   <div class="form-section">
-    <h4>❄️ Secondaria & Condizionamento</h4>
+    <h4>❄️ Secondaria &amp; Condizionamento</h4>
     <div class="form-grid">
       <div class="form-row"><label>Data travasamento</label><input type="datetime-local" name="data_travasamento" value="{{ cotta.data_travasamento or '' }}"></div>
       <div class="form-row"><label>Temp. secondaria (°C)</label><input type="number" step="0.5" name="temp_secondaria" value="{{ cotta.temp_secondaria or '' }}" placeholder="12"></div>
@@ -317,7 +408,7 @@
   </div>
   <div class="form-section">
     <h4>📝 Note condizionamento</h4>
-    <textarea name="note_cond" rows="3" placeholder="Chiarificanti aggiunti, cold crash, filtrazione…"></textarea>
+    <textarea name="note_cond" rows="3" placeholder="Chiarificanti aggiunti, cold crash, filtrazione…">{{ cotta.note_cond or '' }}</textarea>
   </div>
   <button type="submit" class="btn btn-primary">💾 Salva Condizionamento</button>
 </form>
@@ -326,6 +417,7 @@
 <!-- ── IMBOTTIGLIAMENTO ──────────────────────────────────── -->
 <div id="stab-imbott" class="stab-panel">
 <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
+  <input type="hidden" name="tab_attiva" value="imbott">
   <div class="form-section">
     <h4>🍾 Packaging</h4>
     <div class="form-grid">
@@ -340,27 +432,86 @@
       </div>
       <div class="form-row"><label>Volume imbottigliato (L)</label><input type="number" step="0.1" name="volume_imbottigliato" value="{{ cotta.volume_imbottigliato or '' }}" placeholder="20"></div>
       <div class="form-row"><label>Carbonatazione (vol CO₂)</label><input type="number" step="0.1" name="carbonatazione_vols" value="{{ cotta.carbonatazione_vols or '' }}" placeholder="2.4"></div>
-      <div class="form-row"><label>Priming sugar (g totale)</label><input type="number" step="0.1" name="priming_sugar_g" value="{{ cotta.priming_sugar_g or '' }}" placeholder="120"></div>
+      <div class="form-row"><label>Priming sugar (g totale)</label><input type="number" step="0.1" id="inp-priming-tot" name="priming_sugar_g" value="{{ cotta.priming_sugar_g or '' }}" placeholder="120"></div>
       <div class="form-row"><label>FG finale</label><input type="number" step="0.001" name="fg_reale" value="{{ cotta.fg_reale or '' }}" placeholder="1.010"></div>
     </div>
   </div>
   <div class="form-section">
     <h4>📝 Note imbottigliamento</h4>
-    <textarea name="note_imbott" rows="3" placeholder="Operatori presenti, problemi, numero bottiglie…"></textarea>
+    <textarea name="note_imbott" rows="3" placeholder="Operatori presenti, problemi, numero bottiglie…">{{ cotta.note_imbott or '' }}</textarea>
   </div>
-  <button type="submit" class="btn btn-primary">💾 Salva Imbottigliamento</button>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button type="submit" class="btn btn-primary">💾 Salva Imbottigliamento</button>
+    {% if cotta.ricetta_id %}
+    <a href="/cotte/{{ cotta.id }}/imbottiglia" class="btn btn-success">🍾 Registra Bottiglie/Fusti a Magazzino Finiti →</a>
+    {% endif %}
+  </div>
 </form>
 
 <!-- Calcolatore priming rapido -->
 <div class="card" style="margin-top:12px;">
-  <div style="font-size:13px;font-weight:600;margin-bottom:10px;">🔧 Calcolatore priming rapido</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div style="font-size:13px;font-weight:600;">🔧 Calcolatore Priming BeerSmith (Saccarosio / Destrosio / DME)</div>
+    <button type="button" class="btn btn-primary btn-xs" onclick="applicaPrimingCalcolato()">Copia grammi nel form ↑</button>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
-    <div class="form-row"><label>Volume (L)</label><input type="number" id="q-vol" value="{{ cotta.volume_imbottigliato or 20 }}" step="0.5" oninput="qPriming()"></div>
-    <div class="form-row"><label>CO₂ target (vol)</label><input type="number" id="q-co2" value="2.4" step="0.1" oninput="qPriming()"></div>
-    <div class="form-row"><label>Temp (°C)</label><input type="number" id="q-temp" value="20" step="1" oninput="qPriming()"></div>
+    <div class="form-row"><label>Volume (L)</label><input type="number" id="q-vol" value="{{ cotta.volume_imbottigliato or cotta.volume_post_bollitura or 20 }}" step="0.5" oninput="qPriming()"></div>
+    <div class="form-row"><label>CO₂ target (vol)</label><input type="number" id="q-co2" value="{{ cotta.carbonatazione_vols or 2.4 }}" step="0.1" oninput="qPriming()"></div>
+    <div class="form-row"><label>Temp birra (°C)</label><input type="number" id="q-temp" value="{{ cotta.temp_fermentazione or 20 }}" step="1" oninput="qPriming()"></div>
   </div>
   <div id="q-result" style="font-size:13px;color:var(--amber);font-weight:600;"></div>
 </div>
+</div>
+
+<!-- ── CHECKLIST PROCEDURE OPERATIVE (SOP) ───────────────── -->
+<div id="stab-sop" class="stab-panel">
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
+      <div>
+        <h3 style="font-size:16px;margin:0 0 4px 0;color:var(--amber);">📋 Checklist Procedure Operative di Lavorazione (SOP)</h3>
+        <p style="font-size:12px;color:var(--muted);margin:0;">Spunta i passaggi eseguiti durante la cotta: lo stato viene salvato automaticamente e registrato nel Diario di produzione.</p>
+      </div>
+      <a href="/procedure" class="btn btn-ghost btn-sm" target="_blank">📚 Gestisci Manuale SOP →</a>
+    </div>
+
+    {% for s in sops %}
+    <details {% if s.fase == cotta.stato or (cotta.stato == 'pianificata' and s.fase == 'brewday') %}open{% endif %}
+             style="background:var(--panel);border:1px solid {% if s.fase == cotta.stato %}var(--amber){% else %}var(--border){% endif %};border-radius:10px;padding:12px 16px;margin-bottom:10px;">
+      <summary style="cursor:pointer;font-weight:700;font-size:14px;color:var(--text);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <span>
+          <span style="font-family:monospace;background:var(--amber);color:#000;padding:2px 7px;border-radius:4px;font-size:12px;margin-right:6px;">{{ s.codice }}</span>
+          {{ s.titolo }}
+        </span>
+        <span class="badge {% if s.fase == cotta.stato %}badge-amber{% else %}badge-gray{% endif %}">{{ s.fase_label }}</span>
+      </summary>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+        {% if s.parametri_critici %}
+        <div style="font-size:12px;color:var(--amber);background:var(--amber-dim);padding:6px 10px;border-radius:6px;margin-bottom:10px;font-weight:600;">
+          🎯 Parametri Critici: {{ s.parametri_critici }}
+        </div>
+        {% endif %}
+        {% for st in s.steps %}
+        {% set chk_key = s.codice ~ '_' ~ loop.index %}
+        {% set is_checked = checklist_state.get(chk_key, false) %}
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(48,54,61,.5);margin-bottom:6px;cursor:pointer;text-transform:none;">
+          <input type="checkbox"
+                 {% if is_checked %}checked{% endif %}
+                 data-label="{{ s.codice }} - {{ st.titolo }}"
+                 onchange="toggleSopStep('{{ chk_key }}', this.checked, this.dataset.label)"
+                 style="width:20px;height:20px;min-height:20px;margin-top:2px;accent-color:var(--green);flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:var(--text);">{{ loop.index }}. {{ st.titolo }}</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:400;">{{ st.descrizione }}</div>
+            {% if st.critico %}
+            <div style="font-size:11px;color:#f87171;margin-top:3px;font-weight:600;">⚠️ {{ st.critico }}</div>
+            {% endif %}
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
 </div>
 
 <!-- ── AGGIUNTE FUORI RICETTA ────────────────────────────── -->
@@ -999,7 +1150,7 @@ function ubUpdate(el) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
-// ── TABS ──────────────────────────────────────────────────
+// ── TABS & CAMBIO FASE RAPIDO ─────────────────────────────
 function showStab(id, btn) {
   document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
@@ -1010,23 +1161,145 @@ function showStab(id, btn) {
     setTimeout(() => { window.fermentChartInstance.resize(); }, 60);
   }
 }
-// ── LOG tipo toggle ───────────────────────────────────────
+
+function cambiaFaseRapida(nuovoStato) {
+  if (nuovoStato === '{{ cotta.stato }}') return;
+  document.getElementById('inp-nuovo-stato').value = nuovoStato;
+  document.getElementById('form-cambio-stato').submit();
+}
+
+async function toggleSopStep(key, checked, label) {
+  try {
+    await fetch('/cotte/{{ cotta.id }}/checklist', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key, checked, label})
+    });
+  } catch(e) { console.error(e); }
+}
+
+// ── STRUMENTI BEERSMITH IN SALA COTTA ─────────────────────
+function calcStrike() {
+  const G = parseFloat(document.getElementById('bs-grani')?.value) || 5;
+  const W = parseFloat(document.getElementById('bs-acqua')?.value) || 15;
+  const Tg = parseFloat(document.getElementById('bs-tgrani')?.value) || 20;
+  const Tm = parseFloat(document.getElementById('bs-tmash')?.value) || 66.5;
+  const R = W / Math.max(0.1, G);
+  // Equazione termodinamica Palmer / BeerSmith (capacità termica grani ~0.41)
+  const Tstrike = (0.41 / R) * (Tm - Tg) + Tm + 1.2;
+  const el = document.getElementById('bs-strike-res');
+  if (el) el.innerHTML = `🔥 Scalda l'acqua di Mash a <strong>${Tstrike.toFixed(1)} °C</strong> (Rapporto ${R.toFixed(1)} L/kg)`;
+}
+
+function calcGravityAdj() {
+  const vol = parseFloat(document.getElementById('bs-vol-cur')?.value) || 20;
+  const sgCur = parseFloat(document.getElementById('bs-sg-cur')?.value) || 1.048;
+  const sgTgt = parseFloat(document.getElementById('bs-sg-tgt')?.value) || 1.052;
+  const ptsCur = (sgCur - 1.0) * 1000;
+  const ptsTgt = (sgTgt - 1.0) * 1000;
+  const el = document.getElementById('bs-grav-res');
+  if (!el) return;
+  if (Math.abs(ptsCur - ptsTgt) < 0.4) {
+    el.innerHTML = `<span style="color:var(--green);font-weight:700;">✅ Densità perfettamente in target!</span>`;
+  } else if (ptsCur > ptsTgt) {
+    const newVol = (vol * ptsCur) / Math.max(1, ptsTgt);
+    const addWater = newVol - vol;
+    el.innerHTML = `💧 Mosto più denso del target: aggiungi <strong style="color:var(--amber);">${addWater.toFixed(1)} L di acqua</strong> (Volume finale: ${newVol.toFixed(1)} L)`;
+  } else {
+    const missingPts = (ptsTgt - ptsCur) * vol;
+    const gDme = (missingPts / 360) * 1000;
+    const gSugar = (missingPts / 384) * 1000;
+    const targetVolBoil = (vol * ptsCur) / Math.max(1, ptsTgt);
+    const boilLiters = vol - targetVolBoil;
+    el.innerHTML = `🍯 Mosto sotto target: aggiungi <strong style="color:var(--amber);">${Math.round(gDme)} g di DME</strong> (o <strong>${Math.round(gSugar)} g destrosio</strong>) oppure evapora altri <strong>${boilLiters.toFixed(1)} L</strong>`;
+  }
+}
+
+let lastCalculatedSg = 1.048;
+function calcBrixToSg() {
+  const brix = parseFloat(document.getElementById('bs-brix')?.value) || 0;
+  const wcf = parseFloat(document.getElementById('bs-wcf')?.value) || 1.04;
+  const b = brix / wcf;
+  const sg = 1.0 + (b / (258.6 - ((b / 258.2) * 227.1)));
+  lastCalculatedSg = sg;
+  const el = document.getElementById('bs-brix-res');
+  if (el) el.textContent = `SG: ${sg.toFixed(3)}`;
+}
+
+function applicaSgToOg() {
+  const inp = document.getElementById('inp-og-brewday');
+  if (inp) { inp.value = lastCalculatedSg.toFixed(3); inp.focus(); }
+}
+
+let lastFermCorrSg = 1.012;
+function calcFermRefract() {
+  const og = parseFloat(document.getElementById('ferm-og-init')?.value) || 1.050;
+  const brixCur = parseFloat(document.getElementById('ferm-brix-cur')?.value) || 6.5;
+  const brixOrig = (((182.4601 * og - 775.6821) * og + 1262.7794) * og - 669.5622);
+  // Formula Sean Terrill / BeerSmith per correzione rifrattometro con alcol
+  const fg = 1.0000 - 0.00085683 * brixOrig + 0.0034941 * brixCur;
+  lastFermCorrSg = Math.max(0.990, fg);
+  const el = document.getElementById('ferm-refract-res');
+  if (el) el.textContent = `SG corretta: ${lastFermCorrSg.toFixed(3)}`;
+}
+
+function usaSgCorrettaFerm() {
+  const inp = document.getElementById('inp-rapido-valore');
+  const sel = document.getElementById('sel-rapido-unita');
+  if (inp) { inp.value = lastFermCorrSg.toFixed(3); inp.focus(); }
+  if (sel) sel.value = 'SG';
+}
+
+// ── LOG tipo toggle & Auto-Tab per Fase ───────────────────
 function toggleVal() {
   const t = document.getElementById('tipoLog');
   const r = document.getElementById('val-row');
   if (t && r) r.style.display = t.value === 'misura' ? 'grid' : 'none';
 }
-document.addEventListener('DOMContentLoaded', toggleVal);
+document.addEventListener('DOMContentLoaded', function() {
+  toggleVal();
+  calcStrike();
+  calcGravityAdj();
+  calcBrixToSg();
+  calcFermRefract();
+
+  // Apri automaticamente il tab richiesto da ?tab= o corrispondente alla fase attiva della cotta
+  const params = new URLSearchParams(window.location.search);
+  const tabParam = params.get('tab');
+  const statoMap = {
+    'pianificata': 'brewday',
+    'brewday': 'brewday',
+    'fermentazione': 'ferm',
+    'secondaria': 'ferm',
+    'condizionamento': 'cond',
+    'imbottigliamento': 'imbott',
+    'maturazione': 'imbott',
+    'pronta': 'deg'
+  };
+  const targetTab = tabParam || statoMap['{{ cotta.stato }}'] || 'brewday';
+  const btn = document.getElementById('btn-tab-' + targetTab) || document.getElementById('tab-' + targetTab + '-btn');
+  if (btn && targetTab !== 'brewday') {
+    showStab(targetTab, btn);
+  }
+});
 
 // ── PRIMING RAPIDO ────────────────────────────────────────
+let lastPrimingSaccarosio = 120;
 function qPriming() {
   const vol = parseFloat(document.getElementById('q-vol').value) || 20;
   const co2 = parseFloat(document.getElementById('q-co2').value) || 2.4;
   const temp = parseFloat(document.getElementById('q-temp').value) || 20;
-  const co2res = -0.9753 * Math.log(temp) + 4.9648;
-  const g = Math.max(0, (co2 - co2res) * 3.8 * vol);
-  document.getElementById('q-result').textContent =
-    `Saccarosio: ${g.toFixed(1)} g totali (${(g/vol).toFixed(2)} g/L · ${(g/vol*0.75).toFixed(2)} g per 75cl)`;
+  const co2res = -0.9753 * Math.log(Math.max(1, temp)) + 4.9648;
+  const gSac = Math.max(0, (co2 - co2res) * 4.0 * vol);
+  const gDestr = gSac * 1.09;
+  const gDme = gSac * 1.47;
+  lastPrimingSaccarosio = gSac;
+  document.getElementById('q-result').innerHTML =
+    `Saccarosio: <strong>${gSac.toFixed(1)} g</strong> (${(gSac/vol).toFixed(2)} g/L) &nbsp;·&nbsp; Destrosio: <strong>${gDestr.toFixed(1)} g</strong> &nbsp;·&nbsp; Estratto DME: <strong>${gDme.toFixed(1)} g</strong>`;
+}
+function applicaPrimingCalcolato() {
+  const inp = document.getElementById('inp-priming-tot');
+  if (inp) { inp.value = lastPrimingSaccarosio.toFixed(1); inp.focus(); }
 }
 qPriming();
 

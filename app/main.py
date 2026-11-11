@@ -15,7 +15,7 @@ from .routers import attrezzature, calendario, pulizie, inventario, birre_pub
 from .routers import prezzi, fattura, brewmonk, soci
 from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
-from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard, iot
+from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard, iot, procedure
 
 Base.metadata.create_all(bind=engine)
 
@@ -100,6 +100,7 @@ def run_migrations():
         ("ricette", "codice", "TEXT"),
         ("ingredienti_ricetta", "codice_ingrediente", "TEXT"),
         ("prodotti_finiti", "codice", "TEXT"),
+        ("cotte", "checklist_json", "TEXT DEFAULT '{}'"),
     ]
 
     with engine.connect() as conn:
@@ -137,6 +138,11 @@ def run_migrations():
              "nome_ingrediente TEXT NOT NULL, categoria TEXT, numero_lotto TEXT, "
              "fornitore TEXT, data_scadenza TEXT, quantita_usata REAL DEFAULT 0.0, "
              "unita TEXT DEFAULT 'kg', timestamp TEXT, note TEXT"),
+            ("procedure_operative",
+             f"id {pk_type}, codice TEXT NOT NULL, titolo TEXT NOT NULL, "
+             "fase TEXT DEFAULT 'brewday', revisione TEXT DEFAULT 'Rev. 1.0', "
+             "scopo TEXT, dpi_attrezzature TEXT, parametri_critici TEXT, "
+             "steps_json TEXT DEFAULT '[]', attiva INTEGER DEFAULT 1, updated_at TEXT"),
         ]
         for tname, tcols in extra_tables:
             if not table_exists(tname):
@@ -342,7 +348,7 @@ assegna_codici_retroattivi()
 EXEMPT = ("/login", "/register", "/birre", "/debug", "/static", "/recupera-password")
 READ_ONLY_PATHS = ("/", "/ricette/html", "/ricette/libreria", "/cotte", "/stili", "/catalogo",
                    "/strumenti", "/profili-acqua", "/prezzi", "/impianto",
-                   "/tracciabilita", "/inventario")
+                   "/tracciabilita", "/inventario", "/procedure")
 
 WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 # Scritture consentite anche per utenti non-soci (solo queste route)
@@ -466,6 +472,7 @@ app.include_router(api_inventario.router)
 app.include_router(api_notifiche.router)
 app.include_router(dashboard.router)
 app.include_router(iot.router)
+app.include_router(procedure.router)
 
 @app.get("/amministrazione", response_class=HTMLResponse)
 def amministrazione(request: Request):

@@ -188,6 +188,7 @@ class Cotta(Base):
     note_ferm = Column(Text, nullable=True)
     note_cond = Column(Text, nullable=True)
     note_imbott = Column(Text, nullable=True)
+    checklist_json = Column(Text, nullable=True, default="{}")
     ricetta = relationship("Ricetta", back_populates="cotte")
     log = relationship("LogCotta", back_populates="cotta", cascade="all, delete-orphan", order_by="LogCotta.timestamp")
     degustazioni = relationship("Degustazione", back_populates="cotta", cascade="all, delete-orphan")
@@ -557,3 +558,22 @@ class Impostazioni(Base):
     chiave = Column(String, primary_key=True, index=True)
     valore = Column(String, nullable=True)
     note = Column(Text, nullable=True)
+
+
+# ── PROCEDURE OPERATIVE DI LAVORAZIONE (SOP) ──────────────────────────────────
+
+class ProceduraOperativa(Base):
+    """Procedure Operative Standard (SOP / HACCP / Istruzioni di Lavorazione)."""
+    __tablename__ = "procedure_operative"
+    id = Column(Integer, primary_key=True, index=True)
+    codice = Column(String, index=True, nullable=False)        # es. SOP-01
+    titolo = Column(String, nullable=False)
+    fase = Column(String, default="brewday")                   # pianificata / brewday / fermentazione / secondaria / condizionamento / imbottigliamento / pulizia
+    revisione = Column(String, default="Rev. 1.0")
+    scopo = Column(Text, nullable=True)
+    dpi_attrezzature = Column(Text, nullable=True)
+    parametri_critici = Column(Text, nullable=True)            # es. "pH 5.2-5.5 | T Strike 72°C"
+    steps_json = Column(Text, default="[]")                    # Lista JSON di step operativi [{titolo, descrizione, punto_critico}]
+    attiva = Column(Boolean, default=True)
+    updated_at = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
