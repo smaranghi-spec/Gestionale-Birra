@@ -1,3 +1,4 @@
+import time
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -8,6 +9,39 @@ from ..models import User, ProfiloSocio
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+# Rate limiter in-memory contro brute-force sul login: IP -> lista di timestamp falliti
+_LOGIN_ATTEMPTS: dict[str, list[float]] = {}
+_MAX_ATTEMPTS = 5
+_LOCKOUT_SECONDS = 300  # 5 minuti
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _is_rate_limited(ip: str) -> tuple[bool, int]:
+    now = time.time()
+    attempts = [t for t in _LOGIN_ATTEMPTS.get(ip, []) if now - t < _LOCKOUT_SECONDS]
+    _LOGIN_ATTEMPTS[ip] = attempts
+    if len(attempts) >= _MAX_ATTEMPTS:
+        remaining = int(_LOCKOUT_SECONDS - (now - attempts[0]))
+        return True, max(1, remaining)
+    return False, 0
+
+
+def _record_failed_attempt(ip: str):
+    now = time.time()
+    attempts = [t for t in _LOGIN_ATTEMPTS.get(ip, []) if now - t < _LOCKOUT_SECONDS]
+    attempts.append(now)
+    _LOGIN_ATTEMPTS[ip] = attempts
+
+
+def _clear_attempts(ip: str):
+    _LOGIN_ATTEMPTS.pop(ip, None)
 
 
 def get_db():
@@ -40,14 +74,36 @@ def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    u = db.query(User).filter(User.username == username, User.is_active == True).first()
+    ip = _get_client_ip(request)
+    limited, wait_sec = _is_rate_limited(ip)
+    if limited:
+        n = db.query(User).count()
+        return templates.TemplateResponse(request, "login.html", {
+            "errore": f"Troppi tentativi falliti. Riprova tra {wait_sec} secondi.",
+            "primo_accesso": n == 0,
+            "session": {},
+        }, status_code=429)
+
+    u = db.query(User).filter(User.username == username.strip(), User.is_active == True).first()
     if not u or not u.check_pw(password):
+        _record_failed_attempt(ip)
         n = db.query(User).count()
         return templates.TemplateResponse(request, "login.html", {
             "errore": "Username o password non corretti.",
             "primo_accesso": n == 0,
             "session": {},
         })
+
+    _clear_attempts(ip)
+    # Migrazione automatica e trasparente dell'hash da SHA-256 a Bcrypt salted
+    if not u.password_hash.startswith("$2"):
+        try:
+            u.password_hash = User.hash_pw(password)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    request.session.clear()
     request.session["user_id"] = u.id
     request.session["username"] = u.username
     request.session["nome"] = u.nome or u.username

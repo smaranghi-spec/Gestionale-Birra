@@ -1,8 +1,12 @@
 import hashlib
+import hmac
 from datetime import datetime
+from passlib.context import CryptContext
 from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .db import Base
+
+_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -20,10 +24,23 @@ class User(Base):
 
     @staticmethod
     def hash_pw(plain: str) -> str:
-        return hashlib.sha256(plain.encode()).hexdigest()
+        """Hash password con Bcrypt salted (retrocompatibile con verifica SHA-256)."""
+        try:
+            return _pwd_ctx.hash((plain or "")[:72])
+        except Exception:
+            return hashlib.sha256((plain or "").encode()).hexdigest()
 
     def check_pw(self, plain: str) -> bool:
-        return self.password_hash == hashlib.sha256(plain.encode()).hexdigest()
+        """Verifica sia i nuovi hash Bcrypt ($2b$/$2a$) sia gli hash storici SHA-256."""
+        if not self.password_hash or not plain:
+            return False
+        if self.password_hash.startswith("$2"):
+            try:
+                return _pwd_ctx.verify(plain[:72], self.password_hash)
+            except Exception:
+                return False
+        legacy_sha = hashlib.sha256(plain.encode()).hexdigest()
+        return hmac.compare_digest(self.password_hash, legacy_sha)
 
 
 # ── STILI BJCP ────────────────────────────────────────────────────────────────

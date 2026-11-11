@@ -1,4 +1,6 @@
+import hmac
 import json
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -7,7 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import Cotta, LogCotta
+from ..models import Cotta, LogCotta, Impostazioni
 
 router = APIRouter(prefix="/api/iot", tags=["IoT"])
 
@@ -27,6 +29,40 @@ def _now_str():
     return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
+def _verify_iot_token(request: Request, db: Session) -> bool:
+    """
+    Se è configurata una chiave `IOT_API_KEY` (via env o tabella Impostazioni `iot_api_key`),
+    richiede che il sensore invii `?token=...` o header `X-API-Key` / `Authorization: Bearer ...`.
+    Se non è configurata alcuna chiave, consente l'invio per non interrompere i dispositivi già attivi.
+    """
+    expected = os.environ.get("IOT_API_KEY", "").strip()
+    if not expected:
+        try:
+            imp = db.query(Impostazioni).filter(Impostazioni.chiave == "iot_api_key").first()
+            if imp and imp.valore:
+                expected = imp.valore.strip()
+        except Exception:
+            pass
+    if not expected:
+        return True
+    provided = (
+        request.query_params.get("token")
+        or request.headers.get("x-api-key")
+        or request.headers.get("authorization", "").replace("Bearer ", "").strip()
+        or ""
+    )
+    return hmac.compare_digest(expected, provided)
+
+
+def _sanitize_telemetry(sg: Optional[float], temp_c: Optional[float]) -> tuple[Optional[float], Optional[float]]:
+    """Valida range fisici realistici per evitare iniezione di valori anomali nei grafici."""
+    if sg is not None and not (0.980 <= sg <= 1.250):
+        sg = None
+    if temp_c is not None and not (-10.0 <= temp_c <= 110.0):
+        temp_c = None
+    return sg, temp_c
+
+
 @router.post("/ispindel/{cotta_id}")
 async def ispindel_webhook(cotta_id: int, request: Request, db: Session = Depends(get_db)):
     """
@@ -34,6 +70,8 @@ async def ispindel_webhook(cotta_id: int, request: Request, db: Session = Depend
     Payload standard:
     { "name": "iSpindel01", "temperature": 19.5, "temp_units": "C", "gravity": 1.042, "battery": 4.12, "angle": 45.3 }
     """
+    if not _verify_iot_token(request, db):
+        return JSONResponse({"error": "Token IoT non valido o mancante"}, status_code=401)
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if not cotta:
         return JSONResponse({"error": "Cotta non trovata"}, status_code=404)
@@ -68,10 +106,12 @@ async def ispindel_webhook(cotta_id: int, request: Request, db: Session = Depend
         except (ValueError, TypeError):
             pass
 
+    sg, temp_c = _sanitize_telemetry(sg, temp_c)
+
     # Aggiorna cotta
     if sg:
         cotta.fg_reale = sg
-    if temp_c:
+    if temp_c is not None:
         cotta.temp_fermentazione = temp_c
 
     # Inserisci nel log cotta per tracciamento storico e grafico
@@ -107,6 +147,8 @@ async def tilt_webhook(cotta_id: int, request: Request, db: Session = Depends(ge
     Riceve telemetria da Tilt Hydrometer (TiltBridge o Tilt Pi).
     Payload: { "Color": "RED", "SG": 1.042, "Temp": 68.0, "Time": 16999999 }
     """
+    if not _verify_iot_token(request, db):
+        return JSONResponse({"error": "Token IoT non valido o mancante"}, status_code=401)
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if not cotta:
         return JSONResponse({"error": "Cotta non trovata"}, status_code=404)
@@ -125,9 +167,11 @@ async def tilt_webhook(cotta_id: int, request: Request, db: Session = Depends(ge
         t = float(raw_temp)
         temp_c = round((t - 32) * 5 / 9, 1) if t > 40 else round(t, 1)
 
+    sg, temp_c = _sanitize_telemetry(sg, temp_c)
+
     if sg:
         cotta.fg_reale = sg
-    if temp_c:
+    if temp_c is not None:
         cotta.temp_fermentazione = temp_c
 
     desc = f"Tilt ({data.get('Color','')}): {sg or '—'} SG · {temp_c or '—'}°C"
@@ -153,6 +197,8 @@ async def generic_iot_webhook(cotta_id: int, request: Request, db: Session = Dep
     Endpoint universale per RAPT Pill, Graviator, Nautilis o script custom.
     Accetta: { "gravity": 1.045, "temperature": 18.5, "device": "RAPT_Pill" }
     """
+    if not _verify_iot_token(request, db):
+        return JSONResponse({"error": "Token IoT non valido o mancante"}, status_code=401)
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if not cotta:
         return JSONResponse({"error": "Cotta non trovata"}, status_code=404)
@@ -164,11 +210,12 @@ async def generic_iot_webhook(cotta_id: int, request: Request, db: Session = Dep
 
     sg = float(data.get("gravity") or data.get("sg") or 0) or None
     temp = float(data.get("temperature") or data.get("temp") or 0) or None
+    sg, temp = _sanitize_telemetry(round(sg, 3) if sg else None, round(temp, 1) if temp is not None else None)
 
     if sg:
-        cotta.fg_reale = round(sg, 3)
-    if temp:
-        cotta.temp_fermentazione = round(temp, 1)
+        cotta.fg_reale = sg
+    if temp is not None:
+        cotta.temp_fermentazione = temp
 
     log_entry = LogCotta(
         cotta_id=cotta_id,

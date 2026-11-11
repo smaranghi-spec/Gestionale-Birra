@@ -345,7 +345,7 @@ assegna_codici_retroattivi()
 
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
-EXEMPT = ("/login", "/register", "/birre", "/debug", "/static", "/recupera-password")
+EXEMPT = ("/login", "/register", "/birre", "/debug/version", "/api/iot", "/static", "/recupera-password")
 READ_ONLY_PATHS = ("/", "/ricette/html", "/ricette/libreria", "/cotte", "/stili", "/catalogo",
                    "/strumenti", "/profili-acqua", "/prezzi", "/impianto",
                    "/tracciabilita", "/inventario", "/procedure")
@@ -355,40 +355,57 @@ WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 SOCIO_EXEMPT_WRITES = ("/diventa-socio", "/ricette/libreria/importa", "/catalogo/ingredienti/popola_completo", "/catalogo/ingredienti/popola_demo")
 
 
+def _add_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         if any(path.startswith(e) for e in EXEMPT):
-            return await call_next(request)
+            response = await call_next(request)
+            return _add_security_headers(response)
         user_id = request.session.get("user_id")
         if not user_id and user_id != 0:
-            return RedirectResponse("/login", status_code=303)
+            return _add_security_headers(RedirectResponse("/login", status_code=303))
         ruolo = request.session.get("ruolo", "birraio")
         # Ospite e birraio (non-socio): blocca azioni di scrittura
         if ruolo in ("ospite", "birraio") and request.method in WRITE_METHODS:
             if any(path.startswith(e) for e in SOCIO_EXEMPT_WRITES):
-                return await call_next(request)
+                response = await call_next(request)
+                return _add_security_headers(response)
             if ruolo == "ospite":
                 msg = "Sei in modalità ospite (sola lettura).<br>Esegui il login per modificare i dati."
                 cta = '<a href="/login" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#f59e0b;color:#000;border-radius:8px;text-decoration:none;font-weight:700;">Accedi</a>'
             else:
                 msg = "Solo i soci possono registrare dati operativi.<br>Diventa socio per sbloccare tutte le funzionalità."
                 cta = '<a href="/diventa-socio" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#f59e0b;color:#000;border-radius:8px;text-decoration:none;font-weight:700;">✦ Diventa Socio</a>'
-            return HTMLResponse(
+            return _add_security_headers(HTMLResponse(
                 '<html><body style="background:#0d1117;color:#e6edf3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;">'
                 f'<div><div style="font-size:48px;">🔒</div><h2>Accesso negato</h2>'
                 f'<p style="color:#8b949e;">{msg}</p>{cta}'
                 '<br><br><a href="/" style="color:#8b949e;font-size:13px;">← Torna alla home</a></div></body></html>',
                 status_code=403
-            )
-        return await call_next(request)
+            ))
+        response = await call_next(request)
+        return _add_security_headers(response)
 
 
 # ── APP ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Gestionale Birrificio")
 app.add_middleware(AuthMiddleware)
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    same_site="lax",
+    max_age=86400 * 14,
+    https_only=bool(os.environ.get("RENDER") or os.environ.get("DATABASE_URL")),
+)
 
 
 @app.exception_handler(Exception)
@@ -396,6 +413,21 @@ async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     err_tb = traceback.format_exc()
     print(f"CRITICAL ERROR on {request.method} {request.url.path}: {err_tb}", flush=True)
+    is_admin = False
+    try:
+        is_admin = request.session.get("ruolo") == "admin"
+    except Exception:
+        pass
+    tech_details = ""
+    if is_admin:
+        tech_details = f"""
+  <p><strong>Dettaglio:</strong> {exc}</p>
+  <details open style="margin-top:16px;">
+    <summary style="cursor:pointer; color:#58a6ff; margin-bottom:8px; font-weight:600;">Dettagli tecnici traceback (visibili solo all'Admin)</summary>
+    <pre>{err_tb}</pre>
+  </details>"""
+    else:
+        tech_details = "<p style='color:#8b949e;'>L'errore tecnico è stato registrato nei log del server. Se il problema persiste, contatta l'amministratore.</p>"
     return HTMLResponse(
         content=f"""<!DOCTYPE html>
 <html>
@@ -412,12 +444,7 @@ a:hover {{ text-decoration: underline; }}
 <body>
 <div class="card">
   <h2>⚠️ Si è verificato un errore sul server (500)</h2>
-  <p><strong>Percorso:</strong> {request.url.path}</p>
-  <p><strong>Dettaglio:</strong> {exc}</p>
-  <details open style="margin-top:16px;">
-    <summary style="cursor:pointer; color:#58a6ff; margin-bottom:8px; font-weight:600;">Dettagli tecnici traceback</summary>
-    <pre>{err_tb}</pre>
-  </details>
+  <p><strong>Percorso:</strong> {request.url.path}</p>{tech_details}
   <div style="margin-top:20px;">
     <a href="/">← Torna alla Home</a> &nbsp;|&nbsp;
     <a href="javascript:history.back()">← Torna Indietro</a>
@@ -506,21 +533,23 @@ def home(request: Request):
 
 
 @app.get("/debug/seed-admin")
-def seed_admin():
+def seed_admin(request: Request):
     from .db import SessionLocal
     from .models import User
     db = SessionLocal()
-    u = db.query(User).filter(User.username == "admin").first()
-    if not u:
-        u = User(username="admin", password_hash=User.hash_pw("admin123"),
-                 nome="Amministratore", ruolo="admin")
-        db.add(u)
-        db.commit()
+    try:
+        if db.query(User).count() > 0 and request.session.get("ruolo") != "admin":
+            return HTMLResponse("Accesso riservato agli amministratori.", status_code=403)
+        u = db.query(User).filter(User.username == "admin").first()
+        if not u:
+            u = User(username="admin", password_hash=User.hash_pw("admin123"),
+                     nome="Amministratore", ruolo="admin")
+            db.add(u)
+            db.commit()
+            return {"created": True, "username": "admin"}
+        return {"exists": True, "username": "admin"}
+    finally:
         db.close()
-        return {"created": True, "username": "admin", "password": "admin123"}
-    db.close()
-    return {"exists": True, "username": "admin",
-            "hint": "Se non riesci ad accedere vai a /debug/reset-admin"}
 
 
 @app.get("/api/stats-home")
@@ -607,19 +636,23 @@ def stats_home():
 
 
 @app.get("/debug/reset-admin")
-def reset_admin():
+def reset_admin(request: Request):
+    if request.session.get("ruolo") != "admin":
+        return HTMLResponse("Accesso negato: riservato agli amministratori autenticati.", status_code=403)
     from .db import SessionLocal
     from .models import User
     db = SessionLocal()
-    u = db.query(User).filter(User.username == "admin").first()
-    if u:
-        u.password_hash = User.hash_pw("admin123")
-        u.ruolo = "admin"
-        u.is_active = True
-    else:
-        u = User(username="admin", password_hash=User.hash_pw("admin123"),
-                 nome="Amministratore", ruolo="admin")
-        db.add(u)
-    db.commit()
-    db.close()
-    return {"reset": True, "username": "admin", "password": "admin123"}
+    try:
+        u = db.query(User).filter(User.username == "admin").first()
+        if u:
+            u.password_hash = User.hash_pw("admin123")
+            u.ruolo = "admin"
+            u.is_active = True
+        else:
+            u = User(username="admin", password_hash=User.hash_pw("admin123"),
+                     nome="Amministratore", ruolo="admin")
+            db.add(u)
+        db.commit()
+        return {"reset": True, "username": "admin"}
+    finally:
+        db.close()

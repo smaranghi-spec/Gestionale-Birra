@@ -186,6 +186,8 @@ def genera_backup_json() -> str:
 def export_db(request: Request):
     if not request.session.get("user_id"):
         return RedirectResponse("/login", status_code=303)
+    if request.session.get("ruolo") != "admin":
+        return HTMLResponse("Accesso negato: l'esportazione del database è riservata agli amministratori.", status_code=403)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = f"gestionale_birra_{ts}.db"
@@ -235,6 +237,8 @@ def export_db(request: Request):
 def export_json(request: Request):
     if not request.session.get("user_id"):
         return RedirectResponse("/login", status_code=303)
+    if request.session.get("ruolo") != "admin":
+        return HTMLResponse("Accesso negato: l'esportazione JSON è riservata agli amministratori.", status_code=403)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = f"gestionale_birra_{ts}.json"
