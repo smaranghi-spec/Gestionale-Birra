@@ -612,8 +612,8 @@ def stats_home():
                 "data_cotta": c.data_brew or "—",
                 "fermentatore": c.fermentatore or "Non assegnato",
                 "temp": f"{c.temp_fermentazione}°C" if c.temp_fermentazione else "N/D",
-                "og": c.og_reale or (c.ricetta.og if c.ricetta else None),
-                "fg": c.fg_reale or (c.ricetta.fg if c.ricetta else None),
+                "og": c.og_reale,
+                "fg": c.fg_reale,
                 "litri": round(litri, 1),
             })
 

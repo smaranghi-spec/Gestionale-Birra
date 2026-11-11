@@ -989,11 +989,32 @@ def brew_day_view(cotta_id: int, request: Request, db: Session = Depends(get_db)
         ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta.id).all()
 
     grani = [i for i in ingredienti if i.categoria == "grain"]
-    luppoli = sorted([i for i in ingredienti if i.categoria == "hop"], key=lambda x: (x.time_min or 0), reverse=True)
+    luppoli_orm = sorted([i for i in ingredienti if i.categoria == "hop"], key=lambda x: (x.time_min or 0), reverse=True)
+    luppoli = [
+        {
+            "id": i.id,
+            "nome": i.nome,
+            "quantita": i.quantita,
+            "unita": i.unita,
+            "alpha_acid": i.alpha_acid,
+            "time_min": i.time_min,
+            "hop_use": i.hop_use,
+            "hop_form": i.hop_form,
+        }
+        for i in luppoli_orm
+    ]
     lieviti = [i for i in ingredienti if i.categoria == "yeast"]
     altri = [i for i in ingredienti if i.categoria not in ("grain", "hop", "yeast")]
 
-    stats = {}
+    stats = {
+        "og": 1.050,
+        "fg": 1.012,
+        "ibu": 25.0,
+        "abv": 5.0,
+        "volumi": {"preboil_volume": 25.0, "preboil_og": 1.042, "acqua_mash": 15.0, "acqua_sparge": 14.0},
+        "ph_mash": {"ph_stimato": 5.4},
+        "acidi": {"lattico_mash_ml": 0, "lattico_sparge_ml": 0},
+    }
     if ricetta:
         from ..stats import calcola_stats
         stats = calcola_stats(ricetta, ingredienti)

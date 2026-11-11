@@ -72,6 +72,11 @@ def get_db():
         db.close()
 
 
+@router.get("/ricette")
+def redirect_ricette():
+    return RedirectResponse("/ricette/html", status_code=303)
+
+
 @router.get("/ricette/html", response_class=HTMLResponse)
 def lista_ricette(request: Request, db: Session = Depends(get_db)):
     ricette = db.query(Ricetta).all()

@@ -95,9 +95,9 @@ def genera_backup_sqlite() -> str:
                         col_name = c["name"]
                         c_type = str(c.get("type", "")).lower()
                         sql_type = "TEXT"
-                        if "int" in c_type:
+                        if "int" in c_type or "bool" in c_type:
                             sql_type = "INTEGER"
-                        elif any(x in c_type for x in ("float", "real", "numeric", "decimal")):
+                        elif any(x in c_type for x in ("float", "real", "numeric", "decimal", "double")):
                             sql_type = "REAL"
                         col_defs.append(f'"{col_name}" {sql_type}')
 
