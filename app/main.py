@@ -154,6 +154,39 @@ def run_migrations():
                 except Exception:
                     conn.rollback()
 
+        # Sicurezza Supabase / PostgreSQL: abilita Row-Level Security (RLS) su tutte le tabelle
+        # dello schema public e revoca l'accesso alle API pubbliche (anon, authenticated).
+        # Non altera né elimina alcun dato; il backend FastAPI (ruolo proprietario/postgres)
+        # mantiene accesso completo.
+        if is_pg:
+            try:
+                rows = conn.execute(
+                    text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+                ).fetchall()
+                for (tname,) in rows:
+                    safe_tname = tname.replace('"', '""')
+                    try:
+                        conn.execute(text(f'ALTER TABLE public."{safe_tname}" ENABLE ROW LEVEL SECURITY'))
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+                    try:
+                        conn.execute(text(f'REVOKE ALL ON TABLE public."{safe_tname}" FROM anon, authenticated'))
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+                    try:
+                        conn.execute(text(
+                            f'DROP POLICY IF EXISTS "backend_full_access" ON public."{safe_tname}"; '
+                            f'CREATE POLICY "backend_full_access" ON public."{safe_tname}" '
+                            f'FOR ALL TO CURRENT_USER USING (true) WITH CHECK (true)'
+                        ))
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+            except Exception:
+                conn.rollback()
+
 
 
 
