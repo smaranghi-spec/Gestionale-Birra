@@ -247,13 +247,19 @@
     {% if ricette %}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
       <input type="text" id="search-ricette" placeholder="🔍 Cerca per nome o stile…"
-        style="flex:1;min-width:200px;" oninput="filterRicette(this.value)">
+        style="flex:1;min-width:200px;" oninput="filterRicette()">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;background:var(--card);border:1px solid var(--border);padding:7px 12px;border-radius:8px;">
+        <input type="checkbox" id="filter-pronte" onchange="filterRicette()" style="width:auto;">
+        🟢 Solo Pronte da Brassare
+      </label>
       <span style="font-size:12px;color:var(--muted);" id="count-label">{{ ricette|length }} ricette</span>
     </div>
 
     <div id="ricette-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
     {% for r in ricette %}
+    {% set fat = fattibilita_map.get(r.id, {}) if fattibilita_map else {} %}
     <a href="/ricette/{{ r.id }}" class="ricetta-card-link"
+       data-pronta="{{ '1' if fat.get('pronta') else '0' }}"
        data-search="{{ ((r.codice or '') ~ ' ' ~ r.nome ~ ' ' ~ (r.stile.nome if r.stile else '') ~ ' ' ~ (r.tipo or ''))|lower }}">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
@@ -263,7 +269,14 @@
             {% endif %}
             <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3;">{{ r.nome }}</div>
           </div>
-          <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+          <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;flex-wrap:wrap;justify-content:flex-end;">
+            {% if fat.get('tot_ing', 0) > 0 %}
+              {% if fat.get('pronta') %}
+              <span class="badge badge-green" style="font-size:10px;" title="Tutti gli ingredienti richiesti sono disponibili in magazzino">🟢 Pronta</span>
+              {% else %}
+              <span class="badge badge-amber" style="font-size:10px;" title="Mancano {{ fat.get('n_mancanti') }} ingredienti in magazzino">🟠 -{{ fat.get('n_mancanti') }} ingr.</span>
+              {% endif %}
+            {% endif %}
             <span class="badge badge-amber" style="font-size:10px;">{{ r.tipo or 'AG' }}</span>
             {% set n_cotte = cotte_count.get(r.id, 0) %}
             {% if n_cotte > 0 %}
@@ -313,12 +326,15 @@
 </div><!-- /ricette-layout -->
 
 <script>
-function filterRicette(q) {
+function filterRicette() {
+  const q = (document.getElementById('search-ricette')?.value || '').toLowerCase();
+  const soloPronte = document.getElementById('filter-pronte')?.checked || false;
   const cards = document.querySelectorAll('.ricetta-card-link');
   let visible = 0;
-  q = q.toLowerCase();
   cards.forEach(c => {
-    const match = !q || c.dataset.search.includes(q);
+    const matchText = !q || c.dataset.search.includes(q);
+    const matchPronta = !soloPronte || c.dataset.pronta === '1';
+    const match = matchText && matchPronta;
     c.style.display = match ? '' : 'none';
     if (match) visible++;
   });

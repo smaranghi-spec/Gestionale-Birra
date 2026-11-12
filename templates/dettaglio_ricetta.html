@@ -728,6 +728,53 @@
             </form>
         </div>
 
+        {% if ingredienti and fattibilita %}
+        <div style="margin:14px 0;display:flex;flex-direction:column;gap:10px;">
+            {% if fattibilita.pronta %}
+            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;color:#166534;">
+                <div>🟢 <strong>Ricetta Pronta da Brassare:</strong> tutti i {{ fattibilita.tot_ing }} ingredienti sono coperti dalle giacenze attuali in magazzino.</div>
+                <a href="#avvia-cotta" style="background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:bold;text-decoration:none;">🚀 Avvia Cotta Ora</a>
+            </div>
+            {% else %}
+            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px;color:#92400e;">
+                <div>
+                    🟠 <strong>Scorte incomplete in magazzino ({{ fattibilita.n_mancanti }} su {{ fattibilita.tot_ing }} ingredienti mancanti):</strong>
+                    <div style="font-size:12px;margin-top:4px;color:#78350f;">
+                        {% for m in fattibilita.mancanti %}
+                        <span style="display:inline-block;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:2px 6px;margin:2px 4px 2px 0;">
+                            <strong>{{ m.nome }}</strong>: mancano {{ m.manca }} {{ m.unita }} (disp. {{ m.disponibile }} / rich. {{ m.richiesto }})
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <form method="post" action="/ricette/{{ ricetta.id }}/mancanti-lista-spesa" style="margin:0;">
+                    <button type="submit" style="background:#d97706;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                        🛒 Invia {{ fattibilita.n_mancanti }} mancanti alla Lista Spesa
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            {% if fattibilita.hop_aa_diffs %}
+            <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px;color:#1e40af;">
+                <div>
+                    🌿 <strong>Alfa Acidi dei lotti luppolo in magazzino diversi dalla ricetta:</strong>
+                    <span style="font-size:12px;display:block;margin-top:3px;color:#1e3a8a;">
+                        {% for hd in fattibilita.hop_aa_diffs %}
+                        • <strong>{{ hd.nome }}</strong>: ricetta {{ hd.aa_ricetta }}% AA ({{ hd.qty_attuale }}{{ hd.unita }}) → lotto magazzino <strong>{{ hd.aa_lotto }}% AA</strong>: consigliati <strong>{{ hd.qty_consigliata }}{{ hd.unita }}</strong> per mantenere gli stessi IBU
+                        {% endfor %}
+                    </span>
+                </div>
+                <form method="post" action="/ricette/{{ ricetta.id }}/adatta-aa" style="margin:0;">
+                    <button type="submit" style="background:#2563eb;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                        ⚖️ Adatta grammi Luppoli agli AA% del Magazzino
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
         {% if ingredienti %}
         <div class="table-wrap">
         <table>
@@ -1483,8 +1530,11 @@
                     <th>Stato</th>
                     <th>Data brew</th>
                     <th>OG reale</th>
+                    <th>Δ OG</th>
                     <th>FG reale</th>
                     <th>ABV</th>
+                    <th>Eff. Reale</th>
+                    <th>pH Mash</th>
                     <th>Volume</th>
                     <th></th>
                 </tr>
@@ -1500,10 +1550,24 @@
                         <span class="badge-sm badge-{{ c.stato }}">{{ c.stato|replace('_',' ')|title }}</span>
                     </td>
                     <td style="color:#666;font-size:13px;">{{ c.data_brew or '—' }}</td>
-                    <td style="font-weight:bold;">{{ c.og_reale or '—' }}</td>
-                    <td style="font-weight:bold;">{{ c.fg_reale or '—' }}</td>
+                    <td style="font-weight:bold;">{{ '%.3f'|format(c.og_reale) if c.og_reale else '—' }}</td>
+                    <td style="font-size:12px;">
+                        {% if c.og_reale and stats.og %}
+                            {% set dog = c.og_reale - stats.og %}
+                            <span style="color:{{ '#166534' if dog|abs <= 0.003 else '#b45309' }};font-weight:bold;">
+                                {{ '%+.3f'|format(dog) }}
+                            </span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="font-weight:bold;">{{ '%.3f'|format(c.fg_reale) if c.fg_reale else '—' }}</td>
                     <td style="font-weight:bold;color:#5a381e;">
-                        {% if c.abv_reale %}{{ c.abv_reale }}%{% else %}—{% endif %}
+                        {% if c.abv_reale %}{{ c.abv_reale }}%{% elif c.og_reale and c.fg_reale %}{{ '%.1f'|format((c.og_reale - c.fg_reale)*131.25) }}%{% else %}—{% endif %}
+                    </td>
+                    <td style="font-weight:bold;color:#0284c7;">
+                        {% if c.efficienza_reale %}{{ '%.1f'|format(c.efficienza_reale) }}%{% else %}—{% endif %}
+                    </td>
+                    <td style="font-size:13px;">
+                        {% if c.ph_mash %}{{ '%.2f'|format(c.ph_mash) }}{% else %}—{% endif %}
                     </td>
                     <td style="font-size:13px;color:#666;">
                         {% if c.volume_imbottigliato %}{{ c.volume_imbottigliato }} L{% elif c.volume_post_bollitura %}{{ c.volume_post_bollitura }} L{% else %}—{% endif %}
@@ -1516,22 +1580,35 @@
             </tbody>
         </table>
 
-        {% if n_cotte > 1 %}
-        <div style="margin-top:14px;padding:12px 16px;background:#f5ede2;border-radius:8px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap;">
+        {% if n_cotte >= 1 %}
+        <div style="margin-top:14px;padding:12px 16px;background:#f5ede2;border-radius:8px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
             {% set cotte_con_og = cotte | selectattr('og_reale') | list %}
-            {% set cotte_con_abv = cotte | selectattr('abv_reale') | list %}
+            {% set cotte_con_fg = cotte | selectattr('fg_reale') | list %}
+            {% set cotte_con_eff = cotte | selectattr('efficienza_reale') | list %}
+            {% set cotte_con_ph = cotte | selectattr('ph_mash') | list %}
+            <span>🎯 <strong>Target Ricetta:</strong> OG {{ stats.og }} · FG {{ stats.fg }} · Eff. {{ ricetta.efficienza }}%</span>
             {% if cotte_con_og %}
-            <span><strong>Media OG:</strong>
+            <span>📊 <strong>Media OG Reale:</strong>
                 {{ "%.3f"|format(cotte_con_og|map(attribute='og_reale')|list|sum / cotte_con_og|length) }}
             </span>
             {% endif %}
-            {% if cotte_con_abv %}
-            <span><strong>Media ABV:</strong>
-                {{ "%.1f"|format(cotte_con_abv|map(attribute='abv_reale')|list|sum / cotte_con_abv|length) }}%
+            {% if cotte_con_fg %}
+            <span>📉 <strong>Media FG Reale:</strong>
+                {{ "%.3f"|format(cotte_con_fg|map(attribute='fg_reale')|list|sum / cotte_con_fg|length) }}
             </span>
             {% endif %}
-            <span><strong>Cotte completate:</strong>
-                {{ cotte | selectattr('stato', 'in', ['pronta','archiviata','imbottigliamento','maturazione']) | list | length }}
+            {% if cotte_con_eff %}
+            <span>⚡ <strong>Media Efficienza Impianto:</strong>
+                {{ "%.1f"|format(cotte_con_eff|map(attribute='efficienza_reale')|list|sum / cotte_con_eff|length) }}%
+            </span>
+            {% endif %}
+            {% if cotte_con_ph %}
+            <span>🧪 <strong>Media pH Mash:</strong>
+                {{ "%.2f"|format(cotte_con_ph|map(attribute='ph_mash')|list|sum / cotte_con_ph|length) }}
+            </span>
+            {% endif %}
+            <span>✅ <strong>Cotte completate:</strong>
+                {{ cotte | selectattr('stato', 'in', ['pronta','archiviata','imbottigliamento','maturazione']) | list | length }} / {{ n_cotte }}
             </span>
         </div>
         {% endif %}
@@ -2298,6 +2375,12 @@
                         <label style="font-size:12px;font-weight:bold;color:#666;display:block;margin-bottom:4px;">Target IBU (opzionale)</label>
                         <input type="number" step="0.5" name="target_ibu" placeholder="es. 38" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
                     </div>
+                </div>
+                <div style="margin-bottom:14px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#334155;cursor:pointer;margin:0;">
+                        <input type="checkbox" name="clona" value="1" style="width:auto;min-height:auto;">
+                        <span>📋 <strong>Crea come nuova ricetta clonata</strong> (mantieni intatta la ricetta attuale)</span>
+                    </label>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
                     <button type="button" onclick="chiudiModalScala()" style="background:#e2e8f0;color:#334155;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">Annulla</button>

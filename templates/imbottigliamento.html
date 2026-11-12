@@ -20,46 +20,59 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="form-row">
             <label>Data imbottigliamento</label>
-            <input type="date" name="data_imbottigliamento" value="{{ oggi }}" required>
+            <input type="date" name="data_imbottigliamento" id="data-imb" value="{{ oggi }}" required onchange="calcolaScadenzaMesi(12)">
           </div>
           <div class="form-row">
-            <label>Scadenza (TMC)</label>
-            <input type="date" name="data_scadenza">
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+              <span>Scadenza (TMC)</span>
+              <span style="display:flex;gap:4px;">
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:1px 6px;font-size:10px;" onclick="calcolaScadenzaMesi(6)">+6m</button>
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:1px 6px;font-size:10px;" onclick="calcolaScadenzaMesi(12)">+12m</button>
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:1px 6px;font-size:10px;" onclick="calcolaScadenzaMesi(24)">+24m</button>
+              </span>
+            </label>
+            <input type="date" name="data_scadenza" id="data-scad" value="{{ scadenza_default }}">
           </div>
         </div>
       </div>
 
       <div class="card" style="margin-bottom:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-          <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;">Formati imbottigliati</div>
-          <button type="button" class="btn btn-ghost btn-xs" onclick="aggiungiFormato()">+ formato</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;">Formati imbottigliati</div>
+            <div style="font-size:11px;color:var(--muted);">Volume disponibile da imbottigliare: <strong style="color:var(--text);">{{ litri_residui }} L</strong> (su {{ litri_fermentatore }} L totali)</div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="aggiungiFormato()">+ Aggiungi altro formato (es. Fusto + Bottiglie)</button>
         </div>
 
         <div id="formati-list">
-          <div class="formato-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 36px;gap:8px;align-items:end;margin-bottom:10px;background:var(--panel);padding:10px;border-radius:8px;">
+          <div class="formato-row" style="display:grid;grid-template-columns:1.2fr 0.9fr 0.9fr 1.1fr 0.9fr 36px;gap:8px;align-items:end;margin-bottom:10px;background:var(--panel);padding:10px;border-radius:8px;">
             <div class="form-row" style="margin:0;">
               <label style="font-size:10px;">Codice lotto</label>
               <input type="text" name="codice_lotto[]" value="{{ codice_suggerito }}" placeholder="{{ codice_suggerito }}">
             </div>
             <div class="form-row" style="margin:0;">
               <label style="font-size:10px;">Tipo</label>
-              <select name="tipo_packaging[]">
+              <select name="tipo_packaging[]" onchange="aggiornaTot()">
                 {% for t in tipi %}<option>{{ t }}</option>{% endfor %}
               </select>
             </div>
             <div class="form-row" style="margin:0;">
               <label style="font-size:10px;">Formato (mL)</label>
-              <select name="formato_ml[]">
-                {% for f in formati %}<option {% if f==750 %}selected{% endif %}>{{ f }}</option>{% endfor %}
+              <select name="formato_ml[]" onchange="ricalcolaRigaDaFormato(this)">
+                {% for f in formati %}<option value="{{ f }}" {% if f==750 %}selected{% endif %}>{{ f }}</option>{% endfor %}
               </select>
             </div>
             <div class="form-row" style="margin:0;">
-              <label style="font-size:10px;">N° pezzi</label>
-              <input type="number" name="n_pezzi[]" min="0" value="0" oninput="aggiornaTot()">
+              <label style="font-size:10px;display:flex;justify-content:space-between;">
+                <span>N° pezzi</span>
+                <a href="javascript:void(0)" onclick="riempiLitriResidui(this)" style="color:var(--amber);font-size:9px;text-decoration:none;" title="Calcola pezzi massimi dai litri residui">⚡ Max</a>
+              </label>
+              <input type="number" name="n_pezzi[]" min="0" value="{{ pezzi_750_suggeriti }}" oninput="aggiornaTot()">
             </div>
             <div class="form-row" style="margin:0;">
               <label style="font-size:10px;">Prezzo vend. (€)</label>
-              <input type="number" name="prezzo_vendita[]" step="0.01" placeholder="2.50">
+              <input type="number" name="prezzo_vendita[]" step="0.01" placeholder="3.50">
             </div>
             <div style="padding-bottom:2px;">
               <button type="button" onclick="this.closest('.formato-row').remove();aggiornaTot()" class="btn btn-danger btn-xs">✕</button>
@@ -67,8 +80,18 @@
           </div>
         </div>
 
-        <div style="padding:10px;background:var(--panel);border-radius:8px;font-size:13px;text-align:right;color:var(--muted);margin-top:6px;">
-          Totale pezzi: <strong style="color:var(--amber);" id="tot-pz">0 pz</strong>
+        <div style="padding:12px;background:var(--panel);border-radius:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:6px;border:1px solid var(--border);">
+          <div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text);margin:0;">
+              <input type="checkbox" name="scarica_packaging" value="1" checked style="width:auto;">
+              📦 Scarica automaticamente bottiglie vuote e tappi a corona dal Magazzino
+            </label>
+          </div>
+          <div style="text-align:right;">
+            Totale pezzi: <strong style="color:var(--amber);" id="tot-pz">0 pz</strong> &nbsp;·&nbsp;
+            Volume imbottigliato: <strong style="color:#10b981;" id="tot-litri">0.0 L</strong> &nbsp;·&nbsp;
+            Residuo fermentatore: <strong id="res-litri" style="color:var(--text);">{{ litri_residui }} L</strong>
+          </div>
         </div>
       </div>
 
@@ -137,14 +160,24 @@
 const FORMATI = {{ formati | tojson }};
 const TIPI = {{ tipi | tojson }};
 const CODICE = "{{ codice_suggerito }}";
+const LITRI_DISP = {{ litri_residui or 20.0 }};
 let idx = 1;
+
+function calcolaScadenzaMesi(mesi) {
+  const imbEl = document.getElementById('data-imb');
+  const scadEl = document.getElementById('data-scad');
+  if (!imbEl || !imbEl.value || !scadEl) return;
+  const d = new Date(imbEl.value);
+  d.setMonth(d.getMonth() + mesi);
+  scadEl.value = d.toISOString().slice(0, 10);
+}
 
 function aggiungiFormato() {
   idx++;
   const suf = String.fromCharCode(64 + idx);
   const div = document.createElement('div');
   div.className = 'formato-row';
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 36px;gap:8px;align-items:end;margin-bottom:10px;background:var(--panel);padding:10px;border-radius:8px;';
+  div.style.cssText = 'display:grid;grid-template-columns:1.2fr 0.9fr 0.9fr 1.1fr 0.9fr 36px;gap:8px;align-items:end;margin-bottom:10px;background:var(--panel);padding:10px;border-radius:8px;';
   div.innerHTML = `
     <div class="form-row" style="margin:0;">
       <label style="font-size:10px;">Codice lotto</label>
@@ -152,14 +185,17 @@ function aggiungiFormato() {
     </div>
     <div class="form-row" style="margin:0;">
       <label style="font-size:10px;">Tipo</label>
-      <select name="tipo_packaging[]">${TIPI.map(t=>`<option>${t}</option>`).join('')}</select>
+      <select name="tipo_packaging[]" onchange="aggiornaTot()">${TIPI.map(t=>`<option>${t}</option>`).join('')}</select>
     </div>
     <div class="form-row" style="margin:0;">
       <label style="font-size:10px;">Formato (mL)</label>
-      <select name="formato_ml[]">${FORMATI.map(f=>`<option${f===330?' selected':''}>${f}</option>`).join('')}</select>
+      <select name="formato_ml[]" onchange="ricalcolaRigaDaFormato(this)">${FORMATI.map(f=>`<option value="${f}"${f===330?' selected':''}>${f}</option>`).join('')}</select>
     </div>
     <div class="form-row" style="margin:0;">
-      <label style="font-size:10px;">N° pezzi</label>
+      <label style="font-size:10px;display:flex;justify-content:space-between;">
+        <span>N° pezzi</span>
+        <a href="javascript:void(0)" onclick="riempiLitriResidui(this)" style="color:var(--amber);font-size:9px;text-decoration:none;" title="Calcola pezzi massimi dai litri residui">⚡ Max</a>
+      </label>
       <input type="number" name="n_pezzi[]" min="0" value="0" oninput="aggiornaTot()">
     </div>
     <div class="form-row" style="margin:0;">
@@ -170,16 +206,63 @@ function aggiungiFormato() {
       <button type="button" onclick="this.closest('.formato-row').remove();aggiornaTot()" class="btn btn-danger btn-xs">✕</button>
     </div>`;
   document.getElementById('formati-list').appendChild(div);
+  aggiornaTot();
+}
+
+function ricalcolaRigaDaFormato(sel) {
+  const rows = document.querySelectorAll('.formato-row');
+  if (rows.length === 1) {
+    const fmt = parseInt(sel.value || 750, 10);
+    const pzIn = rows[0].querySelector('input[name="n_pezzi[]"]');
+    if (pzIn && fmt > 0) {
+      pzIn.value = Math.floor((LITRI_DISP * 1000) / fmt);
+    }
+  }
+  aggiornaTot();
+}
+
+function riempiLitriResidui(linkEl) {
+  const row = linkEl.closest('.formato-row');
+  if (!row) return;
+  const fmt = parseInt(row.querySelector('select[name="formato_ml[]"]').value || 750, 10);
+  const pzIn = row.querySelector('input[name="n_pezzi[]"]');
+  let altriLitri = 0;
+  document.querySelectorAll('.formato-row').forEach(r => {
+    if (r !== row) {
+      const f = parseInt(r.querySelector('select[name="formato_ml[]"]').value || 0, 10);
+      const n = parseInt(r.querySelector('input[name="n_pezzi[]"]').value || 0, 10);
+      altriLitri += (f * n) / 1000.0;
+    }
+  });
+  const rem = Math.max(0, LITRI_DISP - altriLitri);
+  if (fmt > 0) {
+    pzIn.value = Math.floor((rem * 1000) / fmt);
+  }
+  aggiornaTot();
 }
 
 function aggiornaTot() {
-  const tot = [...document.querySelectorAll('input[name="n_pezzi[]"]')]
-    .reduce((s,i)=>s+(parseInt(i.value)||0),0);
-  document.getElementById('tot-pz').textContent = tot + ' pz';
+  let totPz = 0;
+  let totLitri = 0;
+  document.querySelectorAll('.formato-row').forEach(r => {
+    const f = parseInt(r.querySelector('select[name="formato_ml[]"]')?.value || 0, 10);
+    const n = parseInt(r.querySelector('input[name="n_pezzi[]"]')?.value || 0, 10);
+    totPz += n;
+    totLitri += (f * n) / 1000.0;
+  });
+  document.getElementById('tot-pz').textContent = totPz + ' pz';
+  const elLitri = document.getElementById('tot-litri');
+  if (elLitri) elLitri.textContent = totLitri.toFixed(2) + ' L';
+  const elRes = document.getElementById('res-litri');
+  if (elRes) {
+    const res = LITRI_DISP - totLitri;
+    elRes.textContent = (res >= 0 ? res.toFixed(2) : '0.00') + ' L' + (res < -0.5 ? ' (⚠️ oltre capacità)' : '');
+    elRes.style.color = res < -0.5 ? '#ef4444' : 'var(--text)';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  document.querySelectorAll('input[name="n_pezzi[]"]').forEach(i=>i.addEventListener('input',aggiornaTot));
+  aggiornaTot();
 });
 </script>
 {% endblock %}

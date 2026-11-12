@@ -67,12 +67,12 @@
   
   <div style="text-align: center;">
     <h1>{{ prodotto.nome }}</h1>
-    <h2>{{ ricetta.stile if ricetta else 'Birra Artigianale' }}</h2>
+    <h2>{{ stile_nome or 'Birra Artigianale' }}</h2>
   </div>
   
   <div class="info-grid">
     <div class="info-box">
-      <div class="info-val">{{ ricetta.abv_stimato|round(1) if ricetta else (cotta.abv_reale|round(1) if cotta else 'N.D.') }}%</div>
+      <div class="info-val">{{ ('%.1f'|format(abv_val) ~ '%') if abv_val is not none else 'N.D.' }}</div>
       <div class="info-lbl">ALC. VOL.</div>
     </div>
     <div class="info-box">
@@ -80,18 +80,18 @@
       <div class="info-lbl">ML</div>
     </div>
     <div class="info-box">
-      <div class="info-val">{{ ricetta.ibu_stimati|int if ricetta else 'N.D.' }}</div>
+      <div class="info-val">{{ ibu_val if ibu_val is not none else '—' }}</div>
       <div class="info-lbl">IBU</div>
     </div>
     <div class="info-box">
-      <div class="info-val">{{ ricetta.ebc_stimato|int if ricetta else 'N.D.' }}</div>
+      <div class="info-val">{{ ebc_val if ebc_val is not none else '—' }}</div>
       <div class="info-lbl">EBC</div>
     </div>
   </div>
   
   <div class="ingredients">
-    <strong>Ingredienti:</strong> {{ ingredienti | join(', ') }}.<br>
-    <em>Contiene glutine.</em>
+    <strong>Ingredienti:</strong> {{ (ingredienti_html | safe) if ingredienti_html else (ingredienti | join(', ')) }}.<br>
+    {% if contiene_glutine %}<em>Contiene glutine. Birra artigianale non filtrata e non pastorizzata.</em>{% else %}<em>Birra artigianale non filtrata e non pastorizzata.</em>{% endif %}
   </div>
   
   <div class="footer">

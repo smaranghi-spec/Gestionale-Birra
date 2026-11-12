@@ -236,11 +236,20 @@ async def generic_iot_webhook(cotta_id: int, request: Request, db: Session = Dep
 @router.get("/telemetria/{cotta_id}")
 def get_telemetria_cotta(cotta_id: int, db: Session = Depends(get_db)):
     """
-    Restituisce i punti storici di telemetria per plottare il grafico di fermentazione.
+    Restituisce i punti storici di telemetria (IoT + letture manuali SG/°C)
+    per plottare il grafico di fermentazione unificato.
     """
+    from sqlalchemy import or_
+
     logs = (
         db.query(LogCotta)
-        .filter(LogCotta.cotta_id == cotta_id, LogCotta.tipo == "iot_telemetria")
+        .filter(
+            LogCotta.cotta_id == cotta_id,
+            or_(
+                LogCotta.tipo == "iot_telemetria",
+                (LogCotta.valore.isnot(None)) & (LogCotta.unita.in_(["SG", "sg", "°C", "C", "°P", "Plato"])),
+            ),
+        )
         .order_by(LogCotta.id.asc())
         .all()
     )
@@ -250,6 +259,8 @@ def get_telemetria_cotta(cotta_id: int, db: Session = Depends(get_db)):
         punti.append({
             "timestamp": l.timestamp,
             "valore": l.valore,
+            "unita": l.unita or "SG",
+            "tipo": l.tipo,
             "descrizione": l.descrizione,
         })
     return {"cotta_id": cotta_id, "punti": punti}

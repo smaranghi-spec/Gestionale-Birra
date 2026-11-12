@@ -72,6 +72,94 @@ def get_db():
         db.close()
 
 
+def _calcola_fattibilita_ricetta(ingredienti_ric: list, inv_items: list) -> dict:
+    """Confronta gli ingredienti della ricetta con le scorte in magazzino e rileva differenze di AA% sui luppoli."""
+    dettaglio = {}
+    mancanti = []
+    hop_aa_diffs = []
+
+    for ing in ingredienti_ric:
+        req_qty = float(ing.quantita or 0.0)
+        req_unit = (ing.unita or "kg").strip().lower()
+        cname = (ing.nome or "").strip().lower()
+        csku = (ing.codice_ingrediente or "").strip().upper()
+
+        matches = []
+        for inv in inv_items:
+            inv_sku = (inv.codice_ingrediente or inv.codice or "").strip().upper()
+            inv_name = (inv.nome or "").strip().lower()
+            if (csku and inv_sku == csku) or (cname and (cname == inv_name or cname in inv_name or inv_name in cname)):
+                matches.append(inv)
+
+        disp_in_req_unit = 0.0
+        best_aa = None
+        best_lotto = None
+        for m in matches:
+            mq = float(m.quantita or 0.0)
+            mu = (m.unita or "kg").strip().lower()
+            if mu == req_unit:
+                disp_in_req_unit += mq
+            elif mu == "kg" and req_unit == "g":
+                disp_in_req_unit += mq * 1000.0
+            elif mu == "g" and req_unit == "kg":
+                disp_in_req_unit += mq / 1000.0
+            elif mu == "l" and req_unit == "ml":
+                disp_in_req_unit += mq * 1000.0
+            elif mu == "ml" and req_unit == "l":
+                disp_in_req_unit += mq / 1000.0
+            else:
+                disp_in_req_unit += mq
+            if mq > 0 and m.alfa_acidi and best_aa is None:
+                best_aa = float(m.alfa_acidi)
+                best_lotto = m.numero_lotto
+
+        disp_in_req_unit = round(disp_in_req_unit, 3)
+        ok = disp_in_req_unit >= req_qty if req_qty > 0 else True
+        manca_qty = round(max(0.0, req_qty - disp_in_req_unit), 3)
+        if not ok:
+            mancanti.append({
+                "id": ing.id,
+                "nome": ing.nome,
+                "categoria": ing.categoria,
+                "richiesto": req_qty,
+                "disponibile": disp_in_req_unit,
+                "manca": manca_qty,
+                "unita": ing.unita or "kg",
+            })
+
+        qty_aa_adj = None
+        if ing.categoria == "hop" and best_aa and best_aa > 0 and ing.alpha_acid and abs(best_aa - float(ing.alpha_acid)) >= 0.2:
+            qty_aa_adj = round(req_qty * (float(ing.alpha_acid) / best_aa), 1)
+            hop_aa_diffs.append({
+                "id": ing.id,
+                "nome": ing.nome,
+                "aa_ricetta": ing.alpha_acid,
+                "aa_lotto": best_aa,
+                "lotto": best_lotto,
+                "qty_attuale": req_qty,
+                "qty_consigliata": qty_aa_adj,
+                "unita": ing.unita or "g",
+            })
+
+        dettaglio[ing.id] = {
+            "disp": disp_in_req_unit,
+            "ok": ok,
+            "manca": manca_qty,
+            "aa_lotto": best_aa,
+            "lotto": best_lotto,
+            "qty_aa_adj": qty_aa_adj,
+        }
+
+    return {
+        "pronta": len(ingredienti_ric) > 0 and len(mancanti) == 0,
+        "tot_ing": len(ingredienti_ric),
+        "n_mancanti": len(mancanti),
+        "mancanti": mancanti,
+        "hop_aa_diffs": hop_aa_diffs,
+        "dettaglio": dettaglio,
+    }
+
+
 @router.get("/ricette")
 def redirect_ricette():
     return RedirectResponse("/ricette/html", status_code=303)
@@ -82,6 +170,7 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
     ricette = db.query(Ricetta).all()
     stili = db.query(Stile).order_by(Stile.linea_guida, Stile.nome).all()
     profili_preset = db.query(ProfiloAcquaPreset).order_by(ProfiloAcquaPreset.nome).all()
+    inv_items = db.query(InventarioItem).all()
 
     counts_q = (
         db.query(Cotta.ricetta_id, func.count(Cotta.id))
@@ -89,6 +178,10 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     cotte_count = {rid: cnt for rid, cnt in counts_q if rid is not None}
+
+    fattibilita_map = {}
+    for r in ricette:
+        fattibilita_map[r.id] = _calcola_fattibilita_ricetta(r.ingredienti or [], inv_items)
 
     return templates.TemplateResponse(
         request,
@@ -99,6 +192,7 @@ def lista_ricette(request: Request, db: Session = Depends(get_db)):
             "stili": stili,
             "profili_preset": profili_preset,
             "cotte_count": cotte_count,
+            "fattibilita_map": fattibilita_map,
             "mash_templates": MASH_TEMPLATES,
         },
     )
@@ -405,6 +499,8 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
         except Exception:
             fermentazione_steps = []
 
+    fattibilita = _calcola_fattibilita_ricetta(ingredienti, inventario_items)
+
     return templates.TemplateResponse(
         request,
         "dettaglio_ricetta.html",
@@ -435,6 +531,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
             "inventario_items": inventario_items,
             "profili_impianto": profili_impianto,
             "fermentazione_steps": fermentazione_steps,
+            "fattibilita": fattibilita,
         },
     )
 
@@ -1116,35 +1213,96 @@ def assegna_impianto(
 
 
 @router.post("/ricette/{ricetta_id}/scala")
-def scala_ricetta(
+async def scala_ricetta(
     ricetta_id: int,
-    nuovo_volume: float = Form(...),
-    nuova_efficienza: Optional[float] = Form(None),
-    nuova_og: Optional[float] = Form(None),
-    nuovi_ibu: Optional[float] = Form(None),
+    request: Request,
     db: Session = Depends(get_db),
 ):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
 
+    form = await request.form()
+    raw_vol = form.get("volume_target_litri") or form.get("nuovo_volume") or ricetta.volume_target_litri or 20.0
+    raw_eff = form.get("efficienza") or form.get("nuova_efficienza") or ricetta.efficienza or 75.0
+    raw_og = form.get("target_og") or form.get("nuova_og")
+    raw_ibu = form.get("target_ibu") or form.get("nuovi_ibu")
+    clona = form.get("clona") == "1"
+
     ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
     old_stats = calcola_stats(ricetta, ingredienti)
 
     old_vol = float(ricetta.volume_target_litri or 20.0)
     old_eff = float(ricetta.efficienza or 75.0)
-    new_vol = max(1.0, float(nuovo_volume))
-    new_eff = float(nuova_efficienza) if nuova_efficienza and float(nuova_efficienza) > 0 else old_eff
+    new_vol = max(1.0, float(str(raw_vol).replace(",", ".")))
+    new_eff = float(str(raw_eff).replace(",", ".")) if raw_eff else old_eff
 
     grain_factor = (new_vol / max(1.0, old_vol)) * (old_eff / max(1.0, new_eff))
-    if nuova_og and float(nuova_og) > 1.0 and old_stats.get("og", 1.0) > 1.0:
-        target_pts = (float(nuova_og) - 1.0) * 1000.0
-        current_pts = max(1.0, (old_stats["og"] - 1.0) * 1000.0)
-        grain_factor *= (target_pts / current_pts)
+    if raw_og and str(raw_og).strip():
+        try:
+            f_og = float(str(raw_og).replace(",", "."))
+            if f_og > 1.0 and old_stats.get("og", 1.0) > 1.0:
+                target_pts = (f_og - 1.0) * 1000.0
+                current_pts = max(1.0, (old_stats["og"] - 1.0) * 1000.0)
+                grain_factor *= (target_pts / current_pts)
+        except ValueError:
+            pass
 
-    target_ibu = float(nuovi_ibu) if nuovi_ibu and float(nuovi_ibu) > 0 else old_stats.get("ibu", 0.0)
+    target_ibu = old_stats.get("ibu", 0.0)
+    if raw_ibu and str(raw_ibu).strip():
+        try:
+            target_ibu = float(str(raw_ibu).replace(",", "."))
+        except ValueError:
+            pass
     current_ibu = max(0.1, old_stats.get("ibu", 0.0))
     hop_factor = (new_vol / max(1.0, old_vol)) * (target_ibu / current_ibu if current_ibu > 0 and target_ibu > 0 else 1.0)
+
+    if clona:
+        nuovo_cod = genera_prossimo_codice_ricetta(db)
+        nuova_ric = Ricetta(
+            codice=nuovo_cod,
+            nome=f"{ricetta.nome} ({int(new_vol) if new_vol.is_integer() else new_vol}L)",
+            tipo=ricetta.tipo,
+            volume_target_litri=round(new_vol, 1),
+            efficienza=round(new_eff, 1),
+            versione=(ricetta.versione or 1) + 1,
+            note=ricetta.note,
+            stile_id=ricetta.stile_id,
+            profilo_birrificio_id=ricetta.profilo_birrificio_id,
+            profilo_fermentazione_json=ricetta.profilo_fermentazione_json,
+        )
+        db.add(nuova_ric)
+        db.flush()
+        for i in ingredienti:
+            q_new = float(i.quantita or 0)
+            if i.categoria == "grain":
+                q_new = round(q_new * grain_factor, 3)
+            elif i.categoria == "hop":
+                q_new = round(q_new * hop_factor, 1)
+            db.add(IngredienteRicetta(
+                ricetta_id=nuova_ric.id,
+                codice_ingrediente=i.codice_ingrediente,
+                nome=i.nome,
+                categoria=i.categoria,
+                quantita=q_new,
+                unita=i.unita,
+                note=i.note,
+                time_min=i.time_min,
+                prezzo_unitario=i.prezzo_unitario,
+                fermentable_type=i.fermentable_type,
+                yield_percent=i.yield_percent,
+                color_srm=i.color_srm,
+                alpha_acid=i.alpha_acid,
+                hop_use=i.hop_use,
+                hop_form=i.hop_form,
+                attenuation=i.attenuation,
+                yeast_type=i.yeast_type,
+                yeast_form=i.yeast_form,
+                misc_type=i.misc_type,
+                misc_use=i.misc_use,
+            ))
+        db.commit()
+        return RedirectResponse(f"/ricette/{nuova_ric.id}", status_code=303)
 
     for i in ingredienti:
         if i.categoria == "grain" and i.quantita:
@@ -1158,22 +1316,86 @@ def scala_ricetta(
     return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
 
 
+@router.post("/ricette/{ricetta_id}/adatta-aa")
+def adatta_aa_luppoli(ricetta_id: int, db: Session = Depends(get_db)):
+    """Adatta automaticamente i grammi dei luppoli in ricetta in base agli Alfa Acidi dei lotti presenti in magazzino, mantenendo costanti gli IBU."""
+    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
+    if not ricetta:
+        return RedirectResponse("/ricette/html", status_code=303)
+    ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
+    inv_items = db.query(InventarioItem).all()
+    fatt = _calcola_fattibilita_ricetta(ingredienti, inv_items)
+    det = fatt.get("dettaglio", {})
+    for ing in ingredienti:
+        info = det.get(ing.id)
+        if ing.categoria == "hop" and info and info.get("qty_aa_adj") and info.get("aa_lotto"):
+            ing.quantita = info["qty_aa_adj"]
+            ing.alpha_acid = info["aa_lotto"]
+            if info.get("lotto"):
+                ing.numero_lotto = info["lotto"]
+    db.commit()
+    return RedirectResponse(f"/ricette/{ricetta_id}", status_code=303)
+
+
+@router.post("/ricette/{ricetta_id}/mancanti-lista-spesa")
+def aggiungi_mancanti_lista_spesa(ricetta_id: int, request: Request, db: Session = Depends(get_db)):
+    """Invia in 1 click tutti gli ingredienti mancanti per questa ricetta alla Lista della Spesa."""
+    from ..models import ListaAcquisti
+    ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
+    if not ricetta:
+        return RedirectResponse("/ricette/html", status_code=303)
+    ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta_id).all()
+    inv_items = db.query(InventarioItem).all()
+    fatt = _calcola_fattibilita_ricetta(ingredienti, inv_items)
+    uid = request.session.get("user_id")
+    for m in fatt.get("mancanti", []):
+        db.add(ListaAcquisti(
+            nome=m["nome"],
+            categoria="ingrediente",
+            quantita=m["manca"],
+            unita=m["unita"],
+            priorita=1,
+            note=f"Mancante per ricetta {ricetta.codice or ''} {ricetta.nome}".strip(),
+            completato=False,
+            user_id=uid if uid else None,
+        ))
+    db.commit()
+    return RedirectResponse("/lista-acquisti", status_code=303)
+
+
 @router.post("/ricette/{ricetta_id}/profilo-fermentazione")
-def salva_profilo_fermentazione(
+async def salva_profilo_fermentazione(
     ricetta_id: int,
-    steps_json: str = Form(...),
+    request: Request,
     db: Session = Depends(get_db),
 ):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
     if not ricetta:
         return RedirectResponse("/ricette/html", status_code=303)
-    try:
-        parsed = json.loads(steps_json)
-        ricetta.profilo_fermentazione_json = json.dumps(parsed)
-    except Exception:
-        ricetta.profilo_fermentazione_json = steps_json
+    form = await request.form()
+    steps_json = form.get("steps_json")
+    if steps_json:
+        try:
+            parsed = json.loads(steps_json)
+            ricetta.profilo_fermentazione_json = json.dumps(parsed)
+        except Exception:
+            ricetta.profilo_fermentazione_json = steps_json
+    else:
+        nomi = form.getlist("step_nome")
+        temps = form.getlist("step_temp")
+        giorni = form.getlist("step_giorni")
+        tipi = form.getlist("step_tipo")
+        steps = []
+        for idx, n in enumerate(nomi):
+            if not n.strip():
+                continue
+            t_val = _parse_temp(temps[idx] if idx < len(temps) else 19.0, 19.0)
+            g_val = _parse_durata(giorni[idx] if idx < len(giorni) else 7, 7)
+            tp_val = tipi[idx] if idx < len(tipi) else "primaria"
+            steps.append({"nome": n.strip(), "temp": t_val, "giorni": g_val, "tipo": tp_val})
+        ricetta.profilo_fermentazione_json = json.dumps(steps, ensure_ascii=False)
     db.commit()
-    return RedirectResponse(f"/ricette/{ricetta_id}#profilo-ferm", status_code=303)
+    return RedirectResponse(f"/ricette/{ricetta_id}#card-fermentazione-priming", status_code=303)
 
 
 @router.get("/ricette/{ricetta_id}/stampa", response_class=HTMLResponse)
