@@ -747,11 +747,18 @@
                         {% endfor %}
                     </div>
                 </div>
-                <form method="post" action="/ricette/{{ ricetta.id }}/mancanti-lista-spesa" style="margin:0;">
-                    <button type="submit" style="background:#d97706;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
-                        🛒 Invia {{ fattibilita.n_mancanti }} mancanti alla Lista Spesa
-                    </button>
-                </form>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <form method="post" action="/carrello/aggiungi-mancanti/{{ ricetta.id }}" style="margin:0;">
+                        <button type="submit" style="background:#10b981;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(16,185,129,0.3);">
+                            🛒 Acquista mancanti nel Carrello Dropshipping
+                        </button>
+                    </form>
+                    <form method="post" action="/ricette/{{ ricetta.id }}/mancanti-lista-spesa" style="margin:0;">
+                        <button type="submit" style="background:#d97706;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                            📝 Invia {{ fattibilita.n_mancanti }} alla Lista Spesa
+                        </button>
+                    </form>
+                </div>
             </div>
             {% endif %}
 

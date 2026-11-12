@@ -547,6 +547,10 @@ app.include_router(iot.router)
 app.include_router(procedure.router)
 app.include_router(saas_router.router)
 
+from .saas import configuratore_router
+app.include_router(configuratore_router.router)
+
+
 @app.get("/amministrazione", response_class=HTMLResponse)
 def amministrazione(request: Request):
     if request.session.get("ruolo") != "admin":

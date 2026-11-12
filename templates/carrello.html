@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Carrello Acquisti — Gestionale{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+  <div>
+    <h1 style="margin:0 0 4px 0;">🛒 Il tuo Carrello</h1>
+    <p style="color:var(--muted); margin:0; font-size:13px;">Consumabili da cotta e raccordi meccanici (Auto-BOM con garanzia di compatibilità).</p>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <a href="/configuratore" class="btn btn-ghost btn-sm">⚙️ Torna al Configuratore</a>
+    <a href="/ricette/html" class="btn btn-ghost btn-sm">🧪 Torna alle Ricette</a>
+  </div>
+</div>
+
+{% if msg %}
+<div style="background:rgba(63,185,80,0.12); border:1px solid #3fb950; color:#3fb950; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px;">
+  {{ msg }}
+</div>
+{% endif %}
+
+<!-- Banner Trasparenza Fornitori & Miglior Prezzo Garantito -->
+<div style="background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(6,182,212,0.12)); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+  <div>
+    <strong style="color:var(--amber); font-size:14px;">🛡️ Miglior Prezzo di Mercato Garantito</strong>
+    <p style="margin:2px 0 0 0; font-size:12px; color:var(--muted);">Componentistica inox 304/316 per alimenti e materie prime fresche selezionate direttamente dai produttori.</p>
+  </div>
+  <div style="font-size:12px; color:var(--text); background:var(--card); border:1px solid var(--border); padding:6px 12px; border-radius:6px;">
+    {% if cart.spedizione_gratuita %}
+      <span style="color:#3fb950; font-weight:700;">🚚 Spedizione Gratuita Sbloccata!</span>
+    {% else %}
+      <span>🚚 Spedizione gratuita da 59,00 € (mancano <strong>{{ '%.2f'|format(cart.mancante_spedizione if cart.mancante_spedizione is defined else 59.0) }} €</strong>)</span>
+    {% endif %}
+  </div>
+</div>
+
+{% if cart.articoli and cart.articoli|length > 0 %}
+<div class="card" style="padding:0; overflow-x:auto;">
+  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+    <thead>
+      <tr style="text-align:left; color:var(--muted); border-bottom:1px solid var(--border); background:rgba(255,255,255,0.02);">
+        <th style="padding:12px 16px;">Articolo</th>
+        <th style="padding:12px 10px;">Categoria</th>
+        <th style="padding:12px 10px; text-align:center;">Q.tà</th>
+        <th style="padding:12px 10px; text-align:right;">Prezzo Cad.</th>
+        <th style="padding:12px 10px; text-align:right;">Subtotale</th>
+        <th style="padding:12px 16px; text-align:center; width:40px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in cart.articoli %}
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px 16px;">
+          <strong>{{ it.nome }}</strong>
+          {% if it.dettagli %}<div style="font-size:11px; color:var(--muted); margin-top:2px;">{{ it.dettagli }}</div>{% endif %}
+          <div style="font-size:10px; color:var(--muted); font-family:monospace;">SKU: {{ it.sku }}</div>
+        </td>
+        <td style="padding:12px 10px; color:var(--muted);">{{ it.categoria }}</td>
+        <td style="padding:12px 10px; text-align:center; font-weight:600;">{{ it.qta }} {{ it.unita }}</td>
+        <td style="padding:12px 10px; text-align:right;">{{ "%.2f"|format(it.prezzo) }} €</td>
+        <td style="padding:12px 10px; text-align:right; font-weight:700; color:var(--text);">{{ "%.2f"|format(it.subtotale) }} €</td>
+        <td style="padding:12px 16px; text-align:center;">
+          <form method="post" action="/carrello/rimuovi/{{ it.sku }}" style="margin:0;">
+            <button type="submit" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px;" title="Rimuovi">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:rgba(255,255,255,0.02);">
+        <td colspan="4" style="padding:14px 16px; text-align:right; font-weight:600; font-size:14px;">Totale Carrello:</td>
+        <td style="padding:14px 10px; text-align:right; font-size:18px; font-weight:800; color:var(--amber);">{{ "%.2f"|format(cart.totale) }} €</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:18px;">
+  <form method="post" action="/carrello/svuota" onsubmit="return confirm('Svuotare tutti gli articoli?')">
+    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);">🗑️ Svuota Carrello</button>
+  </form>
+
+  <form method="post" action="/carrello/checkout">
+    <button type="submit" class="btn btn-primary" style="padding:12px 28px; font-size:15px; font-weight:700;">
+      Procedi all'Ordine Sicuro →
+    </button>
+  </form>
+</div>
+{% else %}
+<div class="empty" style="text-align:center; padding:48px 16px;">
+  <div style="font-size:48px; margin-bottom:12px;">🛒</div>
+  <h3>Il tuo carrello è vuoto</h3>
+  <p style="color:var(--muted); max-width:440px; margin:0 auto 18px auto;">
+    Puoi aggiungere gli ingredienti mancanti per le tue cotte con 1 clic ("La Cassa Continua") oppure progettare i raccordi del tuo impianto nel Configuratore.
+  </p>
+  <div style="display:flex; gap:10px; justify-content:center;">
+    <a href="/ricette/html" class="btn btn-primary">🧪 Esplora Ricette</a>
+    <a href="/configuratore" class="btn btn-ghost">⚙️ Apri Configuratore Impianto</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

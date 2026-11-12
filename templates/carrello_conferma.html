@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Conferma Ordine — Gestionale{% endblock %}
+
+{% block content %}
+<div style="max-width:680px; margin:0 auto;">
+  <a href="/carrello" class="btn btn-ghost btn-sm" style="margin-bottom:14px;">← Torna al Carrello</a>
+
+  <div class="card" style="padding:26px;">
+    <h2 style="margin:0 0 4px 0; color:var(--amber);">📦 Riepilogo e Spedizione Blind Dropshipping</h2>
+    <p style="font-size:13px; color:var(--muted); margin:0 0 18px 0;">Spedizione diretta con imballo anonimo a prova d'urto e corriere espresso tracciato 24/48h.</p>
+
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:18px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
+        <span>Articoli ordinati ({{ cart.articoli|length }} referenze):</span>
+        <strong>{{ "%.2f"|format(cart.totale) }} €</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
+        <span>Spedizione e imballaggio MOCA:</span>
+        <span style="color:{% if cart.spedizione_gratuita %}#3fb950{% else %}var(--text){% endif %}; font-weight:700;">
+          {% if cart.spedizione_gratuita %}GRATIS{% else %}6.90 €{% endif %}
+        </span>
+      </div>
+      <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border); padding-top:10px; font-size:16px;">
+        <strong>Totale da corrispondere:</strong>
+        <strong style="color:var(--amber);">
+          {{ "%.2f"|format(cart.totale + (0.0 if cart.spedizione_gratuita else 6.90)) }} €
+        </strong>
+      </div>
+    </div>
+
+    <!-- Modulo Indirizzo di Consegna -->
+    <form method="post" action="/carrello/svuota">
+      <h4 style="margin:0 0 10px 0; font-size:14px;">📍 Dati di Spedizione Destinatario</h4>
+      
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">Nome e Cognome / Referente Birrificio</label>
+        <input type="text" name="destinatario" value="{{ session.nome or '' }}" required style="width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">Indirizzo (Via / Piazza, Civico)</label>
+          <input type="text" name="indirizzo" placeholder="es. Via delle Brasse 42" required style="width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">CAP</label>
+          <input type="text" name="cap" placeholder="00100" required maxlength="5" style="width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+        <div>
+          <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">Città</label>
+          <input type="text" name="citta" placeholder="Roma" required style="width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">Telefono per il Corriere</label>
+          <input type="tel" name="telefono" placeholder="+39 333 1234567" required style="width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:12px; color:var(--muted); margin-bottom:16px; line-height:1.5;">
+        🔒 <strong>Fulfillment Diretto & Blind Packaging:</strong><br>
+        L'ordine viene inviato telematicamente tramite API al centro di smistamento logistico. Nessun logo o fattura interna del fornitore apparirà sul pacco esterno (imballo neutro). Riceverai il codice di tracciamento via email non appena affidato al corriere.
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-size:16px; font-weight:800;">
+        💳 Conferma e Invia Ordine di Acquisto
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
