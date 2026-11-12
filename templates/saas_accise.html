@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Accise UTF — Gestionale{% endblock %}
+{% block content %}
+<h1>🧾 Calcolo accise birra (UTF / ADM)</h1>
+<p style="color:var(--muted);margin-top:0;font-size:13px;">Formula: accisa = ettolitri × °Plato × aliquota × (1 − riduzione). °Plato calcolati dalla OG reale della cotta, oppure dal target della ricetta.</p>
+
+<form method="get" class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+  <div><label>Mese</label><input type="month" name="mese" value="{{ mese }}"></div>
+  <div><label>Aliquota €/hl·°P</label><input type="number" step="0.01" name="aliquota" value="{{ aliquota }}" style="width:110px;"></div>
+  <div><label>Riduzione microbirrificio</label>
+    <select name="riduzione">
+      {% for r, l in [(0,'Nessuna'),(20,'20% (30.001–60.000 hl/anno)'),(30,'30% (10.001–30.000 hl/anno)'),(40,'40% (≤ 10.000 hl/anno)')] %}
+      <option value="{{ r }}" {% if riduzione|int == r %}selected{% endif %}>{{ l }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary">Calcola</button>
+</form>
+
+<div class="card" style="margin-top:14px;overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="text-align:left;color:var(--muted);"><th>Cotta</th><th>Data</th><th>Litri</th><th>°Plato</th><th style="text-align:right;">Accisa €</th></tr></thead>
+    <tbody>
+    {% for r in righe %}
+      <tr style="border-top:1px solid var(--border);">
+        <td><a href="/cotte/{{ r.c.id }}">{{ r.c.codice or '' }} {{ r.c.nome }}</a></td>
+        <td>{{ r.c.data_brew or '—' }}</td>
+        <td>{{ '%.1f'|format(r.litri) if r.litri else '—' }}</td>
+        <td>{{ r.plato if r.plato is not none else '⚠️ OG mancante' }}</td>
+        <td style="text-align:right;">{{ '%.2f'|format(r.accisa) if r.accisa is not none else '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" style="padding:14px;color:var(--muted);">Nessuna cotta nel mese selezionato.</td></tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr style="border-top:2px solid var(--amber);font-weight:700;"><td colspan="2">Totale</td><td>{{ '%.2f'|format(tot_hl) }} hl</td><td></td><td style="text-align:right;color:var(--amber);">{{ '%.2f'|format(tot_acc) }} €</td></tr></tfoot>
+  </table>
+</div>
+<p style="font-size:11px;color:var(--muted);margin-top:10px;">⚠️ Strumento di supporto: verifica sempre aliquote e riduzioni in vigore (D.Lgs. 504/1995, art. 35) con l'Agenzia delle Dogane e dei Monopoli. La produzione domestica per consumo personale, senza vendita, è esente da accisa.</p>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Abbonamento — Gestionale{% endblock %}
+{% block content %}
+<style>
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:16px 0;}
+  .plan{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;}
+  .plan.attuale{border-color:var(--green);box-shadow:0 0 0 1px var(--green);}
+  .plan.evid{border-color:var(--amber);box-shadow:0 0 24px rgba(245,158,11,.15);}
+  .plan h3{margin:0 0 4px;font-size:17px;}
+  .price{font-size:26px;font-weight:800;color:var(--amber);}
+  .price small{font-size:12px;color:var(--muted);font-weight:400;}
+  .plan ul{padding-left:18px;font-size:13px;line-height:1.8;flex:1;color:var(--text);}
+  .msg{padding:12px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;}
+  .msg-ok{background:rgba(63,185,80,.12);border:1px solid var(--green);color:var(--green);}
+  .msg-warn{background:rgba(245,158,11,.12);border:1px solid var(--amber);color:var(--amber);}
+  .msg-err{background:rgba(248,81,73,.12);border:1px solid var(--red);color:var(--red);}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;}
+  .modal{background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:26px;max-width:440px;text-align:center;}
+</style>
+
+<h1 style="margin-bottom:4px;">💳 Il tuo piano</h1>
+<p style="color:var(--muted);margin-top:0;">{{ tenant.nome if tenant else '' }}</p>
+
+{% if esito == 'ok' %}<div class="msg msg-ok">✅ Pagamento ricevuto! Il piano si aggiorna entro pochi secondi (ricarica la pagina).</div>{% endif %}
+{% if esito == 'annullato' %}<div class="msg msg-warn">Pagamento annullato: nessun addebito effettuato.</div>{% endif %}
+{% if esito == 'non_attivo' %}<div class="msg msg-warn">I pagamenti online sono in fase di attivazione. Riprova a breve.</div>{% endif %}
+{% if esito == 'consenso' %}<div class="msg msg-err">Per procedere devi accettare i Termini di Servizio.</div>{% endif %}
+{% if esito == 'errore' %}<div class="msg msg-err">Errore di comunicazione con il sistema di pagamento. Riprova.</div>{% endif %}
+{% if esito == 'solo_admin' %}<div class="msg msg-err">Solo l'amministratore dell'account può gestire l'abbonamento.</div>{% endif %}
+{% if esito == 'token' %}<div class="msg msg-ok">Nuovo token IoT generato. Aggiornalo sui tuoi densimetri.</div>{% endif %}
+{% if richiesto == 'b2b' %}<div class="msg msg-warn">🔒 Tracciabilità HACCP, Procedure SOP e Accise UTF sono incluse nel piano <strong>B2B Microbirrificio</strong>.</div>{% endif %}
+
+{% if is_platform %}
+  <div class="card"><strong>🏆 Account Fondatore</strong> — tutte le funzioni sbloccate a vita, nessun abbonamento necessario.</div>
+{% else %}
+  <div class="card" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center;">
+    <div>
+      Piano attuale: <strong style="color:var(--green);">{{ piani[tenant.piano].nome if tenant and tenant.piano in piani else 'Free' }}</strong>
+      {% if tenant and tenant.scadenza %} · rinnovo/scadenza: {{ tenant.scadenza }}{% endif %}
+      {% if tenant and tenant.stato_abbonamento == 'past_due' %}<span style="color:var(--red);"> · ⚠️ pagamento non riuscito: aggiorna il metodo di pagamento</span>{% endif %}
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Ricette: {{ n_ricette }}{% if tenant and tenant.piano == 'free' %} / {{ max_free }}{% endif %}</div>
+    </div>
+    {% if tenant and tenant.stripe_customer_id %}
+    <form method="post" action="/abbonamento/portale"><button class="btn btn-ghost">⚙️ Gestisci / disdici abbonamento</button></form>
+    {% endif %}
+  </div>
+
+  <div class="plans">
+    <div class="plan {% if tenant and tenant.piano == 'free' %}attuale{% endif %}">
+      <h3>Free</h3><div class="price">0 € <small>per sempre</small></div>
+      <ul><li>Fino a {{ max_free }} ricette</li><li>Cotte, diario, grafici fermentazione</li><li>Magazzino e import/export BeerXML</li><li>App installabile su smartphone</li></ul>
+      {% if tenant and tenant.piano == 'free' %}<div style="color:var(--green);font-weight:700;">✓ Piano attuale</div>{% endif %}
+    </div>
+    {% for code in ['pro', 'b2b'] %}{% set p = piani[code] %}
+    <div class="plan {% if tenant and tenant.piano == code %}attuale{% elif code == 'pro' %}evid{% endif %}">
+      <h3>{{ p.nome }}</h3><div class="price">{{ p.prezzo }} <small>{{ p.periodo }}</small></div>
+      {% if code == 'pro' %}
+      <ul><li><strong>Ricette illimitate</strong></li><li>Tutto il piano Free</li><li>Prossimamente: Auto-BOM e configuratore impianto</li></ul>
+      {% else %}
+      <ul><li>Tutto il piano Pro</li><li><strong>Tracciabilità lotti HACCP</strong></li><li><strong>Procedure operative SOP</strong></li><li><strong>Calcolo accise UTF</strong></li></ul>
+      {% endif %}
+      {% if tenant and tenant.piano == code %}
+        <div style="color:var(--green);font-weight:700;">✓ Piano attuale</div>
+      {% elif session.ruolo == 'admin' %}
+        <form method="post" action="/abbonamento/checkout">
+          <input type="hidden" name="piano" value="{{ code }}">
+          <label style="display:flex;gap:6px;font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:none;letter-spacing:0;">
+            <input type="checkbox" name="accetto_termini" value="1" required>
+            <span>Accetto i <a href="/termini" target="_blank">Termini</a>. Abbonamento con rinnovo automatico, disdicibile in qualsiasi momento; rimborso integrale entro 14 giorni.</span>
+          </label>
+          <button class="btn btn-primary" style="width:100%;" {% if not stripe_ok %}disabled title="Pagamenti in attivazione"{% endif %}>
+            {% if stripe_ok %}Passa a {{ p.nome }} →{% else %}Pagamenti in attivazione{% endif %}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <p style="font-size:11px;color:var(--muted);">Prezzi IVA inclusa. Pagamento sicuro tramite Stripe: i dati della carta non transitano sui nostri server. Fattura/ricevuta inviata via email.</p>
+
+  {% if tenant %}
+  <div class="card" style="margin-top:16px;">
+    <h3 style="margin-top:0;">📡 Token densimetri IoT (iSpindel / Tilt / RAPT)</h3>
+    <p style="font-size:13px;color:var(--muted);">Aggiungi <code>?token=…</code> all'URL del webhook mostrato nella scheda cotta.</p>
+    <code style="display:block;padding:10px;background:var(--bg);border-radius:6px;word-break:break-all;color:#38bdf8;">{{ tenant.iot_token or '—' }}</code>
+    {% if session.ruolo == 'admin' %}
+    <form method="post" action="/abbonamento/iot-token" style="margin-top:8px;" onsubmit="return confirm('Rigenerare il token? I dispositivi andranno riconfigurati.')"><button class="btn btn-ghost btn-sm">🔄 Rigenera token</button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endif %}
+
+{% if limite == 'ricette' %}
+<div class="modal-bg" id="modal-limite" onclick="if(event.target===this)this.remove()">
+  <div class="modal">
+    <div style="font-size:44px;">🚀</div>
+    <h2 style="color:var(--amber);margin:8px 0;">Hai raggiunto {{ max_free }} ricette</h2>
+    <p style="font-size:14px;">Il piano Free include fino a {{ max_free }} ricette. Con <strong>Pro a 14,90 €/anno</strong> (meno di 1,25 € al mese) hai ricette illimitate.</p>
+    {% if stripe_ok and session.ruolo == 'admin' %}
+    <form method="post" action="/abbonamento/checkout">
+      <input type="hidden" name="piano" value="pro">
+      <label style="display:flex;gap:6px;font-size:11px;color:var(--muted);margin:10px 0;text-align:left;text-transform:none;letter-spacing:0;"><input type="checkbox" name="accetto_termini" value="1" required><span>Accetto i <a href="/termini" target="_blank">Termini</a> (rinnovo annuale automatico, disdici quando vuoi, rimborso entro 14 giorni)</span></label>
+      <button class="btn btn-primary" style="width:100%;padding:12px;">Passa a Pro →</button>
+    </form>
+    {% else %}
+    <p style="font-size:12px;color:var(--muted);">I pagamenti online sono in attivazione.</p>
+    {% endif %}
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px;" onclick="document.getElementById('modal-limite').remove()">Non ora</button>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

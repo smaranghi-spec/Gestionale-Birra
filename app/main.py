@@ -17,6 +17,10 @@ from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
 from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard, iot, procedure
 
+# ── MODULO SaaS (multi-tenancy additiva, deve precedere create_all) ──────────
+from .saas import tenancy as saas_tenancy
+saas_tenancy.install()
+
 Base.metadata.create_all(bind=engine)
 
 templates = Jinja2Templates(directory="templates")
@@ -197,6 +201,7 @@ def run_migrations():
 
 
 run_migrations()
+saas_tenancy.migrate()
 
 
 def auto_seed_data():
@@ -356,7 +361,8 @@ assegna_codici_retroattivi()
 
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
-EXEMPT = ("/login", "/register", "/birre", "/debug/version", "/api/iot", "/static", "/recupera-password")
+EXEMPT = ("/login", "/register", "/birre", "/debug/version", "/api/iot", "/static", "/recupera-password",
+          "/signup", "/termini", "/privacy", "/stripe/webhook", "/manifest.webmanifest", "/sw.js", "/offline")
 READ_ONLY_PATHS = ("/", "/ricette/html", "/ricette/libreria", "/cotte", "/stili", "/catalogo",
                    "/strumenti", "/profili-acqua", "/prezzi", "/impianto",
                    "/tracciabilita", "/inventario", "/procedure")
@@ -409,6 +415,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # ── APP ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Gestionale Birrificio")
+
+from .saas.middleware import TenantMiddleware
+from .saas import router as saas_router
+from fastapi.staticfiles import StaticFiles
+
+os.makedirs("static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.add_middleware(TenantMiddleware)   # interno: richiede la sessione
 app.add_middleware(AuthMiddleware)
 app.add_middleware(
     SessionMiddleware,
@@ -467,6 +482,25 @@ a:hover {{ text-decoration: underline; }}
     )
 
 
+@app.exception_handler(saas_tenancy.PaywallLimit)
+async def paywall_handler(request: Request, exc: saas_tenancy.PaywallLimit):
+    if request.url.path.startswith("/api/"):
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "limite_piano", "motivo": exc.motivo,
+                             "upgrade_url": f"/abbonamento?limite={exc.motivo}"}, status_code=402)
+    return RedirectResponse(f"/abbonamento?limite={exc.motivo}", status_code=303)
+
+
+@app.exception_handler(saas_tenancy.TenantWriteForbidden)
+async def tenant_write_handler(request: Request, exc: saas_tenancy.TenantWriteForbidden):
+    return HTMLResponse(
+        '<html><body style="background:#0d1117;color:#e6edf3;font-family:sans-serif;display:flex;align-items:center;'
+        'justify-content:center;height:100vh;text-align:center;"><div><div style="font-size:48px;">🔒</div>'
+        '<h2>Elemento condiviso</h2><p style="color:#8b949e;">Questo elemento fa parte del catalogo comune e non può '
+        'essere modificato.<br>Puoi crearne una copia personale.</p><a href="javascript:history.back()" '
+        'style="color:#f59e0b;">← Indietro</a></div></body></html>', status_code=403)
+
+
 @app.get("/debug/version")
 def debug_version():
     return {
@@ -511,6 +545,7 @@ app.include_router(api_notifiche.router)
 app.include_router(dashboard.router)
 app.include_router(iot.router)
 app.include_router(procedure.router)
+app.include_router(saas_router.router)
 
 @app.get("/amministrazione", response_class=HTMLResponse)
 def amministrazione(request: Request):

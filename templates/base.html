@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}Gestionale Birrificio{% endblock %}</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
   <style>
     :root {
       --bg: #0d1117;
@@ -441,6 +446,7 @@
         <a href="/diventa-socio" class="btn btn-primary" style="padding:5px 12px;font-size:12px;">✦ Diventa Socio</a>
       {% endif %}
       {% if session and session.user_id and session.ruolo != 'ospite' %}
+        <a href="/abbonamento" id="badge-piano" class="btn-logout" title="Il tuo piano" style="font-size:12px;">💳 Piano</a>
         <a href="/cambia-password" class="btn-logout" title="Cambia la tua password" style="font-size:12px;">🔒 Password</a>
       {% endif %}
       <a href="/logout" class="btn-logout">Esci</a>
@@ -490,6 +496,7 @@
   <a href="/birre" target="_blank" onclick="closeMM()">🌐 Pagina Pub</a>
   {% if session and session.user_id and session.ruolo != 'ospite' %}
   <div class="mobile-section">Il tuo account</div>
+  <a href="/abbonamento" onclick="closeMM()">💳 Piano e abbonamento</a>
   <a href="/cambia-password" onclick="closeMM()">🔒 Cambia password</a>
   {% if session.ruolo == 'birraio' %}
   <a href="/diventa-socio" onclick="closeMM()" style="color:var(--amber);font-weight:700;">✦ Diventa Socio</a>
@@ -591,6 +598,44 @@ async function caricaNotifiche() {
   } catch(e) { console.error('Errore caricamento notifiche'); }
 }
 document.addEventListener('DOMContentLoaded', caricaNotifiche);
+
+// ── PWA: installazione come app ───────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {}));
+}
+
+// ── SaaS: badge piano + limite ricette (modale prima dell'invio) ──
+let saasStato = null;
+async function caricaStatoSaas() {
+  try {
+    const r = await fetch('/saas/stato', { headers: { 'Accept': 'application/json' } });
+    if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) return;
+    saasStato = await r.json();
+    const b = document.getElementById('badge-piano');
+    if (b && saasStato.autenticato) {
+      b.textContent = '💳 ' + saasStato.piano_nome + (saasStato.max_ricette ? ` (${saasStato.n_ricette}/${saasStato.max_ricette})` : '');
+      if (saasStato.limite_raggiunto) { b.style.color = 'var(--amber)'; b.style.borderColor = 'var(--amber)'; }
+    }
+  } catch (e) {}
+}
+document.addEventListener('DOMContentLoaded', caricaStatoSaas);
+const SAAS_CREA_RICETTA = /\/ricette\/(nuova|crea|importa|.*\/clona|.*\/duplica)|\/importa|libreria\/importa/;
+function saasBloccaSeLimite(ev, url) {
+  if (saasStato && saasStato.limite_raggiunto && SAAS_CREA_RICETTA.test(url || '')) {
+    ev.preventDefault(); ev.stopPropagation();
+    window.location.href = '/abbonamento?limite=ricette';
+    return true;
+  }
+  return false;
+}
+document.addEventListener('click', (ev) => {
+  const a = ev.target.closest && ev.target.closest('a[href]');
+  if (a) saasBloccaSeLimite(ev, a.getAttribute('href'));
+}, true);
+document.addEventListener('submit', (ev) => {
+  const f = ev.target;
+  if (f && f.getAttribute) saasBloccaSeLimite(ev, f.getAttribute('action'));
+}, true);
 </script>
 
 <div class="page">

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Informativa Privacy — {{ legal.nome_servizio }}</title>
+  <style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;background:#0d1117;color:#e6edf3;line-height:1.65;}
+    .doc{max-width:820px;margin:0 auto;padding:28px 20px 60px;}
+    h1{color:#f59e0b;font-size:24px;} h2{font-size:16px;margin-top:26px;color:#f59e0b;}
+    p,li,td,th{font-size:14px;color:#c9d1d9;} a{color:#f59e0b;}
+    table{border-collapse:collapse;width:100%;} td,th{border:1px solid #30363d;padding:6px 8px;text-align:left;vertical-align:top;}
+  </style>
+</head>
+<body><div class="doc">
+<a href="javascript:history.back()">← Indietro</a>
+<h1>Informativa sul trattamento dei dati personali</h1>
+<p>Ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 (GDPR) — versione {{ legal.versione }}</p>
+
+<h2>1. Titolare del trattamento</h2>
+<p>{{ legal.ragione_sociale }}, P.IVA {{ legal.piva }}, {{ legal.sede }} — email: {{ legal.email }}.</p>
+
+<h2>2. Dati trattati, finalità e basi giuridiche</h2>
+<table>
+  <tr><th>Dati</th><th>Finalità</th><th>Base giuridica</th><th>Conservazione</th></tr>
+  <tr><td>Nome birrificio, email, username, password (salvata solo in forma cifrata con bcrypt)</td><td>Creazione e gestione dell'account</td><td>Esecuzione del contratto (art. 6.1.b)</td><td>Fino alla chiusura dell'account + 30 giorni</td></tr>
+  <tr><td>Contenuti inseriti (ricette, cotte, magazzino, letture dei sensori)</td><td>Erogazione del Servizio</td><td>Esecuzione del contratto</td><td>Fino alla chiusura dell'account + 30 giorni</td></tr>
+  <tr><td>Dati di fatturazione (nome, indirizzo, P.IVA), stato dell'abbonamento</td><td>Pagamenti e adempimenti fiscali</td><td>Obbligo di legge (art. 6.1.c)</td><td>10 anni (art. 2220 c.c.)</td></tr>
+  <tr><td>Indirizzo IP e log tecnici</td><td>Sicurezza, prevenzione di abusi e accessi non autorizzati</td><td>Legittimo interesse (art. 6.1.f)</td><td>Massimo 90 giorni</td></tr>
+</table>
+<p>Non effettuiamo profilazione né marketing senza il tuo consenso esplicito, e non vendiamo i dati a terzi.</p>
+
+<h2>3. Pagamenti</h2>
+<p>I pagamenti sono gestiti da Stripe Payments Europe Ltd. (Irlanda), che agisce come titolare autonomo per i dati della carta. Il Titolare non riceve né conserva i numeri delle carte.</p>
+
+<h2>4. Responsabili del trattamento e trasferimenti</h2>
+<ul>
+  <li><strong>Render Services Inc.</strong>: hosting dell'applicazione</li>
+  <li><strong>Supabase Inc.</strong>: database</li>
+  <li><strong>Stripe</strong>: pagamenti e fatturazione</li>
+</ul>
+<p>Se i dati vengono trasferiti fuori dallo Spazio Economico Europeo, ciò avviene sulla base del EU-US Data Privacy Framework o delle Clausole Contrattuali Standard della Commissione Europea (art. 46 GDPR).</p>
+
+<h2>5. Cookie</h2>
+<p>Il Servizio usa un solo cookie tecnico di sessione, necessario per l'autenticazione: per questo, secondo le Linee guida del Garante (2021), non serve un banner di consenso. Non utilizziamo cookie di profilazione né strumenti di analisi di terze parti.</p>
+
+<h2>6. I tuoi diritti</h2>
+<p>Puoi esercitare in qualsiasi momento i diritti di accesso, rettifica, cancellazione, limitazione, portabilità e opposizione (artt. 15–22 GDPR) scrivendo a {{ legal.email }}. Hai inoltre diritto di proporre reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).</p>
+
+<h2>7. Natura del conferimento</h2>
+<p>I dati di registrazione sono necessari per fornire il Servizio: senza di essi non è possibile creare l'account.</p>
+</div></body></html>

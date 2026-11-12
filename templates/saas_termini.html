@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Termini di Servizio — {{ legal.nome_servizio }}</title>
+  <style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;background:#0d1117;color:#e6edf3;line-height:1.65;}
+    .doc{max-width:820px;margin:0 auto;padding:28px 20px 60px;}
+    h1{color:#f59e0b;font-size:24px;} h2{font-size:16px;margin-top:26px;color:#f59e0b;}
+    p,li{font-size:14px;color:#c9d1d9;} a{color:#f59e0b;}
+    .warn{background:rgba(245,158,11,.12);border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:13px;}
+  </style>
+</head>
+<body><div class="doc">
+<a href="javascript:history.back()">← Indietro</a>
+<h1>Termini e Condizioni di Servizio</h1>
+<p>Versione {{ legal.versione }}</p>
+{% if not legal.configurato %}<p class="warn">⚠️ Dati del titolare non ancora configurati (variabili LEGAL_*).</p>{% endif %}
+
+<h2>1. Fornitore del servizio</h2>
+<p>Il servizio software "{{ legal.nome_servizio }}" (il "Servizio") è fornito da <strong>{{ legal.ragione_sociale }}</strong>, P.IVA {{ legal.piva }}, sede {{ legal.sede }}, email {{ legal.email }}{% if legal.pec != '[da compilare]' %}, PEC {{ legal.pec }}{% endif %} (il "Fornitore").</p>
+
+<h2>2. Oggetto</h2>
+<p>Il Servizio è un'applicazione web per la pianificazione e la gestione della produzione di birra (ricette, cotte, magazzino, tracciabilità), accessibile via browser e installabile come app (PWA). L'utente ("Cliente") può essere un consumatore (homebrewer) o un professionista/impresa (microbirrificio).</p>
+
+<h2>3. Account</h2>
+<p>La registrazione è riservata a persone maggiorenni. Il Cliente è responsabile della riservatezza delle credenziali e delle attività svolte con il proprio account, e garantisce che i dati forniti siano veritieri.</p>
+
+<h2>4. Piani e prezzi</h2>
+<ul>
+  <li><strong>Free</strong>: gratuito, fino a {{ max_free }} ricette.</li>
+  <li><strong>Pro</strong>: {{ piani.pro.prezzo }} {{ piani.pro.periodo }}, ricette illimitate.</li>
+  <li><strong>B2B Microbirrificio</strong>: {{ piani.b2b.prezzo }} {{ piani.b2b.periodo }}, include tracciabilità HACCP, procedure SOP e calcolo accise.</li>
+</ul>
+<p>I prezzi sono comprensivi di IVA. Il pagamento avviene tramite Stripe Payments Europe Ltd.; il Fornitore non conserva i dati della carta. Eventuali variazioni di prezzo saranno comunicate via email con almeno 30 giorni di preavviso e si applicheranno dal rinnovo successivo; il Cliente può disdire prima che diventino efficaci.</p>
+
+<h2>5. Rinnovo automatico e disdetta</h2>
+<p>Gli abbonamenti a pagamento si rinnovano automaticamente alla scadenza del periodo (annuale per Pro, mensile per B2B) salvo disdetta. Il Cliente può disdire in qualsiasi momento, senza penali, dalla pagina "Abbonamento" → "Gestisci / disdici abbonamento": il piano resta attivo fino alla fine del periodo già pagato, poi l'account torna al piano Free senza perdita dei dati.</p>
+
+<h2>6. Diritto di recesso e garanzia di rimborso</h2>
+<p>Il Cliente consumatore ha diritto di recedere entro 14 giorni dalla sottoscrizione (artt. 52 e seguenti del Codice del Consumo) senza dover fornire alcuna motivazione. Il Fornitore estende tale garanzia a tutti i Clienti, anche professionali: entro 14 giorni dal primo pagamento e da ogni rinnovo annuale si ha diritto al <strong>rimborso integrale</strong>, scrivendo a {{ legal.email }}. Il rimborso avviene con lo stesso mezzo di pagamento entro 14 giorni dalla richiesta.</p>
+
+<h2>7. Natura dei calcoli</h2>
+<p>I calcoli forniti dal Servizio (OG/FG, ABV, IBU, colore, volumi, priming, scalatura ricette, accise, ecc.) sono stime basate su formule standard del settore e sui dati inseriti dal Cliente. Hanno valore di supporto e non sostituiscono le verifiche del Cliente né la consulenza di professionisti. In particolare il calcolo delle accise è indicativo: aliquote e riduzioni devono essere verificate con la normativa vigente e con l'Agenzia delle Dogane e dei Monopoli; il Cliente resta l'unico responsabile degli adempimenti fiscali, sanitari (HACCP) e di etichettatura.</p>
+
+<h2>8. Uso lecito</h2>
+<p>La produzione domestica di birra per consumo personale e familiare, senza vendita, è esente da accisa (D.Lgs. 504/1995). La vendita di birra richiede le autorizzazioni previste dalla legge, che il Servizio non sostituisce. È vietato usare il Servizio per attività illecite, tentare di accedere ai dati di altri clienti o comprometterne la sicurezza.</p>
+
+<h2>9. Dati del Cliente</h2>
+<p>I contenuti inseriti (ricette, cotte, magazzino) restano di proprietà del Cliente. Ogni account è logicamente isolato dagli altri. Il Cliente può esportare le proprie ricette in formato BeerXML in qualsiasi momento. Alla chiusura dell'account i dati vengono cancellati entro 30 giorni, salvo obblighi di legge (es. dati di fatturazione).</p>
+
+<h2>10. Disponibilità e responsabilità</h2>
+<p>Il Fornitore si impegna a garantire la continuità del Servizio con la diligenza professionale, ma non può garantire l'assenza di interruzioni dovute a manutenzione o a cause non imputabili. Salvo i casi di dolo o colpa grave e i diritti inderogabili dei consumatori, la responsabilità del Fornitore è limitata all'importo pagato dal Cliente nei 12 mesi precedenti l'evento.</p>
+
+<h2>11. Modifiche dei Termini</h2>
+<p>Eventuali modifiche sostanziali saranno comunicate via email o nell'app con almeno 30 giorni di preavviso; il Cliente che non le accetta può disdire senza costi.</p>
+
+<h2>12. Legge applicabile e foro</h2>
+<p>Si applica la legge italiana. Per i consumatori è competente il foro del luogo di residenza o domicilio del consumatore; per i professionisti il foro della sede del Fornitore. Reclami: {{ legal.email }}.</p>
+</div></body></html>

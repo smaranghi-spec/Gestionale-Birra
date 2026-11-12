@@ -1,0 +1,21 @@
+{
+  "name": "Gestionale Birrificio",
+  "short_name": "Birrificio",
+  "description": "Ricette, cotte, fermentazione e magazzino per homebrewer e microbirrifici",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "lang": "it",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Cotte", "url": "/cotte" },
+    { "name": "Ricette", "url": "/ricette/html" },
+    { "name": "Inventario", "url": "/inventario" }
+  ]
+}
