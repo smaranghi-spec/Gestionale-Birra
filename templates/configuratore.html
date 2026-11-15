@@ -1,687 +1,1614 @@
-{% extends "base.html" %}
-{% block title %}Configuratore Impianti & Retrofit Auto-BOM{% endblock %}
-
-{% block extra_style %}
-<style>
-  .cfg-container { display: flex; gap: 20px; align-items: stretch; margin-top: 14px; }
-  .cfg-panel { flex: 1; min-width: 340px; }
-  .cfg-viewport { flex: 1.3; min-height: 520px; background: #070a0f; border: 1px solid var(--border); border-radius: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-  .canvas-container { width: 100%; height: 100%; min-height: 480px; }
-  .cfg-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 18px; }
-  .cfg-tab-btn { padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); cursor: pointer; font-weight: 600; font-size: 13px; transition: all .15s; }
-  .cfg-tab-btn.active { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
-  .step-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; transition: border-color .15s; }
-  .step-card:hover { border-color: rgba(245, 158, 11, 0.4); }
-  .step-badge { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--amber); color: #000; font-weight: 800; font-size: 12px; align-items: center; justify-content: center; margin-right: 8px; }
-  .opt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
-  .opt-choice { border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; text-align: center; cursor: pointer; background: var(--panel); font-size: 12px; transition: all .15s; }
-  .opt-choice:hover { border-color: var(--amber); }
-  .opt-choice.selected { border-color: var(--amber); background: var(--amber-dim); color: var(--amber); font-weight: 700; box-shadow: 0 0 12px rgba(245, 158, 11, 0.2); }
-  .bom-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-  .bom-table th, .bom-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
-  .bom-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
-  .hud-badge { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(13, 17, 23, 0.85); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 11px; color: #38bdf8; font-family: monospace; }
-  .hud-controls { position: absolute; bottom: 12px; right: 12px; z-index: 10; background: rgba(13, 17, 23, 0.85); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--muted); }
-  .pulse-legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 8px; }
-  .dot-pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0.4; transform: scale(0.9); } }
-
-  /* Graceful Degradation: su schermi mobile < 768px nasconde il Three.js WebGL per risparmiare risorse */
-  @media (max-width: 768px) {
-    .cfg-container { flex-direction: column; }
-    .cfg-viewport { display: none; }
-    .mobile-viz-card { display: block !important; }
-  }
-  .mobile-viz-card { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px; text-align: center; }
-</style>
-{% endblock %}
+{% extends "layout.html" %}
 
 {% block content %}
-<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+<style>
+  .cad-workspace {
+    display: grid;
+    grid-template-columns: 470px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 1150px) {
+    .cad-workspace {
+      grid-template-columns: 1fr;
+    }
+  }
+  .cad-sidebar {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    max-height: 86vh;
+    overflow-y: auto;
+  }
+  .cad-section {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+    background: var(--bg-color);
+  }
+  .cad-section-title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-color);
+  }
+  .part-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 9px 11px;
+    margin-bottom: 7px;
+    background: var(--card-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.15s ease;
+  }
+  .part-card:hover {
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+  }
+  .node-pill {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 0.84rem;
+    transition: all 0.15s;
+  }
+  .node-pill.active {
+    border: 2px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+  .suggestion-card {
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 11px;
+    margin-bottom: 9px;
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .suggestion-card:hover {
+    border-color: #38bdf8;
+  }
+  .suggestion-card.selected {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.07);
+  }
+  .cat-chip {
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .cat-chip.active {
+    background: #f59e0b;
+    color: #111827;
+    border-color: #f59e0b;
+  }
+  .port-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(56, 189, 248, 0.15);
+    color: #0284c7;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    margin-right: 4px;
+    margin-top: 3px;
+  }
+</style>
+
+<div style="margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
   <div>
-    <h1 style="margin:0 0 4px 0; font-size:24px;">⚙️ Brewery Builder & Retrofit Engine</h1>
-    <p style="color:var(--muted); margin:0; font-size:14px;">Configura l'impianto ideale o risolvi nodi e raccordi meccanici (Auto-BOM con garanzia di compatibilità).</p>
+    <span style="background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; padding: 3px 10px; border-radius: 99px; font-size: 0.73rem; font-weight: 800; text-transform: uppercase;">
+      CAD 3D Modulare Libero + Motore Raccordi Intelligente
+    </span>
+    <h1 style="margin: 6px 0 2px 0; font-size: 1.65rem;">🛠️ Studio Impianto 3D Flessibile & Smart Connector</h1>
+    <p style="color: var(--muted-color); margin: 0; font-size: 0.9rem;">
+      Cerca qualsiasi pezzo presente sul web (o importalo tramite URL/specifiche), posizionalo liberamente nello spazio 3D e collegalo con i raccordi suggeriti dal sistema.
+    </p>
   </div>
-  <a href="/carrello" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
-    🛒 Vai al Carrello (<span id="cart-counter">{{ session.saas_cart.totale_pezzi if session.saas_cart else 0 }}</span> pz)
-  </a>
+  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <a href="/impianto" class="btn-secondary" style="text-decoration: none; padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 0.85rem;">
+      ⚙️ Profili Idraulici
+    </a>
+    <a href="/carrello" class="btn-primary" style="text-decoration: none; padding: 9px 16px; border-radius: 8px; font-weight: 700; display: flex; align-items: center; gap: 6px; font-size: 0.88rem;">
+      🛒 Carrello Dropshipping
+    </a>
+  </div>
 </div>
 
-<div class="cfg-tabs">
-  <button class="cfg-tab-btn {% if tab_attiva == 'builder' %}active{% endif %}" onclick="switchCfgTab('builder', this)">🏗️ Brewery Builder (Ex-Novo)</button>
-  <button class="cfg-tab-btn {% if tab_attiva == 'retrofit' %}active{% endif %}" onclick="switchCfgTab('retrofit', this)">⚡ Retrofit Engine (Auto-BOM)</button>
-</div>
+<div class="cad-workspace">
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- COLONNA SINISTRA: RICERCA WEB, ISPETTORE SPAZIALE E SMART CONNECTOR    -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div class="cad-sidebar">
 
-<!-- Mobile Friendly Summary Card (visibile solo < 768px) -->
-<div class="mobile-viz-card">
-  <div style="font-size:32px; margin-bottom:6px;">📱</div>
-  <div style="font-weight:700; color:var(--amber); font-size:14px;">Modalità Mobile Wizard Attiva</div>
-  <div style="font-size:12px; color:var(--muted); margin-top:4px;">Il modello 3D interattivo è riservato al desktop per massimizzare la fluidità e la durata della batteria. Tutte le funzioni di calcolo e ordine sono al 100% attive.</div>
-</div>
+    <!-- 1. CERCA PEZZO NEL WEB O IMPORTA QUALSIASI COMPONENTE -->
+    <div class="cad-section">
+      <div class="cad-section-title">
+        <span>1️⃣ Cerca Pezzo nel Web e Metti nello Spazio</span>
+        <button type="button" onclick="toggleWebImporter()" style="background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 4px 9px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
+          🌐 + Importa da URL / Web
+        </button>
+      </div>
 
-<div class="cfg-container">
-  <!-- PANNELLO DI CONFIGURAZIONE / WIZARD -->
-  <div class="cfg-panel">
-    
-    <!-- TAB 1: BREWERY BUILDER -->
-    <div id="tab-content-builder" style="{% if tab_attiva != 'builder' %}display:none;{% endif %}">
-      
-      <!-- Step 1: Architettura -->
-      <div class="step-card">
-        <div style="display:flex; align-items:center;">
-          <span class="step-badge">1</span>
-          <strong style="font-size:14px;">Architettura Sala Cottura</strong>
+      <!-- Barra di ricerca istantanea + Ricerca Esterna Web -->
+      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+        <input type="text" id="web-search-input" oninput="renderWebCatalog()" placeholder="🔍 Cerca pentola, BrewMonk, FermZilla, pompa, RIMS o incolla URL..." style="flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font-size: 0.84rem;">
+      </div>
+
+      <!-- Chips categorie -->
+      <div style="display: flex; gap: 5px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px;" id="cat-chips-bar">
+        <button type="button" class="cat-chip active" onclick="setCatalogCategory('all', this)">Tutti</button>
+        <button type="button" class="cat-chip" onclick="setCatalogCategory('kettle', this)">Pentole & Tini</button>
+        <button type="button" class="cat-chip" onclick="setCatalogCategory('all_in_one', this)">All-in-One</button>
+        <button type="button" class="cat-chip" onclick="setCatalogCategory('fermenter', this)">Fermentatori</button>
+        <button type="button" class="cat-chip" onclick="setCatalogCategory('pump', this)">Pompe</button>
+        <button type="button" class="cat-chip" onclick="setCatalogCategory('chiller', this)">Scambiatori</button>
+        <button type="button" class="cat-chip" onclick="setCatalogCategory('rims', this)">RIMS & Filtri</button>
+      </div>
+
+      <!-- Form Espandibile: Importa / Crea Qualsiasi Pezzo dal Web -->
+      <div id="web-importer-box" style="display: none; background: rgba(2, 132, 199, 0.08); border: 1px dashed #0284c7; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+        <div style="font-weight: 800; font-size: 0.82rem; color: #0284c7; margin-bottom: 6px;">
+          🌐 Importa o Costruisci Qualsiasi Pezzo dal Web
         </div>
-        <div class="opt-grid">
-          <div class="opt-choice selected" onclick="selectBuilderOption('arch', 'allinone', this, 'All-in-One 35-50L')">
-            <div style="font-size:22px; margin-bottom:4px;">🛢️</div>
-            <div>All-in-One</div>
-            <div style="font-size:10px; color:var(--muted);">Compatto 35/50L</div>
+        <p style="font-size: 0.75rem; color: var(--muted-color); margin: 0 0 8px 0;">
+          Incolla il link o il nome di qualsiasi prodotto trovato online (Polsinelli, Amazon, KegLand, Birramia, AliExpress, ecc.) e definisci le sue porte:
+        </p>
+        <div style="display: grid; gap: 6px;">
+          <input type="text" id="custom-web-url" placeholder="Link URL o Nome Pezzo (es. https://polsinelli.it/pentola-75l o HopBack Inox)" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.8rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <div>
+              <label style="font-size: 0.7rem; font-weight: 700;">Forma 3D / Categoria</label>
+              <select id="custom-web-cat" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.78rem;">
+                <option value="">✨ Rileva Automaticamente</option>
+                <option value="kettle">🛢️ Pentola / Tino Inox</option>
+                <option value="all_in_one">⚡ Sistema All-in-One</option>
+                <option value="fermenter">🧪 Fermentatore Conico / Isobarico</option>
+                <option value="pump">🔄 Pompa di Rilancio</option>
+                <option value="chiller">❄️ Scambiatore a Piastre</option>
+                <option value="counterflow">🌀 Scambiatore Controflusso</option>
+                <option value="rims">🔥 Tubo RIMS / Resistenza In-Line</option>
+                <option value="filter">🕸️ Filtro / HopBack / Spia Visiva</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 0.7rem; font-weight: 700;">Capacità (L) / Prezzo (€)</label>
+              <div style="display: flex; gap: 4px;">
+                <input type="number" id="custom-web-cap" placeholder="Litri (50)" style="width: 50%; padding: 5px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.78rem;">
+                <input type="number" id="custom-web-price" placeholder="€ (140)" style="width: 50%; padding: 5px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.78rem;">
+              </div>
+            </div>
           </div>
-          <div class="opt-choice" onclick="selectBuilderOption('arch', '2tini', this, 'Sistema 2 Tini RIMS')">
-            <div style="font-size:22px; margin-bottom:4px;">⚗️⚗️</div>
-            <div>2 Tini (RIMS)</div>
-            <div style="font-size:10px; color:var(--muted);">Mash + Boil</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <div>
+              <label style="font-size: 0.7rem; font-weight: 700;">Porta 1 (Uscita/Scarico)</label>
+              <select id="custom-web-p1" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.76rem;">
+                {% for code, info in porte.items() if code != 'TUBO12' %}
+                <option value="{{ code }}" {% if code == 'BSP12M' %}selected{% endif %}>{{ info.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 0.7rem; font-weight: 700;">Porta 2 (Ingresso/Ritorno)</label>
+              <select id="custom-web-p2" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.76rem;">
+                {% for code, info in porte.items() if code != 'TUBO12' %}
+                <option value="{{ code }}" {% if code == 'BSP12M' %}selected{% endif %}>{{ info.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
-          <div class="opt-choice" onclick="selectBuilderOption('arch', '3tini', this, 'Sistema 3 Tini Gravità')">
-            <div style="font-size:22px; margin-bottom:4px;">🏭</div>
-            <div>3 Tini Classico</div>
-            <div style="font-size:10px; color:var(--muted);">HLT + Mash + Boil</div>
-          </div>
+          <button type="button" onclick="importCustomWebPart()" class="btn-primary" style="width: 100%; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; cursor: pointer;">
+            🚀 Crea Pezzo dal Web e Posiziona nello Spazio 3D
+          </button>
         </div>
       </div>
 
-      <!-- Step 2: Riscaldamento -->
-      <div class="step-card">
-        <div style="display:flex; align-items:center;">
-          <span class="step-badge">2</span>
-          <strong style="font-size:14px;">Fonte Termica</strong>
-        </div>
-        <div class="opt-grid">
-          <div class="opt-choice selected" onclick="selectBuilderOption('heat', 'pid', this, 'Elettrico con Controllo PID')">
-            <div style="font-size:22px; margin-bottom:4px;">⚡</div>
-            <div>Elettrico PID</div>
-            <div style="font-size:10px; color:var(--muted);">3000W Incoloy</div>
-          </div>
-          <div class="opt-choice" onclick="selectBuilderOption('heat', 'gas', this, 'Bruciatore a Gas Alta Resa')">
-            <div style="font-size:22px; margin-bottom:4px;">🔥</div>
-            <div>Bruciatore Gas</div>
-            <div style="font-size:10px; color:var(--muted);">GPL / Metano</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Fluidodinamica -->
-      <div class="step-card">
-        <div style="display:flex; align-items:center;">
-          <span class="step-badge">3</span>
-          <strong style="font-size:14px;">Pompe & Raccordi</strong>
-        </div>
-        <div class="opt-grid">
-          <div class="opt-choice selected" onclick="selectBuilderOption('pump', 'magnetic', this, 'Pompa Magnetica Inox 304')">
-            <div style="font-size:22px; margin-bottom:4px;">🌀</div>
-            <div>Pompa Magnetica</div>
-            <div style="font-size:10px; color:var(--muted);">MP-15R Inox 120°C</div>
-          </div>
-          <div class="opt-choice" onclick="selectBuilderOption('pump', 'gravity', this, 'Discesa a Gravità')">
-            <div style="font-size:22px; margin-bottom:4px;">⬇️</div>
-            <div>A Gravità</div>
-            <div style="font-size:10px; color:var(--muted);">Zero pompe</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 4: Raffreddamento -->
-      <div class="step-card">
-        <div style="display:flex; align-items:center;">
-          <span class="step-badge">4</span>
-          <strong style="font-size:14px;">Sistema di Raffreddamento</strong>
-        </div>
-        <div class="opt-grid">
-          <div class="opt-choice selected" onclick="selectBuilderOption('cool', 'plate', this, 'Scambiatore a 40 Piastre Inox')">
-            <div style="font-size:22px; margin-bottom:4px;">❄️</div>
-            <div>40 Piastre Inox</div>
-            <div style="font-size:10px; color:var(--muted);">Ultra-rapido</div>
-          </div>
-          <div class="opt-choice" onclick="selectBuilderOption('cool', 'counterflow', this, 'Controflusso Inox')">
-            <div style="font-size:22px; margin-bottom:4px;">🔄</div>
-            <div>Controflusso</div>
-            <div style="font-size:10px; color:var(--muted);">Tubo in tubo</div>
-          </div>
-          <div class="opt-choice" onclick="selectBuilderOption('cool', 'coil', this, 'Serpentina Immersione')">
-            <div style="font-size:22px; margin-bottom:4px;">〰️</div>
-            <div>Serpentina</div>
-            <div style="font-size:10px; color:var(--muted);">Immersione 15m</div>
-          </div>
-        </div>
-      </div>
-
+      <!-- Lista Risultati Catalogo Web -->
+      <div id="web-catalog-list" style="max-height: 215px; overflow-y: auto; padding-right: 2px;"></div>
     </div>
 
-    <!-- TAB 2: RETROFIT ENGINE & AUTO-BOM -->
-    <div id="tab-content-retrofit" style="{% if tab_attiva != 'retrofit' %}display:none;{% endif %}">
-      
-      <div class="card" style="margin-bottom:14px;">
-        <h3 style="margin:0 0 8px 0; font-size:15px; color:var(--amber);">Risolutore Nodi Idraulici</h3>
-        <p style="font-size:12px; color:var(--muted); margin:0 0 14px 0;">Seleziona l'attacco di partenza e quello di arrivo. L'algoritmo calcola la distinta base esatta (raccordi, flange, morsetti, guarnizioni MOCA) senza errori di passo o filettatura.</p>
+    <!-- 2. PEZZI NELLO SPAZIO 3D & CONTROLLI DI POSIZIONE / PORTE -->
+    <div class="cad-section">
+      <div class="cad-section-title">
+        <span>2️⃣ Pezzi nello Spazio 3D (<span id="scene-count">0</span>)</span>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" onclick="loadScenePreset('base')" title="Carica Tino + Pompa + Scambiatore" style="font-size: 0.7rem; padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); cursor: pointer;">Preset Base</button>
+          <button type="button" onclick="loadScenePreset('herms')" title="Carica 3 Tini HERMS + 2 Pompe + Chiller" style="font-size: 0.7rem; padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); cursor: pointer;">3 Tini HERMS</button>
+          <button type="button" onclick="clearAllScene()" title="Svuota Spazio 3D" style="font-size: 0.7rem; padding: 3px 7px; border-radius: 5px; border: 1px solid rgba(239,68,68,0.4); background: rgba(239,68,68,0.1); color: #ef4444; cursor: pointer;">Svuota</button>
+        </div>
+      </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+      <div id="scene-nodes-list" style="max-height: 155px; overflow-y: auto; margin-bottom: 8px;"></div>
+
+      <!-- Ispettore Pezzo Selezionato (Posizione X/Y/Z, Rotazione, Porte) -->
+      <div id="selected-node-inspector" style="display: none; background: var(--card-bg); border: 1px solid #f59e0b; border-radius: 8px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong id="insp-title" style="font-size: 0.84rem; color: #f59e0b;">Pezzo Selezionato</strong>
+          <div style="display: flex; gap: 5px;">
+            <button type="button" onclick="duplicateSelectedNode()" style="font-size: 0.72rem; padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); cursor: pointer;">📋 Duplica</button>
+            <button type="button" onclick="deleteSelectedNode()" style="font-size: 0.72rem; padding: 3px 7px; border-radius: 5px; border: 1px solid #ef4444; background: rgba(239,68,68,0.12); color: #ef4444; cursor: pointer;">🗑️ Elimina</button>
+          </div>
+        </div>
+
+        <!-- Sliders Coordinate Spaziali 3D -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; margin-bottom: 8px;">
           <div>
-            <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">Porta A (Origine / Tino / Uscita)</label>
-            <select id="sel-nodo-a" style="width:100%; padding:8px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;" onchange="calcolaAutoBOM()">
-              {% for k, v in porte.items() %}
-              <option value="{{ k }}" {% if k == 'TC15' %}selected{% endif %}>{{ v.nome }}</option>
-              {% endfor %}
-            </select>
+            <label style="display: flex; justify-content: space-between;"><span>Asse X (Sin/Des):</span> <b id="lbl-pos-x">0.0m</b></label>
+            <input type="range" id="rng-pos-x" min="-2.6" max="2.6" step="0.05" oninput="updateSelectedTransform()" style="width: 100%;">
           </div>
           <div>
-            <label style="font-size:11px; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:4px;">Porta B (Destinazione / Pompa / Chiller)</label>
-            <select id="sel-nodo-b" style="width:100%; padding:8px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;" onchange="calcolaAutoBOM()">
-              {% for k, v in porte.items() %}
-              <option value="{{ k }}" {% if k == 'BSP12M' %}selected{% endif %}>{{ v.nome }}</option>
-              {% endfor %}
-            </select>
+            <label style="display: flex; justify-content: space-between;"><span>Asse Z (Av/Ind):</span> <b id="lbl-pos-z">0.0m</b></label>
+            <input type="range" id="rng-pos-z" min="-2.0" max="2.0" step="0.05" oninput="updateSelectedTransform()" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: flex; justify-content: space-between;"><span>Altezza Y (Banco):</span> <b id="lbl-pos-y">0.0m</b></label>
+            <input type="range" id="rng-pos-y" min="0.0" max="1.2" step="0.05" oninput="updateSelectedTransform()" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: flex; justify-content: space-between;"><span>Rotazione (°):</span> <b id="lbl-rot-y">0°</b></label>
+            <input type="range" id="rng-rot-y" min="-180" max="180" step="15" oninput="updateSelectedTransform()" style="width: 100%;">
           </div>
         </div>
 
-        <button type="button" class="btn btn-ghost btn-sm" onclick="invertiNodi()" style="margin-bottom:10px;">⇄ Inverti Direzione Connessione</button>
-
-        <!-- Box Risultato Distinta Base BOM -->
-        <div id="bom-result-box" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px;">
-            <strong style="color:var(--amber); font-size:13px;">📋 Distinta Base (Auto-BOM)</strong>
-            <span id="bom-badge-compatibile" style="font-size:11px; background:rgba(63,185,80,0.15); color:#3fb950; border:1px solid #3fb950; border-radius:4px; padding:2px 6px;">✓ Meccanicamente Compatibile</span>
+        <!-- Porte del Pezzo Selezionato (modificabili o aggiungibili) -->
+        <div style="border-top: 1px solid var(--border-color); padding-top: 7px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <span style="font-size: 0.75rem; font-weight: 700;">🔩 Attacchi / Porte su questo Pezzo:</span>
+            <button type="button" onclick="addPortToSelectedNode()" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #38bdf8; background: rgba(56,189,248,0.12); color: #38bdf8; cursor: pointer;">+ Aggiungi Porta</button>
           </div>
-
-          <p id="bom-desc" style="font-size:12px; color:var(--muted); margin:8px 0;"></p>
-
-          <table class="bom-table">
-            <thead>
-              <tr>
-                <th>Componente</th>
-                <th style="width:50px; text-align:center;">Q.tà</th>
-                <th style="width:80px; text-align:right;">Prezzo</th>
-              </tr>
-            </thead>
-            <tbody id="bom-tbody">
-              <!-- Riempito via JS -->
-            </tbody>
-            <tfoot>
-              <tr>
-                <th colspan="2" style="font-size:13px; color:var(--text);">Totale Raccordi & Accessori</th>
-                <th id="bom-totale" style="font-size:15px; color:var(--amber); text-align:right;">0.00 €</th>
-              </tr>
-            </tfoot>
-          </table>
-
-          <div style="margin-top:14px; display:flex; gap:10px; align-items:center;">
-            <button type="button" class="btn btn-primary" onclick="inviaBomAlCarrello()" style="flex:1;">
-              🛒 Aggiungi Distinta Base al Carrello
-            </button>
-          </div>
-          <div id="bom-feedback" style="display:none; font-size:12px; color:#3fb950; margin-top:8px; text-align:center;"></div>
+          <div id="insp-ports-list" style="display: grid; gap: 5px;"></div>
         </div>
+      </div>
+    </div>
 
+    <!-- 3. COLLEGA DUE PEZZI & SUGGERITORE INTELLIGENTE RACCORDI -->
+    <div class="cad-section" style="border-color: rgba(245, 158, 11, 0.5);">
+      <div class="cad-section-title">
+        <span>3️⃣ Collega 2 Pezzi (Suggeritore Raccordi)</span>
+        <span id="lbl-distanza-3d" style="font-size: 0.74rem; background: rgba(56,189,248,0.15); color: #38bdf8; padding: 2px 8px; border-radius: 99px;">Distanza: -- m</span>
       </div>
 
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+        <div>
+          <label style="font-size: 0.74rem; font-weight: 700; display: block; margin-bottom: 3px;">Da Pezzo A (Origine):</label>
+          <select id="conn-node-a" onchange="onChangeConnNode('a')" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font-size: 0.78rem; margin-bottom: 4px;"></select>
+          <select id="conn-port-a" onchange="refreshConnectionSuggestions()" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font-size: 0.76rem;"></select>
+        </div>
+        <div>
+          <label style="font-size: 0.74rem; font-weight: 700; display: block; margin-bottom: 3px;">A Pezzo B (Destinazione):</label>
+          <select id="conn-node-b" onchange="onChangeConnNode('b')" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font-size: 0.78rem; margin-bottom: 4px;"></select>
+          <select id="conn-port-b" onchange="refreshConnectionSuggestions()" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font-size: 0.76rem;"></select>
+        </div>
+      </div>
+
+      <div style="font-size: 0.76rem; font-weight: 700; color: var(--muted-color); margin-bottom: 6px;">
+        💡 Il sistema suggerisce questi metodi per collegarli (clicca per scegliere e creare il tubo 3D):
+      </div>
+
+      <!-- Contenitore delle 4 card di suggerimento (Camlock, Tri-Clamp, Fascetta, Push-Fit) -->
+      <div id="suggestions-container"></div>
+    </div>
+
+    <!-- 4. TUBAZIONI ATTIVE & DISTINTA BASE COMPLETA (AUTO-BOM) -->
+    <div class="cad-section" style="margin-bottom: 0;">
+      <div class="cad-section-title">
+        <span>4️⃣ Collegamenti Attivi & Distinta Base</span>
+        <span id="bom-grand-total" style="font-weight: 900; color: #10b981; font-size: 0.95rem;">€ 0.00</span>
+      </div>
+
+      <div id="active-connections-list" style="margin-bottom: 10px;"></div>
+
+      <div style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--card-bg); margin-bottom: 10px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--muted-color);">
+              <th style="padding-bottom: 4px;">Componente / Raccordo</th>
+              <th style="padding-bottom: 4px; text-align: center;">Q.tà</th>
+              <th style="padding-bottom: 4px; text-align: right;">Subtot.</th>
+            </tr>
+          </thead>
+          <tbody id="full-bom-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button type="button" onclick="sendBomToCart(true)" style="padding: 9px; border-radius: 8px; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.12); color: #f59e0b; font-weight: 800; font-size: 0.78rem; cursor: pointer;">
+          🔩 Acquista Solo Raccordi/Tubi
+        </button>
+        <button type="button" onclick="sendBomToCart(false)" class="btn-primary" style="padding: 9px; border-radius: 8px; font-weight: 800; font-size: 0.78rem; cursor: pointer;">
+          🛒 Invia Tutto al Carrello
+        </button>
+      </div>
     </div>
 
   </div>
 
-  <!-- VIEWPORT 3D (DESKTOP THREE.JS) -->
-  <div class="cfg-viewport">
-    <div class="hud-badge">
-      <span style="color:#06b6d4;">● CAD WIREFRAME</span> · <span id="hud-mode">BREWERY BUILDER</span>
-    </div>
-    
-    <div id="three-canvas-container" class="canvas-container"></div>
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- COLONNA DESTRA: VIEWPORT 3D SANDBOX INTERATTIVO (THREE.JS + DRAG)     -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div style="background: #0b1120; border: 1px solid #1e293b; border-radius: 16px; position: relative; overflow: hidden; min-height: 760px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: inset 0 0 60px rgba(0,0,0,0.75);">
 
-    <div class="hud-controls">
-      🖱️ Trascina: Ruota · Scroll: Zoom · Clic: Seleziona Componente
-    </div>
-
-    <div style="padding:10px 14px; background:rgba(13,17,23,0.9); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:12px;">
-      <div class="pulse-legend">
-        <span class="dot-pulse"></span>
-        <span>Ologramma arancione: Componente da acquistare</span>
+    <!-- HUD Top Overlay -->
+    <div style="padding: 14px 18px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none;">
+      <div style="pointer-events: auto;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981;"></span>
+          <span style="color: #f8fafc; font-weight: 800; font-size: 0.88rem; letter-spacing: 0.4px;">SPAZIO 3D INTERATTIVO · WEBGL SANDBOX</span>
+        </div>
+        <div id="hud-subtitle" style="color: #94a3b8; font-size: 0.78rem; margin-top: 3px;">
+          🖱️ Clicca un pezzo nel 3D per selezionarlo · Trascinalo sul pavimento per spostarlo · I tubi si adattano in tempo reale!
+        </div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="resetVisuale3D()">Visuale Standard</button>
+
+      <!-- Toolbar Telecamera e Modalità Click-to-Connect -->
+      <div style="display: flex; gap: 6px; pointer-events: auto; flex-wrap: wrap;">
+        <button type="button" id="btn-click-connect-mode" onclick="toggleClickConnectMode()" style="background: rgba(15, 23, 42, 0.85); color: #38bdf8; border: 1px solid #38bdf8; padding: 6px 11px; border-radius: 8px; font-size: 0.76rem; font-weight: 700; cursor: pointer;">
+          🔗 Click-to-Connect 3D: OFF
+        </button>
+        <button type="button" onclick="setCameraPreset('iso')" style="background: rgba(30, 41, 59, 0.85); color: #e2e8f0; border: 1px solid #475569; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer;">
+          📐 Vista 3D
+        </button>
+        <button type="button" onclick="setCameraPreset('front')" style="background: rgba(30, 41, 59, 0.85); color: #e2e8f0; border: 1px solid #475569; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer;">
+          👁️ Frontale
+        </button>
+        <button type="button" onclick="setCameraPreset('top')" style="background: rgba(30, 41, 59, 0.85); color: #e2e8f0; border: 1px solid #475569; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer;">
+          🗺️ Pianta Dall'Alto
+        </button>
+      </div>
+    </div>
+
+    <!-- Container Canvas Three.js -->
+    <div id="threejs-viewport" style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; cursor: grab;"></div>
+
+    <!-- HUD Bottom Legenda Colori Connessioni -->
+    <div style="padding: 12px 18px; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px); border-top: 1px solid #1e293b; z-index: 10; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 0.76rem; color: #cbd5e1;">
+        <span><b style="color: #f97316;">●</b> Raccordo Rapido Camlock</span>
+        <span><b style="color: #38bdf8;">●</b> Clamp Sanitario Tri-Clamp</span>
+        <span><b style="color: #10b981;">●</b> Portagomma + Fascetta Inox</span>
+        <span><b style="color: #a855f7;">●</b> Push-Fit John Guest / Duotight</span>
+      </div>
+      <div id="hud-selection-pill" style="font-size: 0.76rem; color: #f59e0b; font-weight: 700;">
+        Nessun pezzo selezionato
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Three.js & OrbitControls via CDN con fallback -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- LIBRERIE THREE.JS + LOGICA SANDBOX 3D E MOTORE SUGGERIMENTO CONNESSIONI   -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="/static/js/autobom.js"></script>
 
 <script>
-let lastCalculatedBOM = null;
+  // ── STATO GLOBALE DELLO SPAZIO 3D ──────────────────────────────────────────
+  let sceneNodes = [];        // Array di pezzi posizionati nello spazio
+  let sceneConnections = [];  // Array di collegamenti idraulici attivi tra due porte
+  let selectedNodeId = null;  // ID del pezzo attualmente selezionato
+  let activeCatalogCategory = "all";
+  let clickConnectMode = false;
+  let clickConnectFirstNodeId = null;
 
-function switchCfgTab(tab, btn) {
-  document.querySelectorAll('.cfg-tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-content-builder').style.display = (tab === 'builder') ? 'block' : 'none';
-  document.getElementById('tab-content-retrofit').style.display = (tab === 'retrofit') ? 'block' : 'none';
-  
-  const hud = document.getElementById('hud-mode');
-  if (hud) hud.textContent = (tab === 'builder') ? 'BREWERY BUILDER' : 'RETROFIT ENGINE';
+  // Riferimenti Three.js
+  let scene, camera, renderer, controls;
+  let nodesGroup, pipesGroup, selectionHelperBox;
+  let raycaster, mouse;
+  let floorPlane;
+  let isDraggingNode = false;
+  let draggedNodeObj = null;
 
-  if (tab === 'retrofit') {
-    calcolaAutoBOM();
-  }
-}
+  // Materiali condivisi PBR
+  let matSteel, matDarkSteel, matCopper, matBluePump, matGlass, matGoldValve, matRedHandle;
 
-function selectBuilderOption(category, value, el, label) {
-  el.parentElement.querySelectorAll('.opt-choice').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  aggiornaDigitalTwin(category, value);
-}
+  // ── 1. INIZIALIZZAZIONE SCENA THREE.JS ─────────────────────────────────────
+  function initThreeSandbox() {
+    const container = document.getElementById("threejs-viewport");
+    if (!container || typeof THREE === "undefined") return;
 
-function invertiNodi() {
-  const selA = document.getElementById('sel-nodo-a');
-  const selB = document.getElementById('sel-nodo-b');
-  const tmp = selA.value;
-  selA.value = selB.value;
-  selB.value = tmp;
-  calcolaAutoBOM();
-}
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b1120);
+    scene.fog = new THREE.FogExp2(0x0b1120, 0.045);
 
-function calcolaAutoBOM() {
-  const nodoA = document.getElementById('sel-nodo-a').value;
-  const nodoB = document.getElementById('sel-nodo-b').value;
-  
-  const res = AutoBOM.solve(nodoA, nodoB);
-  lastCalculatedBOM = res;
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 2.7, 4.8);
 
-  document.getElementById('bom-desc').textContent = res.desc || '';
-  document.getElementById('bom-totale').textContent = (res.totale || 0).toFixed(2) + ' €';
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
 
-  const tbody = document.getElementById('bom-tbody');
-  tbody.innerHTML = '';
-  (res.pezzi || []).forEach(p => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${p.nome}</strong><br><span style="font-size:10px;color:var(--muted);">${p.sku}</span></td>
-      <td style="text-align:center;">${p.qta}</td>
-      <td style="text-align:right;">${(p.prezzo * p.qta).toFixed(2)} €</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  // Evidenzia l'adattatore come ologramma pulsante nel 3D
-  if (window.highlightRetrofitPart) {
-    window.highlightRetrofitPart(nodoA, nodoB);
-  }
-}
-
-async function inviaBomAlCarrello() {
-  if (!lastCalculatedBOM || !lastCalculatedBOM.pezzi || lastCalculatedBOM.pezzi.length === 0) {
-    alert('Nessun componente nella distinta base.');
-    return;
-  }
-
-  const fb = document.getElementById('bom-feedback');
-  fb.style.display = 'block';
-  fb.textContent = 'Aggiunta al carrello in corso...';
-
-  try {
-    const res = await fetch('/carrello/aggiungi-bom', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bom: lastCalculatedBOM })
-    });
-    const data = await res.json();
-    if (data.status === 'ok') {
-      fb.innerHTML = `✅ ${data.aggiunti} articoli aggiunti al carrello! <a href="/carrello" style="color:var(--amber);text-decoration:underline;">Visualizza Carrello →</a>`;
-      const counter = document.getElementById('cart-counter');
-      if (counter && data.cart) counter.textContent = data.cart.totale_pezzi || 0;
-    }
-  } catch(e) {
-    fb.style.color = 'var(--red)';
-    fb.textContent = 'Errore durante l\'aggiunta al carrello.';
-  }
-}
-
-// ── 3D DIGITAL TWIN FOTOREALISTICO INOX (PBR + DETTAGLI MECCANICI) ────────
-let scene, camera, renderer, controls;
-let kettleGroup, pumpGroup, chillerGroup, pipeGroup, retrofitUpgradeGroup;
-
-function init3D() {
-  const container = document.getElementById('three-canvas-container');
-  if (!container || container.clientWidth === 0) return;
-
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0e17);
-
-  camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 1000);
-  camera.position.set(0, 14, 28);
-
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.25;
-  container.appendChild(renderer.domElement);
-
-  if (typeof THREE.OrbitControls !== 'undefined') {
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.maxPolarAngle = Math.PI / 2 + 0.05;
-    controls.minDistance = 6;
-    controls.maxDistance = 60;
+    controls.maxPolarAngle = Math.PI / 2 + 0.03;
+    controls.minDistance = 1.2;
+    controls.maxDistance = 14;
+    controls.target.set(0, 0.7, 0);
+
+    // Luci Studio Industriale
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.15);
+    dirLight.position.set(5, 8, 6);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    const warmLight = new THREE.PointLight(0xf59e0b, 0.85, 12);
+    warmLight.position.set(-4, 3.5, 3);
+    scene.add(warmLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.65);
+    rimLight.position.set(0, 4, -6);
+    scene.add(rimLight);
+
+    // Pavimento Tecnico + Griglia Metrica (1 quadretto = 0.5m)
+    const grid = new THREE.GridHelper(10, 20, 0x334155, 0x1e293b);
+    grid.position.y = 0;
+    scene.add(grid);
+
+    const floorGeo = new THREE.PlaneGeometry(14, 14);
+    const floorMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    // Materiali PBR
+    matSteel = new THREE.MeshStandardMaterial({ color: 0xd4d8dd, metalness: 0.82, roughness: 0.22 });
+    matDarkSteel = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.45 });
+    matCopper = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.25 });
+    matBluePump = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.35 });
+    matGlass = new THREE.MeshPhysicalMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.55, roughness: 0.1 });
+    matGoldValve = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.75, roughness: 0.3 });
+    matRedHandle = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+
+    nodesGroup = new THREE.Group();
+    pipesGroup = new THREE.Group();
+    scene.add(nodesGroup);
+    scene.add(pipesGroup);
+
+    raycaster = new THREE.Raycaster();
+    mouse = new THREE.Vector2();
+    floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+    // Eventi Mouse (Click Selezione + Drag sul pavimento 3D)
+    const dom = renderer.domElement;
+    dom.addEventListener("pointerdown", onPointerDown3D);
+    dom.addEventListener("pointermove", onPointerMove3D);
+    window.addEventListener("pointerup", onPointerUp3D);
+
+    window.addEventListener("resize", () => {
+      if (!container) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // Loop animazione
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Carica preset iniziale e catalogo
+    renderWebCatalog();
+    loadScenePreset("base");
   }
 
-  // Griglia tecnica di calibrazione a pavimento
-  const grid = new THREE.GridHelper(34, 34, 0x38bdf8, 0x1e293b);
-  grid.position.y = -6.5;
-  scene.add(grid);
+  // ── 2. COSTRUTTORE PROCEDURALE DI GEOMETRIE 3D REALISTICHE PER OGNI PEZZO ──
+  function buildNodeMesh3D(node) {
+    const group = new THREE.Group();
+    group.userData = { nodeId: node.instanceId };
 
-  // Setup Illuminazione Studio Industriale per far risaltare l'acciaio inox
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
-  scene.add(hemiLight);
+    const r = (node.dims && node.dims.radius) || 0.40;
+    const h = (node.dims && node.dims.height) || 0.90;
+    const cat = node.categoria || "kettle";
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
-  keyLight.position.set(15, 25, 18);
-  keyLight.castShadow = true;
-  scene.add(keyLight);
+    if (cat === "kettle" || cat === "all_in_one" || cat === "hlt") {
+      // Cilindro Inox Principale
+      const bodyMat = cat === "all_in_one"
+        ? new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.18 })
+        : matSteel;
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 36), bodyMat);
+      cyl.position.y = h / 2 + 0.12;
+      cyl.castShadow = true;
+      cyl.receiveShadow = true;
+      group.add(cyl);
 
-  const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.9);
-  rimLight.position.set(-18, 12, -15);
-  scene.add(rimLight);
+      // Base / Piedini
+      if (cat === "all_in_one") {
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.03, r * 1.05, 0.14, 36), matDarkSteel);
+        base.position.y = 0.07;
+        group.add(base);
+        // Display Controller Touch frontale
+        const ctrl = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.06), matDarkSteel);
+        ctrl.position.set(0, 0.22, r + 0.02);
+        group.add(ctrl);
+      } else {
+        for (let i = 0; i < 3; i++) {
+          const ang = (i * Math.PI * 2) / 3;
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.14, 12), matDarkSteel);
+          leg.position.set(Math.cos(ang) * (r * 0.78), 0.07, Math.sin(ang) * (r * 0.78));
+          group.add(leg);
+        }
+      }
 
-  const fillLight = new THREE.DirectionalLight(0xf59e0b, 0.6);
-  fillLight.position.set(0, -10, 15);
-  scene.add(fillLight);
+      // Coperchio bombato + Maniglia
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.96, r * 1.01, 0.05, 36), matSteel);
+      lid.position.y = h + 0.145;
+      group.add(lid);
 
-  // Costruzione componenti ad alta definizione meccanica
-  costruisciImpiantoRealistico();
+      // Termometro analogico frontale
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 16), matDarkSteel);
+      stem.rotation.x = Math.PI / 2;
+      stem.position.set(0, h * 0.68, r + 0.015);
+      group.add(stem);
 
-  window.addEventListener('resize', onWindowResize);
-  animate3D();
-}
+    } else if (cat === "fermenter") {
+      // Cono inferiore + Cilindro superiore (Unitank / FermZilla)
+      const isPlastic = (node.nome || "").toLowerCase().includes("fermzilla");
+      const fMat = isPlastic ? matGlass : matSteel;
+      const cylH = h * 0.58;
+      const coneH = h * 0.35;
 
-function getStainlessSteelMaterial(roughness = 0.22, metalness = 0.92, color = 0xd8e2dc) {
-  return new THREE.MeshStandardMaterial({
-    color: color,
-    metalness: metalness,
-    roughness: roughness,
-    envMapIntensity: 1.5,
-  });
-}
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, cylH, 36), fMat);
+      cyl.position.y = coneH + cylH / 2 + 0.15;
+      cyl.castShadow = true;
+      group.add(cyl);
 
-function costruisciImpiantoRealistico() {
-  const matInox = getStainlessSteelMaterial(0.22, 0.94, 0xd0d8df);
-  const matInoxSpazzolato = getStainlessSteelMaterial(0.38, 0.88, 0xb8c2cc);
-  const matNeroGomma = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8, metalness: 0.1 });
-  const matValvolaBlu = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.35, metalness: 0.5 });
-  const matSiliconeTubo = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.55,
-    roughness: 0.1,
-    transmission: 0.7,
-    thickness: 0.8
-  });
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(r, coneH, 36), fMat);
+      cone.rotation.x = Math.PI;
+      cone.position.y = coneH / 2 + 0.15;
+      cone.castShadow = true;
+      group.add(cone);
 
-  // ── 1. TINO INOX BIRRIFICIO (Kettle/Fermentatore con fondo bombato, gambe e maniglie) ──
-  kettleGroup = new THREE.Group();
-  kettleGroup.position.set(-7, 0, 0);
+      // Cupola superiore
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), fMat);
+      dome.scale.y = 0.35;
+      dome.position.y = coneH + cylH + 0.15;
+      group.add(dome);
 
-  // Corpo cilindrico principale
-  const bodyGeo = new THREE.CylinderGeometry(4.2, 4.2, 9.5, 36);
-  const bodyMesh = new THREE.Mesh(bodyGeo, matInox);
-  kettleGroup.add(bodyMesh);
+      // 3 Gambe alte tubolari
+      for (let i = 0; i < 3; i++) {
+        const ang = (i * Math.PI * 2) / 3 + 0.4;
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, coneH + 0.35, 12), matDarkSteel);
+        leg.position.set(Math.cos(ang) * (r * 0.88), (coneH + 0.35) / 2, Math.sin(ang) * (r * 0.88));
+        group.add(leg);
+      }
 
-  // Coperchio bombato superiore
-  const lidGeo = new THREE.SphereGeometry(4.25, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.22);
-  const lidMesh = new THREE.Mesh(lidGeo, matInoxSpazzolato);
-  lidMesh.position.y = 4.75;
-  kettleGroup.add(lidMesh);
+    } else if (cat === "pump") {
+      // Staffa base + Motore + Testa Inox
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.22), matDarkSteel);
+      base.position.y = 0.02;
+      group.add(base);
 
-  // Maniglia coperchio
-  const lidHandleGeo = new THREE.TorusGeometry(0.7, 0.12, 12, 24, Math.PI);
-  const lidHandle = new THREE.Mesh(lidHandleGeo, matInox);
-  lidHandle.rotation.x = Math.PI;
-  lidHandle.position.y = 5.7;
-  kettleGroup.add(lidHandle);
+      const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.26, 24), matBluePump);
+      motor.rotation.z = Math.PI / 2;
+      motor.position.set(-0.04, 0.15, 0);
+      motor.castShadow = true;
+      group.add(motor);
 
-  // Fondo bombato inferiore
-  const bottomGeo = new THREE.SphereGeometry(4.22, 32, 16, 0, Math.PI * 2, Math.PI * 0.78, Math.PI * 0.22);
-  const bottomMesh = new THREE.Mesh(bottomGeo, matInox);
-  bottomMesh.position.y = -4.75;
-  kettleGroup.add(bottomMesh);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.07, 24), matSteel);
+      head.rotation.z = Math.PI / 2;
+      head.position.set(0.13, 0.15, 0);
+      group.add(head);
 
-  // Maniglie laterali sagomate inox
-  for (let s of [-1, 1]) {
-    const handleGeo = new THREE.TorusGeometry(1.0, 0.16, 12, 24, Math.PI);
-    const handle = new THREE.Mesh(handleGeo, matInox);
-    handle.rotation.z = s * Math.PI / 2;
-    handle.position.set(s * 4.3, 2.5, 0);
-    kettleGroup.add(handle);
+    } else if (cat === "chiller" || cat === "glycol") {
+      if (cat === "glycol") {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.68, 0.46), matDarkSteel);
+        box.position.y = 0.34;
+        box.castShadow = true;
+        group.add(box);
+      } else {
+        // Pacco piastre saldobrasate rame/inox
+        const pack = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.36, 0.18), matCopper);
+        pack.position.y = 0.20;
+        pack.castShadow = true;
+        group.add(pack);
+        const frontPlate = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.37, 0.02), matSteel);
+        frontPlate.position.set(0, 0.20, 0.095);
+        group.add(frontPlate);
+      }
+
+    } else if (cat === "counterflow") {
+      const coil = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.34, 28), matSteel);
+      coil.position.y = 0.19;
+      coil.castShadow = true;
+      group.add(coil);
+
+    } else {
+      // Tubo RIMS / Filtro In-Line / Spia Visiva
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.46, 24), cat === "valve" ? matGlass : matSteel);
+      body.position.y = 0.32;
+      body.castShadow = true;
+      group.add(body);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.08, 20), matDarkSteel);
+      stand.position.y = 0.04;
+      group.add(stand);
+    }
+
+    // ── COSTRUISCI I BOCCHETTONI / VALVOLE 3D PER OGNI PORTA DEL PEZZO ──────
+    (node.ports || []).forEach((port, idx) => {
+      const localPos = getPortLocalCoordinates(node, port, idx);
+      port.localOffset = localPos;
+
+      const portGroup = new THREE.Group();
+      portGroup.position.copy(localPos);
+
+      // Colore ghiera in base allo standard della porta
+      let collarMat = matGoldValve;
+      if (port.std && port.std.startsWith("TC")) collarMat = matSteel;
+      else if (port.std && port.std.startsWith("CAM")) collarMat = matCopper;
+      else if (port.std && port.std.startsWith("JG")) collarMat = matBluePump;
+
+      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.09, 16), collarMat);
+      nozzle.rotation.x = Math.PI / 2;
+      portGroup.add(nozzle);
+
+      // Leva valvola rossa
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.02), matRedHandle);
+      handle.position.set(0.03, 0.04, 0.02);
+      portGroup.add(handle);
+
+      group.add(portGroup);
+    });
+
+    // Posiziona e ruota nello spazio 3D
+    group.position.set(node.pos.x, node.pos.y, node.pos.z);
+    group.rotation.y = THREE.MathUtils.degToRad(node.rotY || 0);
+
+    return group;
   }
 
-  // 3 Gambe tubolari di sostegno inox con piedini filettati
-  for (let i = 0; i < 3; i++) {
-    const angle = (i * 2 * Math.PI) / 3;
-    const legGeo = new THREE.CylinderGeometry(0.35, 0.35, 4.5, 16);
-    const leg = new THREE.Mesh(legGeo, matInoxSpazzolato);
-    const lx = Math.cos(angle) * 3.6;
-    const lz = Math.sin(angle) * 3.6;
-    leg.position.set(lx, -5.5, lz);
-    kettleGroup.add(leg);
+  // Calcola la posizione 3D locale di ciascuna porta sul corpo del componente
+  function getPortLocalCoordinates(node, port, index) {
+    const r = (node.dims && node.dims.radius) || 0.40;
+    const h = (node.dims && node.dims.height) || 0.90;
+    const cat = node.categoria || "kettle";
 
-    // Piedino regolabile nero in gomma
-    const footGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 16);
-    const foot = new THREE.Mesh(footGeo, matNeroGomma);
-    foot.position.set(lx, -7.5, lz);
-    kettleGroup.add(foot);
+    if (cat === "pump") {
+      if (index === 0) return new THREE.Vector3(0.16, 0.15, 0.08);
+      return new THREE.Vector3(0.13, 0.26, 0);
+    }
+    if (cat === "chiller") {
+      const offsets = [
+        new THREE.Vector3(-0.06, 0.31, 0.12),
+        new THREE.Vector3(-0.06, 0.11, 0.12),
+        new THREE.Vector3(0.06, 0.11, 0.12),
+        new THREE.Vector3(0.06, 0.31, 0.12)
+      ];
+      return offsets[index % offsets.length];
+    }
+
+    const side = port.side || (index === 0 ? "front_bottom" : index === 1 ? "front_top" : "right_mid");
+    if (side === "front_bottom") return new THREE.Vector3(0, 0.22, r + 0.04);
+    if (side === "front_top") return new THREE.Vector3(0, h * 0.82 + 0.10, r + 0.04);
+    if (side === "left_mid") return new THREE.Vector3(-(r + 0.04), h * 0.5 + 0.10, 0);
+    if (side === "right_mid") return new THREE.Vector3(r + 0.04, h * 0.5 + 0.10, 0);
+    if (side === "left_top") return new THREE.Vector3(-(r + 0.04), h * 0.82 + 0.10, 0);
+    if (side === "right_top") return new THREE.Vector3(r + 0.04, h * 0.82 + 0.10, 0);
+    if (side === "back_bottom") return new THREE.Vector3(0, 0.18, -(r + 0.04));
+
+    // Posizionamento angolare per eventuali porte extra aggiunte dall'utente
+    const angle = (index * Math.PI) / 3;
+    return new THREE.Vector3(Math.sin(angle) * (r + 0.04), 0.35 + (index * 0.12), Math.cos(angle) * (r + 0.04));
   }
 
-  // Tronchetto di scarico inferiore con flangia Tri-Clamp 1.5"
-  const drainGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.8, 16);
-  const drainPipe = new THREE.Mesh(drainGeo, matInox);
-  drainPipe.rotation.z = Math.PI / 2;
-  drainPipe.position.set(4.8, -4.0, 0);
-  kettleGroup.add(drainPipe);
-
-  // Valvola a farfalla Tri-Clamp reale con levetta blu
-  const valveBodyGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.9, 20);
-  const valveBody = new THREE.Mesh(valveBodyGeo, matInox);
-  valveBody.rotation.z = Math.PI / 2;
-  valveBody.position.set(5.9, -4.0, 0);
-  kettleGroup.add(valveBody);
-
-  const valveLeverGeo = new THREE.BoxGeometry(0.2, 1.8, 0.4);
-  const valveLever = new THREE.Mesh(valveLeverGeo, matValvolaBlu);
-  valveLever.position.set(5.9, -3.0, 0);
-  valveLever.rotation.z = -0.3;
-  kettleGroup.add(valveLever);
-
-  scene.add(kettleGroup);
-
-  // ── 2. POMPA MAGNETICA (tipo MP-15R con corpo motore e testa inox a 90°) ──
-  pumpGroup = new THREE.Group();
-  pumpGroup.position.set(3.5, -4.5, 0);
-
-  // Motore posteriore nero alettato
-  const motorGeo = new THREE.CylinderGeometry(1.6, 1.6, 3.8, 24);
-  const motorMesh = new THREE.Mesh(motorGeo, matNeroGomma);
-  motorMesh.rotation.z = Math.PI / 2;
-  motorMesh.position.set(-1.2, 0, 0);
-  pumpGroup.add(motorMesh);
-
-  // Basamento di fissaggio pompa
-  const baseGeo = new THREE.BoxGeometry(3.6, 0.4, 2.6);
-  const baseMesh = new THREE.Mesh(baseGeo, matInoxSpazzolato);
-  baseMesh.position.set(-1.2, -1.7, 0);
-  pumpGroup.add(baseMesh);
-
-  // Testa pompa magnetica in Inox lucidato a specchio
-  const pumpHeadGeo = new THREE.CylinderGeometry(1.85, 1.85, 1.5, 24);
-  const pumpHead = new THREE.Mesh(pumpHeadGeo, matInox);
-  pumpHead.rotation.z = Math.PI / 2;
-  pumpHead.position.set(1.4, 0, 0);
-  pumpGroup.add(pumpHead);
-
-  // Bocca di aspirazione frontale (Inlet 1/2" BSP)
-  const inletGeo = new THREE.CylinderGeometry(0.42, 0.42, 1.2, 16);
-  const inlet = new THREE.Mesh(inletGeo, matInox);
-  inlet.rotation.z = Math.PI / 2;
-  inlet.position.set(2.4, 0, 0);
-  pumpGroup.add(inlet);
-
-  // Bocca di mandata superiore (Outlet 1/2" BSP)
-  const outletGeo = new THREE.CylinderGeometry(0.42, 0.42, 1.2, 16);
-  const outlet = new THREE.Mesh(outletGeo, matInox);
-  outlet.position.set(1.4, 1.4, 0);
-  pumpGroup.add(outlet);
-
-  scene.add(pumpGroup);
-
-  // ── 3. SCAMBIATORE A PIASTRE INOX (Plate Chiller ad alta resa) ──
-  chillerGroup = new THREE.Group();
-  chillerGroup.position.set(11.5, -1.0, 0);
-
-  // Corpo pacco piastre rettangolare inox con tiranti angolari
-  const plateCoreGeo = new THREE.BoxGeometry(2.4, 6.8, 3.4);
-  const plateCore = new THREE.Mesh(plateCoreGeo, matInoxSpazzolato);
-  chillerGroup.add(plateCore);
-
-  // Tiranti frontali/posteriori
-  for (let tz of [-1.55, 1.55]) {
-    const plateCoverGeo = new THREE.BoxGeometry(2.5, 6.9, 0.25);
-    const plateCover = new THREE.Mesh(plateCoverGeo, matInox);
-    plateCover.position.z = tz;
-    chillerGroup.add(plateCover);
+  // Calcola le coordinate World (assolute nello spazio 3D) di una porta specifica
+  function getPortWorldPosition(node, portId) {
+    const portIndex = (node.ports || []).findIndex(p => p.id === portId);
+    const port = node.ports[portIndex >= 0 ? portIndex : 0];
+    const localVec = getPortLocalCoordinates(node, port || {}, portIndex >= 0 ? portIndex : 0).clone();
+    const rotRad = THREE.MathUtils.degToRad(node.rotY || 0);
+    localVec.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotRad);
+    return new THREE.Vector3(
+      node.pos.x + localVec.x,
+      node.pos.y + localVec.y,
+      node.pos.z + localVec.z
+    );
   }
 
-  // 4 Bocchettoni filettati (Mosto caldo/freddo + Acqua rete/uscita)
-  const bocchetteCoord = [
-    [-0.6, 2.3, 1.9], [0.6, 2.3, 1.9],
-    [-0.6, -2.3, 1.9], [0.6, -2.3, 1.9]
-  ];
-  bocchetteCoord.forEach(([bx, by, bz]) => {
-    const portGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.9, 16);
-    const portMesh = new THREE.Mesh(portGeo, matInox);
-    portMesh.rotation.x = Math.PI / 2;
-    portMesh.position.set(bx, by, bz);
-    chillerGroup.add(portMesh);
-  });
+  // ── 3. RENDERING COMPLETO DELLA SCENA E DELLE TUBAZIONI 3D ─────────────────
+  function rebuildThreeScene() {
+    if (!nodesGroup || !pipesGroup) return;
 
-  scene.add(chillerGroup);
+    // Pulisci nodi esistenti
+    while (nodesGroup.children.length > 0) {
+      nodesGroup.remove(nodesGroup.children[0]);
+    }
+    if (selectionHelperBox) {
+      scene.remove(selectionHelperBox);
+      selectionHelperBox = null;
+    }
 
-  // ── 4. TUBAZIONI FLESSIBILI IN SILICONE ALIMENTARE PLATINUM CURED ──
-  pipeGroup = new THREE.Group();
+    // Costruisci ogni pezzo nello spazio
+    sceneNodes.forEach(node => {
+      const meshGroup = buildNodeMesh3D(node);
+      node._mesh = meshGroup;
+      nodesGroup.add(meshGroup);
 
-  // Tubo flessibile di connessione dalla valvola del tino alla pompa
-  const curve1 = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.5, -4.0, 0),
-    new THREE.Vector3(1.5, -4.2, 0.3),
-    new THREE.Vector3(3.2, -4.5, 0)
-  ]);
-  const tube1Geo = new THREE.TubeGeometry(curve1, 24, 0.36, 12, false);
-  const tube1 = new THREE.Mesh(tube1Geo, matSiliconeTubo);
-  pipeGroup.add(tube1);
+      if (node.instanceId === selectedNodeId) {
+        selectionHelperBox = new THREE.BoxHelper(meshGroup, 0xf59e0b);
+        scene.add(selectionHelperBox);
+      }
+    });
 
-  // Tubo flessibile dalla mandata pompa allo scambiatore a piastre
-  const curve2 = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(4.9, -3.1, 0),
-    new THREE.Vector3(6.5, -1.5, 0.8),
-    new THREE.Vector3(8.5, -0.5, 1.4),
-    new THREE.Vector3(10.9, 1.3, 1.9)
-  ]);
-  const tube2Geo = new THREE.TubeGeometry(curve2, 32, 0.36, 12, false);
-  const tube2 = new THREE.Mesh(tube2Geo, matSiliconeTubo);
-  pipeGroup.add(tube2);
-
-  scene.add(pipeGroup);
-
-  // ── 5. OLOGRAMMA PULSANTE RETROFIT (Evidenzia l'adattatore calcolato) ──
-  retrofitUpgradeGroup = new THREE.Group();
-  retrofitUpgradeGroup.position.set(6.4, -4.0, 0);
-
-  const matPulseOlogramma = new THREE.MeshBasicMaterial({
-    color: 0xf59e0b,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.8
-  });
-
-  // Clamp a farfalla olografico
-  const ringGeo = new THREE.TorusGeometry(1.05, 0.22, 12, 28);
-  const ringMesh = new THREE.Mesh(ringGeo, matPulseOlogramma);
-  ringMesh.rotation.y = Math.PI / 2;
-  retrofitUpgradeGroup.add(ringMesh);
-
-  // Vite alettata del morsetto
-  const boltGeo = new THREE.BoxGeometry(0.3, 1.4, 0.5);
-  const boltMesh = new THREE.Mesh(boltGeo, matPulseOlogramma);
-  boltMesh.position.set(0, 1.1, 0);
-  retrofitUpgradeGroup.add(boltMesh);
-
-  scene.add(retrofitUpgradeGroup);
-}
-
-function aggiornaDigitalTwin(cat, val) {
-  if (!kettleGroup) return;
-  if (cat === 'arch') {
-    if (val === 'allinone') kettleGroup.scale.set(1, 1, 1);
-    else if (val === '2tini') kettleGroup.scale.set(1.22, 1.15, 1.22);
-    else if (val === '3tini') kettleGroup.scale.set(1.38, 1.3, 1.38);
+    rebuildThreePipes();
   }
-}
 
-window.highlightRetrofitPart = function(nodoA, nodoB) {
-  if (retrofitUpgradeGroup) {
-    retrofitUpgradeGroup.scale.set(1.5, 1.5, 1.5);
-    setTimeout(() => { if (retrofitUpgradeGroup) retrofitUpgradeGroup.scale.set(1, 1, 1); }, 400);
+  // Ricostruisce in tempo reale tutti i tubi 3D + raccordi tra i pezzi collegati
+  function rebuildThreePipes() {
+    if (!pipesGroup) return;
+    while (pipesGroup.children.length > 0) {
+      pipesGroup.remove(pipesGroup.children[0]);
+    }
+
+    sceneConnections.forEach(conn => {
+      const nodeA = sceneNodes.find(n => n.instanceId === conn.fromNodeId);
+      const nodeB = sceneNodes.find(n => n.instanceId === conn.toNodeId);
+      if (!nodeA || !nodeB) return;
+
+      const pStart = getPortWorldPosition(nodeA, conn.fromPortId);
+      const pEnd = getPortWorldPosition(nodeB, conn.toPortId);
+
+      // Aggiorna la distanza reale in metri
+      const dist = Number(pStart.distanceTo(pEnd).toFixed(2));
+      conn.distanceMeters = dist;
+
+      // Crea curva morbida realistica (con leggera caduta gravitazionale o arco naturale)
+      const mid1 = pStart.clone().lerp(pEnd, 0.33);
+      const mid2 = pStart.clone().lerp(pEnd, 0.66);
+      const sag = Math.max(0.08, Math.min(pStart.y, pEnd.y) - 0.12);
+      mid1.y = Math.max(0.06, (pStart.y * 0.65 + sag * 0.35));
+      mid1.z += 0.14;
+      mid2.y = Math.max(0.06, (pEnd.y * 0.65 + sag * 0.35));
+      mid2.z += 0.14;
+
+      const curve = new THREE.CatmullRomCurve3([pStart, mid1, mid2, pEnd]);
+      const tubeGeo = new THREE.TubeGeometry(curve, 44, 0.022, 14, false);
+      const tubeMat = new THREE.MeshPhysicalMaterial({
+        color: conn.colore3D || 0xf97316,
+        transparent: true,
+        opacity: 0.85,
+        roughness: 0.2
+      });
+      const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+      tubeMesh.castShadow = true;
+      pipesGroup.add(tubeMesh);
+
+      // Aggiungi i 2 Raccordi / Clamp 3D visibili alle estremità del tubo
+      const fittingColor = conn.optionId === "triclamp_sanitario" ? 0x38bdf8
+                         : conn.optionId === "camlock_rapido" ? 0xf97316
+                         : conn.optionId === "tubo_fascetta" ? 0x10b981 : 0xa855f7;
+      const fitMat = new THREE.MeshStandardMaterial({ color: fittingColor, metalness: 0.8, roughness: 0.2 });
+
+      [pStart, pEnd].forEach(pt => {
+        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.034, 0.011, 12, 24), fitMat);
+        collar.position.copy(pt);
+        pipesGroup.add(collar);
+      });
+    });
   }
-};
 
-function resetVisuale3D() {
-  if (camera && controls) {
-    camera.position.set(0, 14, 28);
-    controls.target.set(2, -1, 0);
+  // ── 4. INTERAZIONE DIRETTA MOUSE 3D (SELEZIONE + DRAG SUL PAVIMENTO) ──────
+  function getNormalizedMouse(evt) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  function findNodeFromIntersect(obj) {
+    let curr = obj;
+    while (curr && curr !== nodesGroup) {
+      if (curr.userData && curr.userData.nodeId) {
+        return sceneNodes.find(n => n.instanceId === curr.userData.nodeId);
+      }
+      curr = curr.parent;
+    }
+    return null;
+  }
+
+  function onPointerDown3D(evt) {
+    if (evt.button !== 0) return;
+    getNormalizedMouse(evt);
+    raycaster.setFromCamera(mouse, camera);
+
+    const hits = raycaster.intersectObjects(nodesGroup.children, true);
+    if (hits.length > 0) {
+      const hitNode = findNodeFromIntersect(hits[0].object);
+      if (hitNode) {
+        // Se siamo in modalità Click-to-Connect 3D:
+        if (clickConnectMode) {
+          handleClickConnectPick(hitNode);
+          return;
+        }
+        selectNode(hitNode.instanceId);
+        isDraggingNode = true;
+        draggedNodeObj = hitNode;
+        controls.enabled = false;
+        renderer.domElement.style.cursor = "grabbing";
+      }
+    }
+  }
+
+  function onPointerMove3D(evt) {
+    if (!isDraggingNode || !draggedNodeObj) return;
+    getNormalizedMouse(evt);
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersectPoint = new THREE.Vector3();
+    if (raycaster.ray.intersectPlane(floorPlane, intersectPoint)) {
+      draggedNodeObj.pos.x = Number(Math.max(-2.6, Math.min(2.6, intersectPoint.x)).toFixed(2));
+      draggedNodeObj.pos.z = Number(Math.max(-2.0, Math.min(2.0, intersectPoint.z)).toFixed(2));
+
+      if (draggedNodeObj._mesh) {
+        draggedNodeObj._mesh.position.set(draggedNodeObj.pos.x, draggedNodeObj.pos.y, draggedNodeObj.pos.z);
+        if (selectionHelperBox) selectionHelperBox.update();
+      }
+      syncInspectorSliders();
+      rebuildThreePipes();
+      refreshConnectionSuggestions();
+    }
+  }
+
+  function onPointerUp3D() {
+    if (isDraggingNode) {
+      isDraggingNode = false;
+      draggedNodeObj = null;
+      controls.enabled = true;
+      renderer.domElement.style.cursor = "grab";
+      renderFullBOM();
+    }
+  }
+
+  // ── 5. MODALITÀ CLICK-TO-CONNECT DIRETTA NEL 3D ────────────────────────────
+  function toggleClickConnectMode() {
+    clickConnectMode = !clickConnectMode;
+    clickConnectFirstNodeId = null;
+    const btn = document.getElementById("btn-click-connect-mode");
+    const sub = document.getElementById("hud-subtitle");
+    if (clickConnectMode) {
+      btn.style.background = "#38bdf8";
+      btn.style.color = "#0f172a";
+      btn.textContent = "🔗 Click-to-Connect: CLICCA PEZZO 1";
+      sub.textContent = "🎯 Modalità Collegamento Rapido: clicca il PRIMO pezzo nello spazio 3D, poi clicca il SECONDO pezzo!";
+    } else {
+      btn.style.background = "rgba(15, 23, 42, 0.85)";
+      btn.style.color = "#38bdf8";
+      btn.textContent = "🔗 Click-to-Connect 3D: OFF";
+      sub.textContent = "🖱️ Clicca un pezzo nel 3D per selezionarlo · Trascinalo sul pavimento per spostarlo · I tubi si adattano in tempo reale!";
+    }
+  }
+
+  function handleClickConnectPick(hitNode) {
+    const btn = document.getElementById("btn-click-connect-mode");
+    if (!clickConnectFirstNodeId) {
+      clickConnectFirstNodeId = hitNode.instanceId;
+      selectNode(hitNode.instanceId);
+      document.getElementById("conn-node-a").value = hitNode.instanceId;
+      onChangeConnNode("a");
+      btn.textContent = "🔗 Ora clicca il 2° Pezzo...";
+    } else if (clickConnectFirstNodeId !== hitNode.instanceId) {
+      document.getElementById("conn-node-b").value = hitNode.instanceId;
+      onChangeConnNode("b");
+      toggleClickConnectMode(); // Disattiva modalità e mostra subito i suggerimenti
+      document.getElementById("suggestions-container").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  // ── 6. CATALOGO WEB & IMPORTATORE DI QUALSIASI PEZZO DAL WEB ───────────────
+  function setCatalogCategory(cat, btnEl) {
+    activeCatalogCategory = cat;
+    document.querySelectorAll("#cat-chips-bar .cat-chip").forEach(b => b.classList.remove("active"));
+    if (btnEl) btnEl.classList.add("active");
+    renderWebCatalog();
+  }
+
+  function toggleWebImporter() {
+    const box = document.getElementById("web-importer-box");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  }
+
+  function renderWebCatalog() {
+    const q = (document.getElementById("web-search-input").value || "").trim().toLowerCase();
+    const listEl = document.getElementById("web-catalog-list");
+    if (!listEl) return;
+
+    const filtered = AutoBOM.WEB_CATALOG.filter(item => {
+      if (activeCatalogCategory !== "all" && item.categoria !== activeCatalogCategory) {
+        if (!(activeCatalogCategory === "chiller" && (item.categoria === "counterflow" || item.categoria === "glycol"))) {
+          if (!(activeCatalogCategory === "rims" && (item.categoria === "filter" || item.categoria === "valve"))) {
+            return false;
+          }
+        }
+      }
+      if (!q) return true;
+      return (
+        item.nome.toLowerCase().includes(q) ||
+        item.brand.toLowerCase().includes(q) ||
+        (item.tags || "").toLowerCase().includes(q)
+      );
+    });
+
+    let html = "";
+    filtered.forEach(item => {
+      const portsBadges = (item.ports || []).map(p => {
+        const shortStd = (AutoBOM.PORTS[p.std] && AutoBOM.PORTS[p.std].short) || p.std;
+        return `<span class="port-badge">${p.label}: ${shortStd}</span>`;
+      }).join("");
+
+      html += `
+        <div class="part-card">
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 0.7rem; color: var(--muted-color); font-weight: 700; text-transform: uppercase;">
+              ${item.brand} · ${item.categoriaLabel}
+            </div>
+            <div style="font-weight: 800; font-size: 0.83rem; color: var(--text-color); line-height: 1.25;">
+              ${item.nome}
+            </div>
+            <div>${portsBadges}</div>
+          </div>
+          <div style="text-align: right; flex-shrink: 0;">
+            <div style="font-weight: 900; font-size: 0.85rem; color: #10b981; margin-bottom: 4px;">€ ${item.prezzo.toFixed(2)}</div>
+            <button type="button" onclick="spawnCatalogItem('${item.id}')" style="background: #f59e0b; color: #111827; border: none; border-radius: 6px; padding: 5px 9px; font-size: 0.74rem; font-weight: 800; cursor: pointer;">
+              ➕ Nello Spazio
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    // Se l'utente sta cercando qualcosa che non è in lista (o ha incollato un link), offri creazione istantanea 1-click!
+    if (q.length > 2) {
+      html += `
+        <div style="border: 1px dashed #38bdf8; border-radius: 8px; padding: 10px; background: rgba(56,189,248,0.08); text-align: center; margin-top: 6px;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #38bdf8; margin-bottom: 5px;">
+            🌐 Vuoi importare "${q}" direttamente dal Web nello spazio 3D?
+          </div>
+          <button type="button" onclick="quickSpawnFromSearch()" style="background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.76rem; font-weight: 800; cursor: pointer;">
+            ✨ Genera "${q}" e Posizionalo nello Spazio 3D
+          </button>
+        </div>
+      `;
+    }
+
+    listEl.innerHTML = html;
+  }
+
+  function spawnCatalogItem(catalogId, customPos = null) {
+    const template = AutoBOM.WEB_CATALOG.find(i => i.id === catalogId);
+    if (!template) return null;
+    return addNodeToSpace(template, customPos);
+  }
+
+  function quickSpawnFromSearch() {
+    const q = document.getElementById("web-search-input").value;
+    if (!q) return;
+    const part = AutoBOM.parseWebPart(q);
+    addNodeToSpace(part);
+    document.getElementById("web-search-input").value = "";
+    renderWebCatalog();
+  }
+
+  function importCustomWebPart() {
+    const urlOrName = document.getElementById("custom-web-url").value || "Componente Custom dal Web";
+    const cat = document.getElementById("custom-web-cat").value;
+    const cap = document.getElementById("custom-web-cap").value;
+    const price = document.getElementById("custom-web-price").value;
+    const p1 = document.getElementById("custom-web-p1").value;
+    const p2 = document.getElementById("custom-web-p2").value;
+
+    const part = AutoBOM.parseWebPart(urlOrName, {
+      categoria: cat || undefined,
+      capacita_l: cap || undefined,
+      prezzo: price || undefined,
+      port1Std: p1,
+      port2Std: p2
+    });
+
+    addNodeToSpace(part);
+    document.getElementById("web-importer-box").style.display = "none";
+    document.getElementById("custom-web-url").value = "";
+  }
+
+  // Aggiunge un componente nello spazio 3D calcolando una posizione libera sulla griglia
+  function addNodeToSpace(partTemplate, customPos = null) {
+    const idx = sceneNodes.length;
+    const defaultX = customPos ? customPos.x : Number(((idx % 4) * 1.15 - 1.6).toFixed(2));
+    const defaultZ = customPos ? customPos.z : Number((Math.floor(idx / 4) * 0.95).toFixed(2));
+    const defaultY = customPos && customPos.y !== undefined ? customPos.y : 0;
+
+    const instanceId = "node_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+    const clonedPorts = (partTemplate.ports || []).map((p, i) => ({
+      id: p.id || ("port_" + (i + 1)),
+      label: p.label || ("Porta " + (i + 1)),
+      std: p.std || "BSP12M",
+      side: p.side || (i === 0 ? "front_bottom" : "front_top")
+    }));
+
+    const newNode = {
+      instanceId: instanceId,
+      catalogId: partTemplate.id,
+      sku: partTemplate.sku || ("WEB-" + instanceId),
+      nome: partTemplate.nome,
+      brand: partTemplate.brand || "Web",
+      categoria: partTemplate.categoria || "kettle",
+      prezzo: Number(partTemplate.prezzo || 0),
+      dims: { ...(partTemplate.dims || { radius: 0.4, height: 0.9 }) },
+      pos: { x: defaultX, y: defaultY, z: defaultZ },
+      rotY: 0,
+      ports: clonedPorts
+    };
+
+    sceneNodes.push(newNode);
+    selectedNodeId = instanceId;
+
+    rebuildThreeScene();
+    renderSceneNodesList();
+    syncConnectionDropdowns();
+    renderFullBOM();
+    return newNode;
+  }
+
+  // ── 7. GESTIONE LISTA PEZZI NELLO SPAZIO & ISPETTORE 3D ────────────────────
+  function selectNode(instanceId) {
+    selectedNodeId = instanceId;
+    rebuildThreeScene();
+    renderSceneNodesList();
+  }
+
+  function renderSceneNodesList() {
+    document.getElementById("scene-count").textContent = sceneNodes.length;
+    const listEl = document.getElementById("scene-nodes-list");
+    const inspEl = document.getElementById("selected-node-inspector");
+    const hudPill = document.getElementById("hud-selection-pill");
+
+    if (sceneNodes.length === 0) {
+      listEl.innerHTML = `<div style="font-size: 0.78rem; color: var(--muted-color); text-align: center; padding: 10px;">Nessun pezzo nello spazio 3D. Cercane uno sopra e clicca "➕ Nello Spazio"!</div>`;
+      inspEl.style.display = "none";
+      hudPill.textContent = "Spazio 3D vuoto";
+      return;
+    }
+
+    let html = "";
+    sceneNodes.forEach((n, idx) => {
+      const isSel = n.instanceId === selectedNodeId;
+      const portsSummary = n.ports.map(p => (AutoBOM.PORTS[p.std] && AutoBOM.PORTS[p.std].short) || p.std).join(" · ");
+      html += `
+        <div class="node-pill ${isSel ? 'active' : ''}" onclick="selectNode('${n.instanceId}')">
+          <div style="min-width: 0;">
+            <div style="font-weight: 800; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              #${idx + 1} ${n.nome}
+            </div>
+            <div style="font-size: 0.72rem; color: var(--muted-color);">
+              Pos: (${n.pos.x}m, ${n.pos.z}m) · Porte: ${portsSummary}
+            </div>
+          </div>
+          <span style="font-size: 0.74rem; font-weight: 800; color: #f59e0b;">Seleziona</span>
+        </div>
+      `;
+    });
+    listEl.innerHTML = html;
+
+    const sel = sceneNodes.find(n => n.instanceId === selectedNodeId);
+    if (!sel) {
+      inspEl.style.display = "none";
+      hudPill.textContent = "Nessun pezzo selezionato";
+      return;
+    }
+
+    inspEl.style.display = "block";
+    document.getElementById("insp-title").textContent = sel.nome;
+    hudPill.textContent = `Selezionato: ${sel.nome} [X:${sel.pos.x}m, Z:${sel.pos.z}m]`;
+    syncInspectorSliders();
+    renderInspectorPorts(sel);
+  }
+
+  function syncInspectorSliders() {
+    const sel = sceneNodes.find(n => n.instanceId === selectedNodeId);
+    if (!sel) return;
+    document.getElementById("rng-pos-x").value = sel.pos.x;
+    document.getElementById("rng-pos-z").value = sel.pos.z;
+    document.getElementById("rng-pos-y").value = sel.pos.y;
+    document.getElementById("rng-rot-y").value = sel.rotY || 0;
+
+    document.getElementById("lbl-pos-x").textContent = sel.pos.x + "m";
+    document.getElementById("lbl-pos-z").textContent = sel.pos.z + "m";
+    document.getElementById("lbl-pos-y").textContent = sel.pos.y + "m";
+    document.getElementById("lbl-rot-y").textContent = (sel.rotY || 0) + "°";
+  }
+
+  function updateSelectedTransform() {
+    const sel = sceneNodes.find(n => n.instanceId === selectedNodeId);
+    if (!sel) return;
+    sel.pos.x = parseFloat(document.getElementById("rng-pos-x").value);
+    sel.pos.z = parseFloat(document.getElementById("rng-pos-z").value);
+    sel.pos.y = parseFloat(document.getElementById("rng-pos-y").value);
+    sel.rotY = parseFloat(document.getElementById("rng-rot-y").value);
+
+    syncInspectorSliders();
+    rebuildThreeScene();
+    refreshConnectionSuggestions();
+  }
+
+  function renderInspectorPorts(selNode) {
+    const container = document.getElementById("insp-ports-list");
+    const portOptionsHtml = Object.entries(AutoBOM.PORTS).map(([code, info]) =>
+      `<option value="${code}">${info.nome}</option>`
+    ).join("");
+
+    let html = "";
+    selNode.ports.forEach((p, idx) => {
+      html += `
+        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 5px; align-items: center;">
+          <input type="text" value="${p.label}" onchange="updateNodePortLabel('${selNode.instanceId}', ${idx}, this.value)" style="padding: 4px 6px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.74rem;">
+          <select onchange="updateNodePortStd('${selNode.instanceId}', ${idx}, this.value)" style="padding: 4px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.74rem;">
+            ${Object.entries(AutoBOM.PORTS).map(([code, info]) =>
+              `<option value="${code}" ${code === p.std ? 'selected' : ''}>${info.short} - ${info.nome}</option>`
+            ).join("")}
+          </select>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function updateNodePortLabel(nodeId, portIdx, newLabel) {
+    const n = sceneNodes.find(x => x.instanceId === nodeId);
+    if (!n || !n.ports[portIdx]) return;
+    n.ports[portIdx].label = newLabel;
+    syncConnectionDropdowns();
+  }
+
+  function updateNodePortStd(nodeId, portIdx, newStd) {
+    const n = sceneNodes.find(x => x.instanceId === nodeId);
+    if (!n || !n.ports[portIdx]) return;
+    n.ports[portIdx].std = newStd;
+    rebuildThreeScene();
+    renderSceneNodesList();
+    syncConnectionDropdowns();
+    refreshConnectionSuggestions();
+  }
+
+  function addPortToSelectedNode() {
+    const sel = sceneNodes.find(n => n.instanceId === selectedNodeId);
+    if (!sel) return;
+    const nextIdx = sel.ports.length + 1;
+    sel.ports.push({
+      id: "port_custom_" + Date.now(),
+      label: "Valvola / Porta Extra #" + nextIdx,
+      std: "BSP12M",
+      side: "right_mid"
+    });
+    rebuildThreeScene();
+    renderInspectorPorts(sel);
+    syncConnectionDropdowns();
+  }
+
+  function duplicateSelectedNode() {
+    const sel = sceneNodes.find(n => n.instanceId === selectedNodeId);
+    if (!sel) return;
+    addNodeToSpace(sel, { x: Number((sel.pos.x + 0.85).toFixed(2)), y: sel.pos.y, z: sel.pos.z });
+  }
+
+  function deleteSelectedNode() {
+    if (!selectedNodeId) return;
+    sceneNodes = sceneNodes.filter(n => n.instanceId !== selectedNodeId);
+    sceneConnections = sceneConnections.filter(
+      c => c.fromNodeId !== selectedNodeId && c.toNodeId !== selectedNodeId
+    );
+    selectedNodeId = sceneNodes.length > 0 ? sceneNodes[0].instanceId : null;
+    rebuildThreeScene();
+    renderSceneNodesList();
+    syncConnectionDropdowns();
+    renderFullBOM();
+  }
+
+  // ── 8. MOTORE DI SUGGERIMENTO CONNESSIONI (CAMLOCK, TRI-CLAMP, FASCETTA) ───
+  function syncConnectionDropdowns() {
+    const selA = document.getElementById("conn-node-a");
+    const selB = document.getElementById("conn-node-b");
+    if (!selA || !selB) return;
+
+    const prevA = selA.value;
+    const prevB = selB.value;
+
+    const opts = sceneNodes.map((n, i) => `<option value="${n.instanceId}">#${i + 1} ${n.nome}</option>`).join("");
+    selA.innerHTML = opts;
+    selB.innerHTML = opts;
+
+    if (sceneNodes.some(n => n.instanceId === prevA)) selA.value = prevA;
+    else if (sceneNodes[0]) selA.value = sceneNodes[0].instanceId;
+
+    if (sceneNodes.some(n => n.instanceId === prevB)) selB.value = prevB;
+    else if (sceneNodes[1]) selB.value = sceneNodes[1].instanceId;
+    else if (sceneNodes[0]) selB.value = sceneNodes[0].instanceId;
+
+    onChangeConnNode("a", false);
+    onChangeConnNode("b", false);
+    refreshConnectionSuggestions();
+  }
+
+  function onChangeConnNode(which, triggerRefresh = true) {
+    const nodeSel = document.getElementById(which === "a" ? "conn-node-a" : "conn-node-b");
+    const portSel = document.getElementById(which === "a" ? "conn-port-a" : "conn-port-b");
+    const node = sceneNodes.find(n => n.instanceId === nodeSel.value);
+    if (!node) {
+      portSel.innerHTML = "";
+      return;
+    }
+    portSel.innerHTML = node.ports.map((p, idx) => {
+      const shortStd = (AutoBOM.PORTS[p.std] && AutoBOM.PORTS[p.std].short) || p.std;
+      return `<option value="${p.id}" ${which === 'b' && idx === 1 ? 'selected' : ''}>${p.label} (${shortStd})</option>`;
+    }).join("");
+
+    if (triggerRefresh) refreshConnectionSuggestions();
+  }
+
+  function refreshConnectionSuggestions() {
+    const nodeAId = document.getElementById("conn-node-a").value;
+    const nodeBId = document.getElementById("conn-node-b").value;
+    const portAId = document.getElementById("conn-port-a").value;
+    const portBId = document.getElementById("conn-port-b").value;
+    const container = document.getElementById("suggestions-container");
+    const distLbl = document.getElementById("lbl-distanza-3d");
+
+    const nodeA = sceneNodes.find(n => n.instanceId === nodeAId);
+    const nodeB = sceneNodes.find(n => n.instanceId === nodeBId);
+    if (!nodeA || !nodeB) {
+      container.innerHTML = `<div style="font-size: 0.78rem; color: var(--muted-color);">Posiziona almeno 2 pezzi nello spazio per vedere i suggerimenti di collegamento.</div>`;
+      return;
+    }
+
+    const portA = nodeA.ports.find(p => p.id === portAId) || nodeA.ports[0];
+    const portB = nodeB.ports.find(p => p.id === portBId) || nodeB.ports[0];
+    if (!portA || !portB) return;
+
+    const posA = getPortWorldPosition(nodeA, portA.id);
+    const posB = getPortWorldPosition(nodeB, portB.id);
+    const distMeters = Math.max(0.4, Number(posA.distanceTo(posB).toFixed(2)));
+    distLbl.textContent = `Distanza 3D: ${distMeters} m`;
+
+    const suggestions = AutoBOM.suggestOptions(portA.std, portB.std, distMeters);
+
+    let html = "";
+    suggestions.forEach((opt, idx) => {
+      const piecesListHtml = opt.pezzi.map(p =>
+        `<div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--muted-color); padding:1px 0;">
+          <span>• ${p.qta}x ${p.nome}</span>
+          <span>€ ${(p.prezzo * p.qta).toFixed(2)}</span>
+        </div>`
+      ).join("");
+
+      html += `
+        <div class="suggestion-card ${idx === 0 ? 'selected' : ''}">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 4px;">
+            <div>
+              <span style="display: inline-block; font-size: 0.67rem; font-weight: 800; padding: 1px 6px; border-radius: 4px; background: ${opt.coloreHex}22; color: ${opt.coloreHex}; border: 1px solid ${opt.coloreHex}66; margin-bottom: 3px;">
+                ${opt.badge}
+              </span>
+              <div style="font-weight: 800; font-size: 0.82rem; color: var(--text-color);">${opt.titolo}</div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+              <div style="font-weight: 900; font-size: 0.88rem; color: #10b981;">€ ${opt.totale.toFixed(2)}</div>
+            </div>
+          </div>
+          <p style="font-size: 0.74rem; color: var(--muted-color); margin: 0 0 6px 0; line-height: 1.3;">
+            ${opt.descrizione}
+          </p>
+          <div style="background: var(--bg-color); border-radius: 6px; padding: 6px 8px; margin-bottom: 7px;">
+            ${piecesListHtml}
+          </div>
+          <button type="button" onclick="applyConnectionOption('${opt.id}')" style="width: 100%; padding: 7px; border-radius: 6px; border: none; background: ${opt.coloreHex}; color: #0f172a; font-weight: 900; font-size: 0.78rem; cursor: pointer;">
+            🔗 Collega nello Spazio 3D con questa Soluzione
+          </button>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function applyConnectionOption(optionId) {
+    const nodeAId = document.getElementById("conn-node-a").value;
+    const nodeBId = document.getElementById("conn-node-b").value;
+    const portAId = document.getElementById("conn-port-a").value;
+    const portBId = document.getElementById("conn-port-b").value;
+
+    const nodeA = sceneNodes.find(n => n.instanceId === nodeAId);
+    const nodeB = sceneNodes.find(n => n.instanceId === nodeBId);
+    if (!nodeA || !nodeB) return;
+
+    const portA = nodeA.ports.find(p => p.id === portAId) || nodeA.ports[0];
+    const portB = nodeB.ports.find(p => p.id === portBId) || nodeB.ports[0];
+
+    const posA = getPortWorldPosition(nodeA, portA.id);
+    const posB = getPortWorldPosition(nodeB, portB.id);
+    const distMeters = Math.max(0.4, Number(posA.distanceTo(posB).toFixed(2)));
+
+    const opts = AutoBOM.suggestOptions(portA.std, portB.std, distMeters);
+    const chosen = opts.find(o => o.id === optionId) || opts[0];
+
+    // Sostituisci se esiste già una connessione identica tra le stesse due porte
+    sceneConnections = sceneConnections.filter(
+      c => !(c.fromNodeId === nodeAId && c.fromPortId === portA.id && c.toNodeId === nodeBId && c.toPortId === portB.id)
+    );
+
+    sceneConnections.push({
+      connId: "conn_" + Date.now(),
+      fromNodeId: nodeAId,
+      fromPortId: portA.id,
+      toNodeId: nodeBId,
+      toPortId: portB.id,
+      optionId: chosen.id,
+      optionTitle: chosen.titolo,
+      colore3D: chosen.colore3D,
+      coloreHex: chosen.coloreHex,
+      distanceMeters: distMeters,
+      bomItems: chosen.pezzi,
+      totale: chosen.totale
+    });
+
+    rebuildThreePipes();
+    renderFullBOM();
+  }
+
+  function removeConnection(connId) {
+    sceneConnections = sceneConnections.filter(c => c.connId !== connId);
+    rebuildThreePipes();
+    renderFullBOM();
+  }
+
+  // ── 9. RIEPILOGO COLLEGAMENTI E DISTINTA BASE (AUTO-BOM + CARRELLO) ────────
+  function renderFullBOM() {
+    const connListEl = document.getElementById("active-connections-list");
+    const tbody = document.getElementById("full-bom-tbody");
+    const grandTotalEl = document.getElementById("bom-grand-total");
+
+    // 1. Lista collegamenti attivi
+    if (sceneConnections.length === 0) {
+      connListEl.innerHTML = `<div style="font-size: 0.75rem; color: var(--muted-color); padding: 6px; text-align: center; border: 1px dashed var(--border-color); border-radius: 6px;">Nessun tubo collegato. Scegli due pezzi al punto 3️⃣ e clicca un suggerimento!</div>`;
+    } else {
+      connListEl.innerHTML = sceneConnections.map(c => {
+        const nA = sceneNodes.find(n => n.instanceId === c.fromNodeId);
+        const nB = sceneNodes.find(n => n.instanceId === c.toNodeId);
+        const pA = nA && nA.ports.find(p => p.id === c.fromPortId);
+        const pB = nB && nB.ports.find(p => p.id === c.toPortId);
+
+        // Ricalcola BOM live se i pezzi sono stati spostati nello spazio
+        if (nA && nB && pA && pB) {
+          const updatedOpts = AutoBOM.suggestOptions(pA.std, pB.std, c.distanceMeters || 1.5);
+          const updatedOpt = updatedOpts.find(o => o.id === c.optionId) || updatedOpts[0];
+          c.bomItems = updatedOpt.pezzi;
+          c.totale = updatedOpt.totale;
+        }
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; background: var(--card-bg); border-left: 4px solid ${c.coloreHex}; margin-bottom: 5px; font-size: 0.75rem;">
+            <div>
+              <div style="font-weight: 800; color: var(--text-color);">
+                ${nA ? nA.nome.split(' ')[0] : 'Pezzo A'} (${pA ? pA.label : ''}) ➔ ${nB ? nB.nome.split(' ')[0] : 'Pezzo B'} (${pB ? pB.label : ''})
+              </div>
+              <div style="color: var(--muted-color); font-size: 0.7rem;">
+                ${c.optionTitle} · Distanza: ${c.distanceMeters}m · <b style="color:#10b981;">€ ${c.totale.toFixed(2)}</b>
+              </div>
+            </div>
+            <button type="button" onclick="removeConnection('${c.connId}')" style="border: none; background: rgba(239,68,68,0.15); color: #ef4444; border-radius: 4px; padding: 3px 6px; font-size: 0.7rem; cursor: pointer;">✕</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // 2. Tabella BOM aggregata (Macchinari + Raccordi/Tubi)
+    let grandTotal = 0;
+    let rowsHtml = "";
+
+    sceneNodes.forEach(n => {
+      grandTotal += n.prezzo;
+      rowsHtml += `
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 4px 0;"><b>[Pezzo]</b> ${n.nome}</td>
+          <td style="padding: 4px 0; text-align: center;">1</td>
+          <td style="padding: 4px 0; text-align: right; font-weight: 700;">€ ${n.prezzo.toFixed(2)}</td>
+        </tr>
+      `;
+    });
+
+    const fitMap = {};
+    sceneConnections.forEach(c => {
+      (c.bomItems || []).forEach(item => {
+        if (!fitMap[item.sku]) fitMap[item.sku] = { ...item };
+        else fitMap[item.sku].qta += item.qta;
+      });
+    });
+
+    Object.values(fitMap).forEach(f => {
+      const sub = f.prezzo * f.qta;
+      grandTotal += sub;
+      rowsHtml += `
+        <tr style="border-bottom: 1px solid var(--border-color); color: #38bdf8;">
+          <td style="padding: 4px 0;">🔩 ${f.nome}</td>
+          <td style="padding: 4px 0; text-align: center; font-weight: 700;">${f.qta}</td>
+          <td style="padding: 4px 0; text-align: right; font-weight: 700;">€ ${sub.toFixed(2)}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = rowsHtml || `<tr><td colspan="3" style="text-align:center; padding:8px; color:var(--muted-color);">Nessun elemento nella distinta</td></tr>`;
+    grandTotalEl.textContent = "€ " + grandTotal.toFixed(2);
+  }
+
+  // ── 10. PRESET SCENA RAPIDI & TELECAMERA ───────────────────────────────────
+  function clearAllScene() {
+    sceneNodes = [];
+    sceneConnections = [];
+    selectedNodeId = null;
+    rebuildThreeScene();
+    renderSceneNodesList();
+    syncConnectionDropdowns();
+    renderFullBOM();
+  }
+
+  function loadScenePreset(presetName) {
+    sceneNodes = [];
+    sceneConnections = [];
+
+    if (presetName === "base") {
+      const k = spawnCatalogItem("web-polsinelli-50", { x: -1.35, y: 0, z: 0 });
+      const p = spawnCatalogItem("web-pompa-mp15", { x: 0.0, y: 0, z: 0.25 });
+      const c = spawnCatalogItem("web-chiller-40p", { x: 1.35, y: 0, z: 0 });
+
+      if (k && p && c) {
+        const opts1 = AutoBOM.suggestOptions(k.ports[0].std, p.ports[0].std, 1.38);
+        sceneConnections.push({
+          connId: "conn_preset_1",
+          fromNodeId: k.instanceId,
+          fromPortId: k.ports[0].id,
+          toNodeId: p.instanceId,
+          toPortId: p.ports[0].id,
+          optionId: opts1[0].id,
+          optionTitle: opts1[0].titolo,
+          colore3D: opts1[0].colore3D,
+          coloreHex: opts1[0].coloreHex,
+          distanceMeters: 1.38,
+          bomItems: opts1[0].pezzi,
+          totale: opts1[0].totale
+        });
+
+        const opts2 = AutoBOM.suggestOptions(p.ports[1].std, c.ports[0].std, 1.38);
+        sceneConnections.push({
+          connId: "conn_preset_2",
+          fromNodeId: p.instanceId,
+          fromPortId: p.ports[1].id,
+          toNodeId: c.instanceId,
+          toPortId: c.ports[0].id,
+          optionId: opts2[1].id,
+          optionTitle: opts2[1].titolo,
+          colore3D: opts2[1].colore3D,
+          coloreHex: opts2[1].coloreHex,
+          distanceMeters: 1.38,
+          bomItems: opts2[1].pezzi,
+          totale: opts2[1].totale
+        });
+      }
+    } else if (presetName === "herms") {
+      const hlt = spawnCatalogItem("web-hlt-sparge-40", { x: -1.8, y: 0, z: -0.2 });
+      const mash = spawnCatalogItem("web-polsinelli-100", { x: -0.4, y: 0, z: -0.2 });
+      const boil = spawnCatalogItem("web-ssbrewtech-kettle-75", { x: 1.0, y: 0, z: -0.2 });
+      const p1 = spawnCatalogItem("web-pompa-riptide-tc", { x: -1.0, y: 0, z: 0.75 });
+      const ferm = spawnCatalogItem("web-unitank-inox-60", { x: 2.1, y: 0, z: 0.1 });
+
+      if (mash && p1 && hlt && boil && ferm) {
+        const o1 = AutoBOM.suggestOptions(mash.ports[0].std, p1.ports[0].std, 1.15)[0];
+        sceneConnections.push({
+          connId: "conn_h1", fromNodeId: mash.instanceId, fromPortId: mash.ports[0].id,
+          toNodeId: p1.instanceId, toPortId: p1.ports[0].id,
+          optionId: o1.id, optionTitle: o1.titolo, colore3D: o1.colore3D, coloreHex: o1.coloreHex,
+          distanceMeters: 1.15, bomItems: o1.pezzi, totale: o1.totale
+        });
+        const o2 = AutoBOM.suggestOptions(p1.ports[1].std, hlt.ports[1].std, 1.25)[1];
+        sceneConnections.push({
+          connId: "conn_h2", fromNodeId: p1.instanceId, fromPortId: p1.ports[1].id,
+          toNodeId: hlt.instanceId, toPortId: hlt.ports[1].id,
+          optionId: o2.id, optionTitle: o2.titolo, colore3D: o2.colore3D, coloreHex: o2.coloreHex,
+          distanceMeters: 1.25, bomItems: o2.pezzi, totale: o2.totale
+        });
+        const o3 = AutoBOM.suggestOptions(boil.ports[0].std, ferm.ports[0].std, 1.2)[2];
+        sceneConnections.push({
+          connId: "conn_h3", fromNodeId: boil.instanceId, fromPortId: boil.ports[0].id,
+          toNodeId: ferm.instanceId, toPortId: ferm.ports[0].id,
+          optionId: o3.id, optionTitle: o3.titolo, colore3D: o3.colore3D, coloreHex: o3.coloreHex,
+          distanceMeters: 1.2, bomItems: o3.pezzi, totale: o3.totale
+        });
+      }
+    }
+
+    rebuildThreeScene();
+    renderSceneNodesList();
+    syncConnectionDropdowns();
+    renderFullBOM();
+  }
+
+  function setCameraPreset(view) {
+    if (!camera || !controls) return;
+    if (view === "iso") {
+      camera.position.set(0, 2.7, 4.8);
+      controls.target.set(0, 0.7, 0);
+    } else if (view === "front") {
+      camera.position.set(0, 1.1, 4.6);
+      controls.target.set(0, 0.7, 0);
+    } else if (view === "top") {
+      camera.position.set(0, 5.5, 0.01);
+      controls.target.set(0, 0, 0);
+    }
     controls.update();
   }
-}
 
-function onWindowResize() {
-  const container = document.getElementById('three-canvas-container');
-  if (!container || !renderer || !camera) return;
-  camera.aspect = container.clientWidth / container.clientHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(container.clientWidth, container.clientHeight);
-}
+  // ── 11. INVIO AL CARRELLO DROPSHIPPING ─────────────────────────────────────
+  async function sendBomToCart(onlyFittings = false) {
+    const pezzi = [];
 
-function animate3D() {
-  requestAnimationFrame(animate3D);
+    if (!onlyFittings) {
+      sceneNodes.forEach(n => {
+        pezzi.push({ sku: n.sku, nome: n.nome, qta: 1, prezzo: n.prezzo });
+      });
+    }
 
-  // Animazione pulsazione sinusoidale dell'ologramma adattatore arancione
-  const t = Date.now() * 0.004;
-  const pulseAlpha = 0.35 + 0.55 * Math.sin(t);
-  if (retrofitUpgradeGroup) {
-    retrofitUpgradeGroup.children.forEach(c => {
-      if (c.material) c.material.opacity = pulseAlpha;
+    sceneConnections.forEach(c => {
+      (c.bomItems || []).forEach(item => {
+        pezzi.push({ ...item });
+      });
     });
-    retrofitUpgradeGroup.rotation.x = Math.sin(t * 0.5) * 0.15;
+
+    if (pezzi.length === 0) {
+      alert("Aggiungi almeno un componente o un collegamento nello spazio 3D!");
+      return;
+    }
+
+    try {
+      const res = await fetch("/carrello/aggiungi-bom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bom: { pezzi } })
+      });
+      if (res.ok) {
+        window.location.href = "/carrello?msg=Configurazione+3D+e+Raccordi+aggiunti+al+carrello!";
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
 
-  if (controls) controls.update();
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  calcolaAutoBOM();
-  if (window.innerWidth >= 768 && typeof THREE !== 'undefined') {
-    init3D();
-  }
-});
+  document.addEventListener("DOMContentLoaded", initThreeSandbox);
 </script>
 {% endblock %}

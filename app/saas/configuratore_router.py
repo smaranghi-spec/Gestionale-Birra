@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from .autobom import PORTS, risolvi_connessione
+from .autobom import PORTS, risolvi_connessione, suggerisci_opzioni_connessione
 from .cart import (
     get_cart, add_to_cart, remove_from_cart, clear_cart,
     add_bom_to_cart, add_mancanti_ricetta_to_cart
@@ -44,11 +44,21 @@ def configuratore_page(request: Request, tab: str = "builder"):
 def api_solve_retrofit(payload: dict = Body(...)):
     nodo_a = payload.get("nodo_a")
     nodo_b = payload.get("nodo_b")
+    distanza_m = float(payload.get("distanza_m", 1.5))
     if not nodo_a or not nodo_b:
         return JSONResponse({"errore": "Specificare nodo_a e nodo_b"}, status_code=400)
     
-    risultato = risolvi_connessione(nodo_a, nodo_b)
+    risultato = risolvi_connessione(nodo_a, nodo_b, distanza_m=distanza_m)
     return risultato
+
+@router.post("/api/configuratore/suggerisci-connessioni")
+def api_suggerisci_connessioni(payload: dict = Body(...)):
+    nodo_a = payload.get("nodo_a")
+    nodo_b = payload.get("nodo_b")
+    distanza_m = float(payload.get("distanza_m", 1.5))
+    if not nodo_a or not nodo_b:
+        return JSONResponse({"errore": "Specificare nodo_a e nodo_b"}, status_code=400)
+    return suggerisci_opzioni_connessione(nodo_a, nodo_b, distanza_m=distanza_m)
 
 # ── CARRELLO DROPSHIPPING UNIFICATO & CASSA CONTINUA ───────────────────────
 
