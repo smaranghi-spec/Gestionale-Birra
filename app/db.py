@@ -19,7 +19,10 @@ if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 else:
-    connect_args = {}
+    connect_args = {
+        "connect_timeout": 10,
+        "options": "-c statement_timeout=30000 -c lock_timeout=5000",
+    }
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,

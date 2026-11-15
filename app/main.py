@@ -1,4 +1,6 @@
 import os
+import threading
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -17,11 +19,9 @@ from .routers import impianto, profili_acqua, costo_ricetta, tracciabilita
 from .routers import strumenti, lista_acquisti, ai_assistant, aggiunte_cotta, importa_foto
 from .routers import prodotti_finiti, costi_fissi, export_db, api_inventario, api_notifiche, dashboard, iot, procedure
 
-# ── MODULO SaaS (multi-tenancy additiva, deve precedere create_all) ──────────
+# ── MODULO SaaS (multi-tenancy additiva in-memory) ──────────────────────────
 from .saas import tenancy as saas_tenancy
 saas_tenancy.install()
-
-Base.metadata.create_all(bind=engine)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -29,19 +29,35 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "birrificio-gestionale-2024-segreto")
 
 
 def run_migrations():
-    """Aggiunge colonne mancanti in modo sicuro, compatibile con SQLite e PostgreSQL."""
-    from sqlalchemy import text, inspect as sa_inspect
-    inspector = sa_inspect(engine)
+    """Aggiunge colonne mancanti in modo sicuro, compatibile con SQLite e PostgreSQL con lookup in batch."""
+    from sqlalchemy import text
+    is_pg = engine.dialect.name == "postgresql"
 
-    def column_exists(table, col):
+    with engine.connect() as conn:
+        existing_cols = set()
+        existing_tables = set()
         try:
-            cols = [c["name"] for c in inspector.get_columns(table)]
-            return col in cols
-        except Exception:
-            return False
+            if is_pg:
+                res = conn.execute(text(
+                    "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
+                )).fetchall()
+                for tname, cname in res:
+                    existing_tables.add(tname.lower())
+                    existing_cols.add((tname.lower(), cname.lower()))
+            else:
+                tables = [r[0] for r in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()]
+                for tname in tables:
+                    existing_tables.add(tname.lower())
+                    for col in conn.execute(text(f'PRAGMA table_info("{tname}")')).fetchall():
+                        existing_cols.add((tname.lower(), col[1].lower()))
+        except Exception as e:
+            print(f"[migrations] column fetch error: {e}", flush=True)
 
-    def table_exists(table):
-        return inspector.has_table(table)
+        def column_exists(table, col):
+            return (table.lower(), col.lower()) in existing_cols
+
+        def table_exists(table):
+            return table.lower() in existing_tables
 
     alterations = [
         ("ingredienti_ricetta", "prezzo_unitario", "REAL"),
@@ -170,10 +186,19 @@ def run_migrations():
         # mantiene accesso completo.
         if is_pg:
             try:
+                # Controlla se RLS è già attiva per evitare centinaia di DDL bloccanti ad ogni avvio
+                rls_active = set()
+                try:
+                    rls_active = {r[0] for r in conn.execute(text("SELECT relname FROM pg_class WHERE relrowsecurity = true")).fetchall()}
+                except Exception:
+                    pass
+
                 rows = conn.execute(
                     text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
                 ).fetchall()
                 for (tname,) in rows:
+                    if tname in rls_active:
+                        continue
                     safe_tname = tname.replace('"', '""')
                     try:
                         conn.execute(text(f'ALTER TABLE public."{safe_tname}" ENABLE ROW LEVEL SECURITY'))
@@ -196,12 +221,6 @@ def run_migrations():
                         conn.rollback()
             except Exception:
                 conn.rollback()
-
-
-
-
-run_migrations()
-saas_tenancy.migrate()
 
 
 def auto_seed_data():
@@ -357,7 +376,24 @@ def assegna_codici_retroattivi():
         pass
 
 
-assegna_codici_retroattivi()
+def init_db_in_background():
+    """Esegue migrazioni e verifiche DB in thread separato per consentire il bind immediato a $PORT."""
+    try:
+        run_migrations()
+        saas_tenancy.migrate()
+        auto_seed_data()
+        assegna_codici_retroattivi()
+        print("[startup] Inizializzazione e aggiornamento database completati.", flush=True)
+    except Exception as e:
+        print(f"[startup] Avviso inizializzazione database: {e}", flush=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    t = threading.Thread(target=init_db_in_background, daemon=True)
+    t.start()
+    yield
+
 
 # ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 
@@ -414,7 +450,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 # ── APP ───────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="Gestionale Birrificio")
+app = FastAPI(title="Gestionale Birrificio", lifespan=lifespan)
 
 from .saas.middleware import TenantMiddleware
 from .saas import router as saas_router

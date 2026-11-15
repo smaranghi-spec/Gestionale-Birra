@@ -189,24 +189,39 @@ def install():
 
 def migrate():
     """Aggiunge tenant_id alle tabelle esistenti e assegna i dati storici al tenant piattaforma."""
-    from sqlalchemy import inspect as sa_inspect
-    inspector = sa_inspect(engine)
     is_pg = engine.dialect.name == "postgresql"
     with engine.connect() as conn:
+        # Recupera in una sola query tutte le colonne per evitare centinaia di roundtrip
+        existing_cols = set()
+        try:
+            if is_pg:
+                res = conn.execute(text(
+                    "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
+                )).fetchall()
+                for tname, cname in res:
+                    existing_cols.add((tname.lower(), cname.lower()))
+            else:
+                tables = [r[0] for r in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()]
+                for tname in tables:
+                    for col in conn.execute(text(f'PRAGMA table_info("{tname}")')).fetchall():
+                        existing_cols.add((tname.lower(), col[1].lower()))
+        except Exception as e:
+            print(f"[saas.migrate] error fetching columns: {e}", flush=True)
+
         for cls in _SCOPED + _OVERLAY:
             t = cls.__tablename__
             try:
-                if not inspector.has_table(t):
-                    continue
-                cols = [c["name"] for c in inspector.get_columns(t)]
-                if "tenant_id" not in cols:
+                if (t.lower(), "tenant_id") not in existing_cols:
                     conn.execute(text(f'ALTER TABLE "{t}" ADD COLUMN tenant_id INTEGER'))
                     conn.commit()
-                conn.execute(text(f'CREATE INDEX IF NOT EXISTS ix_{t}_tenant_id ON "{t}" (tenant_id)'))
-                conn.commit()
-                if cls in _SCOPED:
-                    conn.execute(text(f'UPDATE "{t}" SET tenant_id = {PLATFORM_TENANT_ID} WHERE tenant_id IS NULL'))
-                    conn.commit()
+                    try:
+                        conn.execute(text(f'CREATE INDEX IF NOT EXISTS ix_{t}_tenant_id ON "{t}" (tenant_id)'))
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+                    if cls in _SCOPED:
+                        conn.execute(text(f'UPDATE "{t}" SET tenant_id = {PLATFORM_TENANT_ID} WHERE tenant_id IS NULL'))
+                        conn.commit()
             except Exception as e:  # pragma: no cover
                 conn.rollback()
                 print(f"[saas.migrate] {t}: {e}", flush=True)
@@ -222,16 +237,16 @@ def migrate():
                      "c": datetime.now().strftime("%Y-%m-%d %H:%M")})
                 conn.commit()
             if is_pg:
-                conn.execute(text(
-                    "SELECT setval(pg_get_serial_sequence('tenants','id'), (SELECT MAX(id) FROM tenants))"))
-                conn.commit()
-                for stmt in ('ALTER TABLE public."tenants" ENABLE ROW LEVEL SECURITY',
-                             'REVOKE ALL ON TABLE public."tenants" FROM anon, authenticated'):
-                    try:
-                        conn.execute(text(stmt))
-                        conn.commit()
-                    except Exception:
-                        conn.rollback()
+                try:
+                    conn.execute(text(
+                        "DO $$ BEGIN "
+                        "IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'tenants_id_seq') THEN "
+                        "  PERFORM setval('tenants_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tenants)); "
+                        "END IF; END $$;"
+                    ))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
         except Exception as e:  # pragma: no cover
             conn.rollback()
             print(f"[saas.migrate] tenants: {e}", flush=True)
