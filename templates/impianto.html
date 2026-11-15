@@ -1,173 +1,404 @@
 {% extends "base.html" %}
-{% block title %}Profilo Impianto Birrificio{% endblock %}
+{% block title %}Editor Impianto & Assetto Idraulico Birrificio{% endblock %}
 {% block content %}
 <style>
-.imp-grid { display:grid; grid-template-columns:320px 1fr; gap:1.5rem; }
-.imp-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1rem; }
-.imp-card h3 { color:var(--amber); font-size:.88rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; }
-.profilo-box { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; margin-bottom:.8rem; }
-.profilo-box.principale { border-color:var(--amber); }
-.profilo-nome { font-size:1.05rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:.6rem; }
-.profilo-badge { background:var(--amber); color:#000; font-size:.65rem; font-weight:700; padding:.15rem .5rem; border-radius:10px; text-transform:uppercase; }
-.spec-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.8rem; }
-.spec-item { background:#131922; border-radius:5px; padding:.5rem .6rem; }
-.spec-val { font-size:1.1rem; font-weight:700; color:var(--amber); }
-.spec-lbl { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:.1rem; }
-.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.4rem .9rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; }
-.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.4rem .9rem; font-size:.8rem; cursor:pointer; }
+.imp-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.imp-grid { display:grid; grid-template-columns:380px 1fr; gap:1.5rem; }
+@media (max-width: 960px) { .imp-grid { grid-template-columns: 1fr; } }
+.imp-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.3rem; margin-bottom:1.1rem; }
+.imp-card h3 { color:var(--amber); font-size:.88rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin:0 0 1rem; display:flex; align-items:center; justify-content:space-between; }
+.profilo-box { background:#0a0f1a; border:1px solid var(--border); border-radius:10px; padding:1.2rem 1.3rem; margin-bottom:1rem; transition:border-color .2s; }
+.profilo-box.principale { border:2px solid var(--amber); box-shadow:0 4px 20px rgba(245,158,11,0.12); }
+.profilo-nome { font-size:1.1rem; font-weight:800; color:var(--text); display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+.profilo-badge { background:var(--amber); color:#000; font-size:.66rem; font-weight:800; padding:.18rem .55rem; border-radius:10px; text-transform:uppercase; }
+.spec-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(105px, 1fr)); gap:.55rem; margin-top:.9rem; }
+.spec-item { background:#131922; border:1px solid #1e293b; border-radius:6px; padding:.5rem .65rem; }
+.spec-val { font-size:1.05rem; font-weight:800; color:var(--amber); }
+.spec-lbl { font-size:.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-top:.1rem; }
+.btn-amber { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.45rem .95rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:.42rem .9rem; font-size:.8rem; cursor:pointer; text-decoration:none; display:inline-block; }
 .btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
-.btn-b50 { background:linear-gradient(135deg,#f59e0b,#f97316); color:#000; border:none; border-radius:8px; padding:.7rem 1.4rem; font-weight:700; font-size:.95rem; cursor:pointer; width:100%; margin-bottom:.8rem; }
-.form-label { font-size:.75rem; color:var(--muted); display:block; margin-bottom:.2rem; }
-.form-input { width:100%; background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.45rem .7rem; color:var(--text); font-size:.85rem; margin-bottom:.65rem; box-sizing:border-box; }
+.preset-grid { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.6rem; }
+.btn-preset { background:#131922; border:1px solid #2d3748; color:var(--text); border-radius:7px; padding:.55rem .7rem; font-size:.78rem; font-weight:600; cursor:pointer; width:100%; text-align:left; transition:all .15s; }
+.btn-preset:hover { border-color:var(--amber); background:#1a2436; color:var(--amber); }
+.btn-b50 { background:linear-gradient(135deg,#f59e0b,#f97316); color:#000; border:none; border-radius:8px; padding:.65rem 1.1rem; font-weight:800; font-size:.88rem; cursor:pointer; width:100%; margin-bottom:.6rem; }
+.form-label { font-size:.73rem; color:var(--muted); display:block; margin-bottom:.2rem; font-weight:600; }
+.form-input { width:100%; background:#0a0f1a; border:1px solid var(--border); border-radius:5px; padding:.45rem .7rem; color:var(--text); font-size:.84rem; margin-bottom:.65rem; box-sizing:border-box; }
 .form-input:focus { border-color:var(--amber); outline:none; }
-.btn-submit { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.5rem 1.2rem; font-weight:700; cursor:pointer; font-size:.88rem; }
-.alert-ok { background:rgba(74,222,128,.1); border:1px solid #4ade80; color:#4ade80; padding:.6rem 1rem; border-radius:6px; font-size:.83rem; margin-bottom:1rem; }
-.calc-box { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:1rem; margin-top:1rem; }
-.calc-row { display:flex; justify-content:space-between; padding:.3rem 0; border-bottom:1px solid #1e2535; font-size:.85rem; }
-.calc-row:last-child { border:none; font-weight:700; color:var(--amber); }
+.btn-submit { background:var(--amber); color:#000; border:none; border-radius:6px; padding:.55rem 1.25rem; font-weight:800; cursor:pointer; font-size:.88rem; width:100%; }
+.alert-ok { background:rgba(74,222,128,.12); border:1px solid #4ade80; color:#4ade80; padding:.65rem 1rem; border-radius:8px; font-size:.85rem; margin-bottom:1.2rem; font-weight:600; }
+.calc-box { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:1rem; margin-top:.8rem; }
+.calc-row { display:flex; justify-content:space-between; padding:.38rem 0; border-bottom:1px solid #1e2535; font-size:.84rem; }
+.calc-row:last-child { border:none; font-weight:800; color:var(--amber); font-size:.92rem; padding-top:.6rem; }
+.arch-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-bottom:1rem; }
+.arch-card { background:#0a0f1a; border:1px solid var(--border); border-radius:8px; padding:.75rem; cursor:pointer; text-align:center; transition:all .15s; }
+.arch-card:hover, .arch-card.active { border-color:var(--amber); background:#131d31; }
+.arch-title { font-size:.82rem; font-weight:700; color:var(--text); margin-top:.3rem; }
+.arch-sub { font-size:.68rem; color:var(--muted); margin-top:.15rem; }
 </style>
 
-<div style="font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:1.2rem">⚙️ Profilo Impianto Birrificio</div>
+<!-- HERO HEADER + BRIDGE AL CONFIGURATORE 3D INOX -->
+<div class="imp-hero">
+  <div>
+    <div style="font-size:1.35rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.6rem;">
+      ⚙️ Editor Profilo Impianto &amp; Assetto Idraulico
+    </div>
+    <p style="font-size:.83rem;color:var(--muted);margin:.3rem 0 0;">
+      Calibra volumi, deadspace, boil-off orario, perdite trub ed efficienza di ammostamento per tutte le tue ricette All-Grain.
+    </p>
+  </div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+    <a href="/configuratore" class="btn-amber" style="padding:.6rem 1.1rem;font-size:.85rem;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;box-shadow:0 4px 14px rgba(37,99,235,0.35);">
+      🧊 Apri CAD 3D Inox &amp; Auto-BOM →
+    </a>
+    <a href="/ricette/html" class="btn-ghost" style="padding:.6rem 1rem;">📜 Torna alle Ricette</a>
+  </div>
+</div>
 
-{% if msg %}<div class="alert-ok">{{ msg }}</div>{% endif %}
+{% if msg %}<div class="alert-ok">✅ {{ msg }}</div>{% endif %}
+
+<!-- SELETTORE VISIVO ARCHITETTURA IMPIANTO (1 TINO BIAB / 2 TINI RIMS / 3 TINI HERMS) -->
+<div class="imp-card">
+  <h3>
+    <span>🏗️ Architettura Costruttiva Impianto (Clicca per pre-compilare i parametri idraulici)</span>
+    <span style="font-size:.72rem;color:var(--muted);font-weight:400;text-transform:none;">Seleziona uno schema per caricare i coefficienti tipici nel form</span>
+  </h3>
+  <div class="arch-tabs">
+    <div class="arch-card active" id="arch-aio" onclick="applicaArchitettura('aio')">
+      <div style="font-size:1.6rem;">🍺</div>
+      <div class="arch-title">All-in-One / BIAB (1 Tino)</div>
+      <div class="arch-sub">Cestello malti estraibile · Ricircolo pompa · Rapporto 3.0-3.5 L/kg · Deadspace 2-3.5L</div>
+    </div>
+    <div class="arch-card" id="arch-2t" onclick="applicaArchitettura('2t')">
+      <div style="font-size:1.6rem;">⚗️</div>
+      <div class="arch-title">2 Tini RIMS (Mash + Boil)</div>
+      <div class="arch-sub">Falso fondo Inox · Batch Sparge · Rapporto 2.8 L/kg · Efficienza 75%</div>
+    </div>
+    <div class="arch-card" id="arch-3t" onclick="applicaArchitettura('3t')">
+      <div style="font-size:1.6rem;">🏭</div>
+      <div class="arch-title">3 Tini HERMS Tri-Clamp</div>
+      <div class="arch-sub">HLT + Mash Serpentina + Boil Whirlpool · Fly Sparge · Efficienza 78-82%</div>
+    </div>
+  </div>
+</div>
 
 <div class="imp-grid">
-  <!-- LEFT: Form + B50 preset -->
+  <!-- LEFT: Presets + Form Nuovo Profilo + Simulatore Cotta -->
   <div>
     <div class="imp-card">
-      <h3>⚡ Preset Rapido</h3>
+      <h3>⚡ Libreria Preset Impianti Reali (1-Click)</h3>
       <form method="post" action="/impianto/preset-b50">
-        <button type="submit" class="btn-b50">🍺 Aggiungi BrewMonk B50</button>
+        <button type="submit" class="btn-b50">🍺 + Aggiungi BrewMonk B50 (50L All-in-One)</button>
       </form>
-      <p style="font-size:.78rem;color:var(--muted);margin:0">Aggiunge automaticamente il profilo BrewMonk B50 con tutti i parametri configurati (50L batch, 72% efficienza, 7% perdita bollitura/h).</p>
+      <div class="preset-grid">
+        <form method="post" action="/impianto/preset/g40" style="margin:0;">
+          <button type="submit" class="btn-preset">⚡ <strong>Grainfather G40</strong><br><span style="font-size:.68rem;color:var(--muted);">38L Batch · 76% Eff.</span></button>
+        </form>
+        <form method="post" action="/impianto/preset/bm20" style="margin:0;">
+          <button type="submit" class="btn-preset">🥨 <strong>Braumeister 20L</strong><br><span style="font-size:.68rem;color:var(--muted);">20L Batch · RIMS</span></button>
+        </form>
+        <form method="post" action="/impianto/preset/herms50" style="margin:0;">
+          <button type="submit" class="btn-preset">🔥 <strong>3 Tini HERMS 50L</strong><br><span style="font-size:.68rem;color:var(--muted);">50L · 78% Eff · 4.5 L/h</span></button>
+        </form>
+        <form method="post" action="/impianto/preset/pro100" style="margin:0;">
+          <button type="submit" class="btn-preset">🏭 <strong>Pilota 100L Inox</strong><br><span style="font-size:.68rem;color:var(--muted);">100L Tri-Clamp · 80%</span></button>
+        </form>
+      </div>
     </div>
 
-    <div class="imp-card">
-      <h3>➕ Nuovo Profilo Personalizzato</h3>
-      <form method="post" action="/impianto/nuovo">
+    <div class="imp-card" id="card-form-impianto">
+      <h3 id="form-imp-title">➕ Nuovo Profilo Impianto Personalizzato</h3>
+      <form method="post" action="/impianto/nuovo" id="form-impianto">
         <label class="form-label">Nome impianto *</label>
-        <input class="form-input" name="nome" required placeholder="es. Nano-birrificio 20L">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 .8rem">
+        <input class="form-input" name="nome" id="f-nome" required placeholder="es. Impianto Inox 50L HERMS">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 .75rem">
           <div>
-            <label class="form-label">Marca</label>
-            <input class="form-input" name="marca" placeholder="BrewMonk, Speidel…">
+            <label class="form-label">Marca / Costruttore</label>
+            <input class="form-input" name="marca" id="f-marca" placeholder="BrewMonk, Polsinelli…">
           </div>
           <div>
             <label class="form-label">Modello</label>
-            <input class="form-input" name="modello" placeholder="B50, Braumeister…">
+            <input class="form-input" name="modello" id="f-modello" placeholder="B50, Custom 3T…">
           </div>
           <div>
-            <label class="form-label">Vol. batch (L) *</label>
-            <input class="form-input" name="vol_batch_litri" type="number" step="0.5" value="50">
+            <label class="form-label">Vol. Batch Fermentatore (L) *</label>
+            <input class="form-input" name="vol_batch_litri" id="f-batch" type="number" step="0.5" value="50">
           </div>
           <div>
-            <label class="form-label">Vol. pre-boil (L)</label>
-            <input class="form-input" name="vol_preboil_litri" type="number" step="0.5" value="57">
+            <label class="form-label">Vol. Pre-Bollitura (L)</label>
+            <input class="form-input" name="vol_preboil_litri" id="f-preboil" type="number" step="0.5" value="57">
           </div>
           <div>
-            <label class="form-label">Vol. mash (L)</label>
-            <input class="form-input" name="vol_mash_litri" type="number" step="0.5" value="67">
+            <label class="form-label">Capienza Tino Mash (L)</label>
+            <input class="form-input" name="vol_mash_litri" id="f-mash" type="number" step="0.5" value="67">
           </div>
           <div>
-            <label class="form-label">Dead space (L)</label>
-            <input class="form-input" name="dead_space_litri" type="number" step="0.1" value="3.5">
+            <label class="form-label">Efficienza Mash Default (%)</label>
+            <input class="form-input" name="efficienza_default" id="f-eff" type="number" step="0.5" value="72">
           </div>
           <div>
-            <label class="form-label">Perdita bollitura (%/h)</label>
-            <input class="form-input" name="perdita_bollitura_pct" type="number" step="0.5" value="7">
+            <label class="form-label">Boil-Off Evaporazione (L/ora)</label>
+            <input class="form-input" name="boil_off_litri_ora" id="f-boiloff" type="number" step="0.1" value="3.5">
           </div>
           <div>
-            <label class="form-label">Efficienza default (%)</label>
-            <input class="form-input" name="efficienza_default" type="number" step="0.5" value="72">
+            <label class="form-label">Perdita Bollitura (%/ora)</label>
+            <input class="form-input" name="perdita_bollitura_pct" id="f-boilpct" type="number" step="0.5" value="7.0">
+          </div>
+          <div>
+            <label class="form-label">Deadspace Falso Fondo (L)</label>
+            <input class="form-input" name="mash_tun_deadspace_litri" id="f-mash-ds" type="number" step="0.1" value="2.5">
+          </div>
+          <div>
+            <label class="form-label">Deadspace Totale Impianto (L)</label>
+            <input class="form-input" name="dead_space_litri" id="f-ds" type="number" step="0.1" value="3.5">
+          </div>
+          <div>
+            <label class="form-label">Perdita Trub &amp; Scambiatore (L)</label>
+            <input class="form-input" name="trub_loss_litri" id="f-trub" type="number" step="0.1" value="1.5">
+          </div>
+          <div>
+            <label class="form-label">Rapporto Mash (L/kg)</label>
+            <input class="form-input" name="rapporto_mash_l_kg" id="f-ratio" type="number" step="0.1" value="3.0">
+          </div>
+          <div>
+            <label class="form-label">Assorbimento Grani (L/kg)</label>
+            <input class="form-input" name="assorbimento_grani_l_kg" id="f-abs" type="number" step="0.02" value="0.96">
+          </div>
+          <div>
+            <label class="form-label">Contrazione Termica Raffredd. (%)</label>
+            <input class="form-input" name="contrazione_termica_pct" id="f-shrink" type="number" step="0.5" value="4.0">
           </div>
         </div>
-        <label class="form-label">Durata bollitura (min)</label>
-        <input class="form-input" name="durata_bollitura_min" type="number" value="60">
-        <label class="form-label">Note</label>
-        <textarea class="form-input" name="note" rows="2" placeholder="Note sull'impianto…"></textarea>
-        <button type="submit" class="btn-submit">Aggiungi</button>
+        <label class="form-label">Durata Bollitura Standard (min)</label>
+        <input class="form-input" name="durata_bollitura_min" id="f-durata" type="number" value="60">
+        <label class="form-label">Note Tecniche Impianto</label>
+        <textarea class="form-input" name="note" id="f-note" rows="2" placeholder="Specifica pompe, raccordi Tri-Clamp, scambiatore a piastre…"></textarea>
+        <div style="display:flex;gap:.5rem;">
+          <button type="submit" class="btn-submit" id="btn-form-submit">💾 Salva Profilo Impianto</button>
+          <button type="button" class="btn-ghost" id="btn-form-cancel" style="display:none;" onclick="resetFormImpianto()">Annulla</button>
+        </div>
       </form>
-    </div>
-
-    <!-- Calcolatore volumi -->
-    <div class="imp-card">
-      <h3>🧮 Calcolatore Volumi</h3>
-      {% if profili %}
-      <label class="form-label">Impianto di riferimento</label>
-      <select class="form-input" id="calc-profilo" onchange="aggiornaCalc()">
-        {% for p in profili %}
-        <option value="{{ p.id }}" data-b="{{ p.vol_batch_litri }}" data-pb="{{ p.vol_preboil_litri }}" data-m="{{ p.vol_mash_litri }}" data-ds="{{ p.dead_space_litri }}" data-pb2="{{ p.perdita_bollitura_pct }}" data-eff="{{ p.efficienza_default }}">{{ p.nome }}</option>
-        {% endfor %}
-      </select>
-      <label class="form-label">Volume batch desiderato (L)</label>
-      <input class="form-input" id="calc-vol" type="number" step="0.5" value="20" oninput="aggiornaCalc()">
-      <div class="calc-box" id="calc-risultati">
-        <div class="calc-row"><span>Volume pre-boil</span><span id="cr-pb">—</span></div>
-        <div class="calc-row"><span>Volume mash</span><span id="cr-mash">—</span></div>
-        <div class="calc-row"><span>Dead space</span><span id="cr-ds">—</span></div>
-        <div class="calc-row"><span>Efficienza default</span><span id="cr-eff">—</span></div>
-        <div class="calc-row"><span>Perdita bollitura/h</span><span id="cr-perd">—</span></div>
-      </div>
-      {% else %}
-      <p style="color:var(--muted);font-size:.83rem">Aggiungi un profilo impianto per usare il calcolatore.</p>
-      {% endif %}
     </div>
   </div>
 
-  <!-- RIGHT: Lista profili -->
+  <!-- RIGHT: Simulatore Idraulico Real-Time + Lista Profili Configurati -->
   <div>
+    <!-- Simulatore Idraulico & Termico Cotta -->
+    <div class="imp-card">
+      <h3>
+        <span>🧮 Simulatore Idraulico &amp; Termodinamico di Cotta</span>
+        <span style="font-size:.72rem;color:var(--muted);font-weight:400;text-transform:none;">Verifica istantanea acqua di Mash, Sparge e Strike Temp</span>
+      </h3>
+      {% if profili %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:.75rem;">
+        <div>
+          <label class="form-label">Impianto di riferimento</label>
+          <select class="form-input" id="calc-profilo" onchange="aggiornaCalc()">
+            {% for p in profili %}
+            <option value="{{ p.id }}"
+                    data-b="{{ p.vol_batch_litri }}"
+                    data-pb="{{ p.vol_preboil_litri }}"
+                    data-m="{{ p.vol_mash_litri }}"
+                    data-ds="{{ p.dead_space_litri }}"
+                    data-mds="{{ p.mash_tun_deadspace_litri or p.dead_space_litri or 2.0 }}"
+                    data-boil="{{ p.boil_off_litri_ora or 3.0 }}"
+                    data-trub="{{ p.trub_loss_litri or 1.5 }}"
+                    data-abs="{{ p.assorbimento_grani_l_kg or 0.96 }}"
+                    data-ratio="{{ p.rapporto_mash_l_kg or 3.0 }}"
+                    data-pb2="{{ p.perdita_bollitura_pct }}"
+                    data-eff="{{ p.efficienza_default }}">
+              {{ p.nome }} ({{ p.vol_batch_litri }}L)
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Batch Target (L)</label>
+          <input class="form-input" id="calc-vol" type="number" step="0.5" value="23" oninput="aggiornaCalc()">
+        </div>
+        <div>
+          <label class="form-label">Peso Grani Grist (kg)</label>
+          <input class="form-input" id="calc-grist" type="number" step="0.2" value="5.5" oninput="aggiornaCalc()">
+        </div>
+        <div>
+          <label class="form-label">Target Mash (°C)</label>
+          <input class="form-input" id="calc-temp" type="number" step="0.5" value="66.5" oninput="aggiornaCalc()">
+        </div>
+      </div>
+
+      <div class="calc-box" id="calc-risultati">
+        <div class="calc-row"><span>🌡️ Temperatura Acqua di Strike (Grani a 20°C)</span><strong id="cr-strike" style="color:#f97316;">—</strong></div>
+        <div class="calc-row"><span>💧 Acqua di Mash (Infusione + Deadspace)</span><span id="cr-mash">—</span></div>
+        <div class="calc-row"><span>🚿 Acqua di Sparge (Lavaggio a 78°C)</span><span id="cr-sparge">—</span></div>
+        <div class="calc-row"><span>🌾 Assorbimento Trebbie</span><span id="cr-abs">—</span></div>
+        <div class="calc-row"><span>🔥 Volume Pre-Bollitura in Pentola</span><span id="cr-pb">—</span></div>
+        <div class="calc-row"><span>💨 Evaporazione Boil-Off (60 min) + Trub</span><span id="cr-perd">—</span></div>
+        <div class="calc-row"><span>⚙️ Dead Space / Efficienza Impianto</span><span id="cr-ds-eff">—</span></div>
+        <div class="calc-row"><span>🚰 FABBISOGNO IDRICO TOTALE COTTA</span><span id="cr-tot">—</span></div>
+      </div>
+      {% else %}
+      <p style="color:var(--muted);font-size:.83rem">Aggiungi un profilo impianto per usare il simulatore idraulico.</p>
+      {% endif %}
+    </div>
+
+    <!-- Lista Profili Salvati -->
     {% if profili %}
     {% for p in profili %}
     <div class="profilo-box {% if p.is_principale %}principale{% endif %}">
-      <div class="profilo-nome">
-        {{ p.nome }}
-        {% if p.marca or p.modello %}<span style="font-size:.8rem;color:var(--muted);font-weight:400">{{ p.marca or '' }} {{ p.modello or '' }}</span>{% endif %}
-        {% if p.is_principale %}<span class="profilo-badge">⭐ Principale</span>{% endif %}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;">
+        <div class="profilo-nome">
+          {{ p.nome }}
+          {% if p.marca or p.modello %}<span style="font-size:.8rem;color:var(--muted);font-weight:500">· {{ p.marca or '' }} {{ p.modello or '' }}</span>{% endif %}
+          {% if p.is_principale %}<span class="profilo-badge">⭐ Principale</span>{% endif %}
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+          <button type="button" class="btn-ghost" style="font-size:.75rem;padding:.3rem .7rem;border-color:var(--amber);color:var(--amber);"
+                  onclick='caricaModificaProfilo({{ p.id }}, {{ p.nome|tojson }}, {{ (p.marca or "")|tojson }}, {{ (p.modello or "")|tojson }}, {{ p.vol_batch_litri or 50 }}, {{ p.vol_preboil_litri or 57 }}, {{ p.vol_mash_litri or 67 }}, {{ p.efficienza_default or 72 }}, {{ p.boil_off_litri_ora or 3.0 }}, {{ p.perdita_bollitura_pct or 7.0 }}, {{ p.mash_tun_deadspace_litri or 2.0 }}, {{ p.dead_space_litri or 3.5 }}, {{ p.trub_loss_litri or 1.5 }}, {{ p.rapporto_mash_l_kg or 3.0 }}, {{ p.assorbimento_grani_l_kg or 0.96 }}, {{ p.contrazione_termica_pct or 4.0 }}, {{ p.durata_bollitura_min or 60 }}, {{ (p.note or "")|tojson }})'>
+            ✏️ Modifica Parametri
+          </button>
+          {% if not p.is_principale %}
+          <form method="post" action="/impianto/{{ p.id }}/imposta-principale" style="margin:0">
+            <button type="submit" class="btn-amber" style="font-size:.75rem;padding:.32rem .75rem;">⭐ Imposta principale</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/impianto/{{ p.id }}/elimina" style="margin:0" onsubmit="return confirm('Eliminare definitivamente questo profilo impianto?')">
+            <button type="submit" class="btn-ghost" style="border-color:#f87171;color:#f87171;font-size:.75rem;padding:.3rem .65rem;">🗑</button>
+          </form>
+        </div>
       </div>
+
       <div class="spec-grid">
-        <div class="spec-item"><div class="spec-val">{{ p.vol_batch_litri }}L</div><div class="spec-lbl">Batch</div></div>
-        <div class="spec-item"><div class="spec-val">{{ p.vol_preboil_litri }}L</div><div class="spec-lbl">Pre-boil</div></div>
-        <div class="spec-item"><div class="spec-val">{{ p.vol_mash_litri }}L</div><div class="spec-lbl">Mash</div></div>
-        <div class="spec-item"><div class="spec-val">{{ p.dead_space_litri }}L</div><div class="spec-lbl">Dead space</div></div>
-        <div class="spec-item"><div class="spec-val">{{ p.perdita_bollitura_pct }}%/h</div><div class="spec-lbl">Perdiamo/h</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.vol_batch_litri }} L</div><div class="spec-lbl">Batch Target</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.vol_preboil_litri }} L</div><div class="spec-lbl">Pre-Boil</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.vol_mash_litri }} L</div><div class="spec-lbl">Capienza Mash</div></div>
         <div class="spec-item"><div class="spec-val">{{ p.efficienza_default }}%</div><div class="spec-lbl">Efficienza</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.boil_off_litri_ora or 3.0 }} L/h</div><div class="spec-lbl">Boil-Off ({{ p.perdita_bollitura_pct }}%)</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.dead_space_litri }} L</div><div class="spec-lbl">Deadspace</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.trub_loss_litri or 1.5 }} L</div><div class="spec-lbl">Perdita Trub</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.rapporto_mash_l_kg or 3.0 }} L/kg</div><div class="spec-lbl">Rapporto Mash</div></div>
+        <div class="spec-item"><div class="spec-val">{{ p.assorbimento_grani_l_kg or 0.96 }} L/kg</div><div class="spec-lbl">Assorb. Grani</div></div>
       </div>
-      {% if p.note %}<p style="font-size:.78rem;color:var(--muted);margin:.8rem 0 0;line-height:1.5">{{ p.note }}</p>{% endif %}
-      <div style="display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap">
-        {% if not p.is_principale %}
-        <form method="post" action="/impianto/{{ p.id }}/imposta-principale" style="margin:0">
-          <button type="submit" class="btn-amber">⭐ Imposta principale</button>
-        </form>
-        {% endif %}
-        <a href="/ricette/html" class="btn-ghost">Vai alle ricette →</a>
-        <form method="post" action="/impianto/{{ p.id }}/elimina" style="margin:0" onsubmit="return confirm('Eliminare?')">
-          <button type="submit" class="btn-ghost" style="border-color:#f87171;color:#f87171">🗑</button>
-        </form>
-      </div>
+
+      {% if p.note %}<p style="font-size:.79rem;color:var(--muted);margin:.8rem 0 0;line-height:1.5;background:#131922;padding:.55rem .8rem;border-radius:6px;">📝 {{ p.note }}</p>{% endif %}
     </div>
     {% endfor %}
     {% else %}
-    <div style="text-align:center;padding:3rem;color:var(--muted)">
+    <div style="text-align:center;padding:3rem;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:10px;">
       <div style="font-size:3rem;margin-bottom:.8rem">⚙️</div>
       <p>Nessun profilo impianto configurato.</p>
-      <p>Usa il pulsante <strong>BrewMonk B50</strong> per iniziare.</p>
+      <p>Usa i pulsanti <strong>Preset Rapidi</strong> a sinistra per configurare il tuo impianto con 1 click.</p>
     </div>
     {% endif %}
   </div>
 </div>
 
 <script>
+function applicaArchitettura(tipo) {
+  document.querySelectorAll('.arch-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById('arch-' + tipo);
+  if (card) card.classList.add('active');
+
+  if (tipo === 'aio') {
+    document.getElementById('f-ratio').value = '3.2';
+    document.getElementById('f-abs').value = '0.88';
+    document.getElementById('f-mash-ds').value = '3.0';
+    document.getElementById('f-ds').value = '3.5';
+    document.getElementById('f-eff').value = '72';
+  } else if (tipo === '2t') {
+    document.getElementById('f-ratio').value = '2.8';
+    document.getElementById('f-abs').value = '0.96';
+    document.getElementById('f-mash-ds').value = '2.0';
+    document.getElementById('f-ds').value = '2.5';
+    document.getElementById('f-eff').value = '75';
+  } else if (tipo === '3t') {
+    document.getElementById('f-ratio').value = '3.0';
+    document.getElementById('f-abs').value = '0.96';
+    document.getElementById('f-mash-ds').value = '2.5';
+    document.getElementById('f-ds').value = '3.0';
+    document.getElementById('f-eff').value = '79';
+  }
+}
+
+function caricaModificaProfilo(id, nome, marca, modello, batch, preboil, mash, eff, boiloff, boilpct, mashds, ds, trub, ratio, abs, shrink, durata, note) {
+  const form = document.getElementById('form-impianto');
+  form.action = '/impianto/' + id + '/modifica';
+  document.getElementById('form-imp-title').innerHTML = '✏️ Modifica Profilo: ' + nome;
+  document.getElementById('btn-form-submit').textContent = '💾 Aggiorna Profilo #' + id;
+  document.getElementById('btn-form-cancel').style.display = 'inline-block';
+
+  document.getElementById('f-nome').value = nome;
+  document.getElementById('f-marca').value = marca;
+  document.getElementById('f-modello').value = modello;
+  document.getElementById('f-batch').value = batch;
+  document.getElementById('f-preboil').value = preboil;
+  document.getElementById('f-mash').value = mash;
+  document.getElementById('f-eff').value = eff;
+  document.getElementById('f-boiloff').value = boiloff;
+  document.getElementById('f-boilpct').value = boilpct;
+  document.getElementById('f-mash-ds').value = mashds;
+  document.getElementById('f-ds').value = ds;
+  document.getElementById('f-trub').value = trub;
+  document.getElementById('f-ratio').value = ratio;
+  document.getElementById('f-abs').value = abs;
+  document.getElementById('f-shrink').value = shrink;
+  document.getElementById('f-durata').value = durata;
+  document.getElementById('f-note').value = note;
+
+  document.getElementById('card-form-impianto').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function resetFormImpianto() {
+  const form = document.getElementById('form-impianto');
+  form.action = '/impianto/nuovo';
+  form.reset();
+  document.getElementById('form-imp-title').innerHTML = '➕ Nuovo Profilo Impianto Personalizzato';
+  document.getElementById('btn-form-submit').textContent = '💾 Salva Profilo Impianto';
+  document.getElementById('btn-form-cancel').style.display = 'none';
+}
+
 function aggiornaCalc() {
   const sel = document.getElementById('calc-profilo');
+  if (!sel || !sel.options.length) return;
   const opt = sel.options[sel.selectedIndex];
-  const volBatch = parseFloat(opt.dataset.b) || 50;
-  const volBatchTarget = parseFloat(document.getElementById('calc-vol').value) || 20;
-  const ratio = volBatchTarget / volBatch;
-  document.getElementById('cr-pb').textContent = (parseFloat(opt.dataset.pb) * ratio).toFixed(1) + ' L';
-  document.getElementById('cr-mash').textContent = (parseFloat(opt.dataset.m) * ratio).toFixed(1) + ' L';
-  document.getElementById('cr-ds').textContent = parseFloat(opt.dataset.ds).toFixed(1) + ' L';
-  document.getElementById('cr-eff').textContent = parseFloat(opt.dataset.eff).toFixed(1) + ' %';
-  document.getElementById('cr-perd').textContent = parseFloat(opt.dataset.pb2).toFixed(1) + ' %/h';
+
+  const volBatchTarget = parseFloat(document.getElementById('calc-vol').value) || 23;
+  const gristKg = parseFloat(document.getElementById('calc-grist').value) || 5.5;
+  const targetTemp = parseFloat(document.getElementById('calc-temp').value) || 66.5;
+
+  const ds = parseFloat(opt.dataset.ds) || 3.5;
+  const mds = parseFloat(opt.dataset.mds) || 2.0;
+  const boilOff = parseFloat(opt.dataset.boil) || 3.0;
+  const trub = parseFloat(opt.dataset.trub) || 1.5;
+  const absRate = parseFloat(opt.dataset.abs) || 0.96;
+  const mashRatio = parseFloat(opt.dataset.ratio) || 3.0;
+  const eff = parseFloat(opt.dataset.eff) || 72;
+
+  const preBoil = volBatchTarget + boilOff + trub;
+  const grainAbs = gristKg * absRate;
+  const totWater = preBoil + grainAbs + mds;
+  const mashWater = (gristKg * mashRatio) + mds;
+  const spargeWater = Math.max(0, totWater - mashWater);
+  const strikeTemp = targetTemp + (0.41 / mashRatio) * (targetTemp - 20.0);
+
+  document.getElementById('cr-strike').textContent = strikeTemp.toFixed(1) + ' °C (per target ' + targetTemp.toFixed(1) + '°C)';
+  document.getElementById('cr-mash').textContent = mashWater.toFixed(1) + ' L (' + mashRatio.toFixed(1) + ' L/kg + ' + mds.toFixed(1) + 'L fondo)';
+  document.getElementById('cr-sparge').textContent = spargeWater.toFixed(1) + ' L';
+  document.getElementById('cr-abs').textContent = grainAbs.toFixed(1) + ' L (' + absRate.toFixed(2) + ' L/kg)';
+  document.getElementById('cr-pb').textContent = preBoil.toFixed(1) + ' L';
+  document.getElementById('cr-perd').textContent = boilOff.toFixed(1) + ' L/h boil + ' + trub.toFixed(1) + ' L trub';
+  document.getElementById('cr-ds-eff').textContent = ds.toFixed(1) + ' L deadspace · ' + eff.toFixed(1) + '% eff.';
+  document.getElementById('cr-tot').textContent = totWater.toFixed(1) + ' L';
 }
 {% if profili %}aggiornaCalc();{% endif %}
 </script>

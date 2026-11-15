@@ -490,6 +490,10 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
     catalogo_items = db.query(CatalogoIngrediente).order_by(CatalogoIngrediente.categoria, CatalogoIngrediente.nome).all()
     inventario_items = db.query(InventarioItem).order_by(InventarioItem.categoria, InventarioItem.nome).all()
     profili_impianto = db.query(ProfiloBirrificio).order_by(ProfiloBirrificio.nome).all()
+    profilo_impianto_corrente = (
+        ricetta.profilo_birrificio
+        or next((p for p in profili_impianto if p.is_principale), (profili_impianto[0] if profili_impianto else None))
+    )
 
     fermentazione_steps = []
     if ricetta.profilo_fermentazione_json:
@@ -530,6 +534,7 @@ def dettaglio_ricetta(ricetta_id: int, request: Request, db: Session = Depends(g
             "catalogo_items": catalogo_items,
             "inventario_items": inventario_items,
             "profili_impianto": profili_impianto,
+            "profilo_impianto_corrente": profilo_impianto_corrente,
             "fermentazione_steps": fermentazione_steps,
             "fattibilita": fattibilita,
         },
@@ -552,6 +557,8 @@ def aggiungi_ingrediente_rapido(
     param_colore: float = Form(None),
     param_alpha: float = Form(None),
     param_atten: float = Form(None),
+    hop_use: str = Form(None),
+    hop_form: str = Form(None),
     db: Session = Depends(get_db),
 ):
     ricetta = db.query(Ricetta).filter(Ricetta.id == ricetta_id).first()
@@ -576,8 +583,8 @@ def aggiungi_ingrediente_rapido(
                 yield_percent=param_resa if param_resa is not None else item.yield_percent,
                 color_srm=param_colore if param_colore is not None else item.color_srm,
                 alpha_acid=param_alpha if param_alpha is not None else item.alpha_acid,
-                hop_use=item.hop_use,
-                hop_form=item.hop_form,
+                hop_use=hop_use if hop_use else (item.hop_use or ("Boil" if item.categoria == "hop" else None)),
+                hop_form=hop_form if hop_form else (item.hop_form or ("Pellet" if item.categoria == "hop" else None)),
                 attenuation=param_atten if param_atten is not None else item.attenuation,
                 yeast_type=item.yeast_type,
                 yeast_form=item.yeast_form,
@@ -625,8 +632,8 @@ def aggiungi_ingrediente_rapido(
                 yield_percent=param_resa if param_resa is not None else yield_pct,
                 color_srm=param_colore if param_colore is not None else color_srm,
                 alpha_acid=param_alpha if param_alpha is not None else alpha_acid,
-                hop_use=cat_match.hop_use if cat_match else ("Boil" if cat == "hop" else None),
-                hop_form=cat_match.hop_form if cat_match else ("Pellet" if cat == "hop" else None),
+                hop_use=hop_use if hop_use else (cat_match.hop_use if cat_match else ("Boil" if cat == "hop" else None)),
+                hop_form=hop_form if hop_form else (cat_match.hop_form if cat_match else ("Pellet" if cat == "hop" else None)),
                 attenuation=param_atten if param_atten is not None else attenuation,
                 yeast_type=cat_match.yeast_type if cat_match else ("Ale" if cat == "yeast" else None),
                 yeast_form=cat_match.yeast_form if cat_match else ("Secco" if cat == "yeast" else None),
@@ -650,8 +657,8 @@ def aggiungi_ingrediente_rapido(
             color_srm=param_colore if param_colore is not None else (3.0 if cat == "grain" else None),
             alpha_acid=param_alpha if param_alpha is not None else (5.0 if cat == "hop" else None),
             attenuation=param_atten if param_atten is not None else (75.0 if cat == "yeast" else None),
-            hop_use="Boil" if cat == "hop" else None,
-            hop_form="Pellet" if cat == "hop" else None,
+            hop_use=(hop_use if hop_use else "Boil") if cat == "hop" else None,
+            hop_form=(hop_form if hop_form else "Pellet") if cat == "hop" else None,
             fermentable_type="Grain" if cat == "grain" else None,
             yeast_form="Secco" if cat == "yeast" else None,
         )

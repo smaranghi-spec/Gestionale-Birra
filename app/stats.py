@@ -123,21 +123,22 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
                     mcu += (color * q_lb) / v_gal
 
             elif categoria == "hop":
+                q_g = _to_g(float(quantita), unita)
                 alpha_raw = getattr(i, "alpha_acid", None) or (i.get("alpha_acid") if isinstance(i, dict) else None)
-                if alpha_raw:
-                    q_g = _to_g(float(quantita), unita)
-                    alpha = float(alpha_raw) / 100.0
-                    t_raw = getattr(i, "time_min", None) or (i.get("time_min") if isinstance(i, dict) else 0) or 0
-                    t = float(t_raw) if t_raw is not None else 0.0
-                    use = str(getattr(i, "hop_use", None) or (i.get("hop_use") if isinstance(i, dict) else "Boil") or "Boil").strip()
-                    form = str(getattr(i, "hop_form", None) or (i.get("hop_form") if isinstance(i, dict) else "Pellet") or "Pellet").strip()
-                    hop_entries.append({
-                        "q_g": q_g,
-                        "alpha": alpha,
-                        "time_min": t,
-                        "use": use,
-                        "form": form,
-                    })
+                alpha = (float(alpha_raw) / 100.0) if alpha_raw else 0.05
+                t_raw = getattr(i, "time_min", None) or (i.get("time_min") if isinstance(i, dict) else 0) or 0
+                t = float(t_raw) if t_raw is not None else 0.0
+                use = str(getattr(i, "hop_use", None) or (i.get("hop_use") if isinstance(i, dict) else "Boil") or "Boil").strip()
+                form = str(getattr(i, "hop_form", None) or (i.get("hop_form") if isinstance(i, dict) else "Pellet") or "Pellet").strip()
+                hop_id = getattr(i, "id", None) or (i.get("id") if isinstance(i, dict) else None)
+                hop_entries.append({
+                    "id": hop_id,
+                    "q_g": q_g,
+                    "alpha": alpha,
+                    "time_min": t,
+                    "use": use,
+                    "form": form,
+                })
 
             elif categoria == "yeast":
                 att_raw = getattr(i, "attenuation", None) or (i.get("attenuation") if isinstance(i, dict) else None)
@@ -217,6 +218,11 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
 
     # 4. Calcolo IBU Metodo Tinseth Metrico Esatto (Brewfather Aligned)
     total_ibu = 0.0
+    ibu_boil = 0.0
+    ibu_whirlpool = 0.0
+    ibu_first_wort = 0.0
+    dry_hop_g_tot = 0.0
+    hop_breakdown = {}
     bigness = 1.65 * (0.000125 ** (max(1.0, og) - 1.0))
 
     for h in hop_entries:
@@ -225,33 +231,58 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
         t = h["time_min"]
         use = h["use"].lower()
         form = h["form"].lower()
+        hid = h.get("id")
 
         pellet_factor = 1.10 if form == "pellet" or not form else 1.00
 
         if "dry" in use or "freddo" in use:
             # Dry Hop non apporta IBU da isomerizzazione
             u = 0.0
+            stage = "dry_hop"
         elif "first" in use or "fwh" in use:
             # First Wort Hop: resa circa +10% rispetto a 60 min boil
             tf = (1.0 - math.exp(-0.04 * 60.0)) / 4.15
             u = bigness * tf * 1.10
+            stage = "first_wort"
         elif "whirl" in use or "hopstand" in use or "fiamma" in use or "steep" in use:
             # Whirlpool sub-ebollizione (~85°C): tasso isomerizzazione ~35% con stima 10m se a fine fiamma
             durata_whirl = t if t > 0 else 10.0
             tf = (1.0 - math.exp(-0.04 * durata_whirl)) / 4.15
             u = bigness * tf * 0.35
+            stage = "whirlpool"
         elif "mash" in use:
             tf = (1.0 - math.exp(-0.04 * 60.0)) / 4.15
             u = bigness * tf * 0.20
+            stage = "mash"
         else:
             # Boil standard
             tf = (1.0 - math.exp(-0.04 * t)) / 4.15 if t > 0 else 0.0
             u = bigness * tf
+            stage = "boil"
 
         utilization = u * pellet_factor
+        hop_ibu = 0.0
         if volume > 0 and q_g > 0 and alpha > 0:
             hop_ibu = (q_g * alpha * 1000.0 * utilization) / volume
             total_ibu += hop_ibu
+
+        g_l = (q_g / volume) if volume > 0 else 0.0
+
+        if stage == "dry_hop":
+            dry_hop_g_tot += q_g
+        elif stage == "whirlpool":
+            ibu_whirlpool += hop_ibu
+        elif stage == "first_wort":
+            ibu_first_wort += hop_ibu
+        else:
+            ibu_boil += hop_ibu
+
+        if hid is not None:
+            hop_breakdown[hid] = {
+                "ibu": round(hop_ibu, 1),
+                "g_l": round(g_l, 2),
+                "stage": stage,
+            }
 
     # 5. Colore Morey
     srm = 1.4922 * (mcu**0.6859) if mcu > 0 else 0.0
@@ -311,6 +342,7 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
         "acqua_mash": round(acqua_mash, 1),
         "acqua_sparge": round(acqua_sparge, 1),
         "strike_water_temp": strike_water_temp,
+        "strike_water_temp_c": strike_water_temp,
         "assorbimento_grani": round(assorbimento_grani, 1),
         "deadspace": v_deadspace,
         "boil_loss": v_boil_loss,
@@ -330,6 +362,12 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
         "attenuazione": round(att_apparente, 1),
         "attenuazione_apparente": round(att_apparente, 1),
         "ibu": round(total_ibu, 1),
+        "ibu_boil": round(ibu_boil, 1),
+        "ibu_whirlpool": round(ibu_whirlpool, 1),
+        "ibu_first_wort": round(ibu_first_wort, 1),
+        "dry_hop_g_tot": round(dry_hop_g_tot, 1),
+        "dry_hop_g_l": round(dry_hop_g_tot / volume, 2) if volume > 0 else 0.0,
+        "hop_breakdown": hop_breakdown,
         "srm": round(srm, 1),
         "ebc": round(ebc, 1),
         "bu_gu": bu_gu,
@@ -343,6 +381,7 @@ def calcola_stats(ricetta, ingredienti=None, efficienza_param=None):
         "acqua_mash": round(acqua_mash, 1),
         "acqua_sparge": round(acqua_sparge, 1),
         "strike_water_temp": strike_water_temp,
+        "strike_water_temp_c": strike_water_temp,
         "assorbimento_grani": round(assorbimento_grani, 1),
         "volumi": volumi_dict,
         "ph_mash": ph_info,

@@ -308,6 +308,107 @@
     </style>
 </head>
 <body>
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         PUNTO 1: STICKY LIVE PARAMETERS DASHBOARD (CON BARRE BJCP REAL-TIME)
+         ═══════════════════════════════════════════════════════════════════════════ -->
+    <div id="sticky-live-dashboard" style="position:sticky;top:0;z-index:990;background:rgba(255,253,250,0.95);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #dfd3c3;border-radius:12px;padding:10px 16px;margin:0 auto 14px auto;max-width:1200px;box-shadow:0 6px 20px rgba(90,56,30,0.10);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;min-width:170px;">
+            <div id="sticky-color-swatch" style="width:32px;height:32px;border-radius:8px;background:{{ srm_hex }};border:2px solid rgba(0,0,0,0.2);flex-shrink:0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.3);" title="Colore stimato birra"></div>
+            <div>
+                <div style="font-size:13px;font-weight:800;color:#3d2512;line-height:1.2;">{{ ricetta.nome }}</div>
+                <div style="font-size:11px;color:#78350f;font-weight:600;">
+                    {% if confronto_stile %}
+                        🎯 {{ confronto_stile.nome }} ({{ confronto_stile.linea_guida }})
+                    {% else %}
+                        🍺 {{ ricetta.volume_target_litri }}L · Eff. {{ ricetta.efficienza }}%
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini Gauges OG, FG, ABV, IBU, EBC con progress bar BJCP -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;justify-content:center;">
+            <!-- OG -->
+            <div class="sticky-gauge" style="background:#fff;border:1px solid #e5dcd0;border-radius:8px;padding:5px 10px;min-width:102px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;">
+                    <span style="font-size:10px;font-weight:700;color:#78716c;text-transform:uppercase;">OG</span>
+                    <span id="sticky-og-badge" style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:#dcfce7;color:#166534;">
+                        {{ confronto_stile.og.stato|upper if confronto_stile else (stats.plato_og ~ '°P') }}
+                    </span>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#1c1917;" id="sticky-og-val">{{ stats.og }}</div>
+                <div style="height:4px;background:#e7e5e4;border-radius:2px;margin-top:3px;overflow:hidden;">
+                    <div id="sticky-og-bar" style="height:100%;width:65%;background:#16a34a;border-radius:2px;transition:all 0.3s;"></div>
+                </div>
+            </div>
+
+            <!-- FG -->
+            <div class="sticky-gauge" style="background:#fff;border:1px solid #e5dcd0;border-radius:8px;padding:5px 10px;min-width:102px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;">
+                    <span style="font-size:10px;font-weight:700;color:#78716c;text-transform:uppercase;">FG</span>
+                    <span id="sticky-fg-badge" style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:#dcfce7;color:#166534;">
+                        {{ confronto_stile.fg.stato|upper if confronto_stile else (stats.attenuazione ~ '%') }}
+                    </span>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#1c1917;" id="sticky-fg-val">{{ stats.fg }}</div>
+                <div style="height:4px;background:#e7e5e4;border-radius:2px;margin-top:3px;overflow:hidden;">
+                    <div id="sticky-fg-bar" style="height:100%;width:60%;background:#16a34a;border-radius:2px;transition:all 0.3s;"></div>
+                </div>
+            </div>
+
+            <!-- ABV -->
+            <div class="sticky-gauge" style="background:#fff;border:1px solid #e5dcd0;border-radius:8px;padding:5px 10px;min-width:102px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;">
+                    <span style="font-size:10px;font-weight:700;color:#78716c;text-transform:uppercase;">ABV</span>
+                    <span id="sticky-abv-badge" style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:#dcfce7;color:#166534;">
+                        {{ confronto_stile.abv.stato|upper if confronto_stile else 'HALL' }}
+                    </span>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#15803d;" id="sticky-abv-val">{{ stats.abv }}%</div>
+                <div style="height:4px;background:#e7e5e4;border-radius:2px;margin-top:3px;overflow:hidden;">
+                    <div id="sticky-abv-bar" style="height:100%;width:65%;background:#16a34a;border-radius:2px;transition:all 0.3s;"></div>
+                </div>
+            </div>
+
+            <!-- IBU -->
+            <div class="sticky-gauge" style="background:#fff;border:1px solid #e5dcd0;border-radius:8px;padding:5px 10px;min-width:108px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;">
+                    <span style="font-size:10px;font-weight:700;color:#78716c;text-transform:uppercase;">IBU</span>
+                    <span id="sticky-ibu-badge" style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:#dcfce7;color:#166534;">
+                        {{ confronto_stile.ibu.stato|upper if confronto_stile else ('BU/GU ' ~ stats.bu_gu) }}
+                    </span>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#b45309;" id="sticky-ibu-val">{{ stats.ibu }}</div>
+                <div style="height:4px;background:#e7e5e4;border-radius:2px;margin-top:3px;overflow:hidden;">
+                    <div id="sticky-ibu-bar" style="height:100%;width:65%;background:#16a34a;border-radius:2px;transition:all 0.3s;"></div>
+                </div>
+            </div>
+
+            <!-- EBC -->
+            <div class="sticky-gauge" style="background:#fff;border:1px solid #e5dcd0;border-radius:8px;padding:5px 10px;min-width:102px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;">
+                    <span style="font-size:10px;font-weight:700;color:#78716c;text-transform:uppercase;">EBC</span>
+                    <span id="sticky-ebc-badge" style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:#dcfce7;color:#166534;">
+                        {{ confronto_stile.ebc.stato|upper if confronto_stile else ('SRM ' ~ stats.srm) }}
+                    </span>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#5a381e;" id="sticky-ebc-val">{{ stats.ebc }}</div>
+                <div style="height:4px;background:#e7e5e4;border-radius:2px;margin-top:3px;overflow:hidden;">
+                    <div id="sticky-ebc-bar" style="height:100%;width:60%;background:#16a34a;border-radius:2px;transition:all 0.3s;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" onclick="apriSpotlightRapido()" style="background:#2563eb;color:#fff;border:none;padding:6px 11px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;box-shadow:0 2px 5px rgba(37,99,235,0.25);" title="Ricerca e aggiunta rapida ingrediente (Ctrl+K)">
+                ⚡ <span>+ Ingrediente</span> <kbd style="background:rgba(255,255,255,0.2);padding:1px 4px;border-radius:4px;font-size:10px;">/</kbd>
+            </button>
+            <a href="#sec-luppoli" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:5px 9px;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none;">🌿 Luppoli</a>
+            <a href="#card-volumi-acqua" style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:5px 9px;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none;">💧 Mash</a>
+        </div>
+    </div>
+
     <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
             <div>
@@ -428,22 +529,29 @@
         <div class="status-msg" id="stats-status" style="margin-top:10px;font-size:12px;color:#666;">Statistiche sincronizzate con gli algoritmi Brewfather.</div>
     </div>
 
-    <!-- BOX VOLUMI & ACQUA DI COTTA (STILE BREWFATHER) -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         PUNTO 3: INSTANT MASH & WATER CALCULATOR (INTERATTIVO REAL-TIME)
+         ═══════════════════════════════════════════════════════════════════════════ -->
     <div class="card" id="card-volumi-acqua">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
             <h2 style="margin:0;">💧 Volumi &amp; Acqua di Cotta (Modello Impianto All-Grain)</h2>
-            <span style="font-size:12px;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:12px;font-weight:600;">
-                {% if profilo_impianto_corrente %}
-                    {{ profilo_impianto_corrente.nome }} · Mash {{ profilo_impianto_corrente.rapporto_mash_l_kg or 3.0 }} L/kg · Boil-off {{ profilo_impianto_corrente.boil_off_litri_ora or 2.5 }} L/h · Trub {{ profilo_impianto_corrente.trub_loss_litri or 1.5 }} L
-                {% else %}
-                    Profilo Standard · Mash 3.0 L/kg · Boil-off 2.5 L/h · Trub 1.5 L
-                {% endif %}
-            </span>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <span style="font-size:12px;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:12px;font-weight:600;">
+                    {% if profilo_impianto_corrente %}
+                        {{ profilo_impianto_corrente.nome }} · Mash {{ profilo_impianto_corrente.rapporto_mash_l_kg or 3.0 }} L/kg · Boil-off {{ profilo_impianto_corrente.boil_off_litri_ora or 2.5 }} L/h · Trub {{ profilo_impianto_corrente.trub_loss_litri or 1.5 }} L
+                    {% else %}
+                        Profilo Standard · Mash 3.0 L/kg · Boil-off 2.5 L/h · Trub 1.5 L
+                    {% endif %}
+                </span>
+                <a href="/impianto" style="font-size:11px;background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;padding:3px 9px;border-radius:10px;font-weight:700;text-decoration:none;">⚙️ Configura Impianto</a>
+            </div>
         </div>
         <p style="font-size:13px;color:#666;margin:0 0 14px 0;">
             Fabbisogno idrico calcolato sul peso totale grani (<strong id="vol-peso-grani">{{ stats.volumi.peso_grani_kg }} kg</strong>) e sul volume target nel fermentatore (<strong id="vol-target">{{ ricetta.volume_target_litri }} L</strong>).
         </p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;">
+
+        <!-- KPI Volumi Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;margin-bottom:16px;">
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:11px;font-weight:bold;color:#166534;text-transform:uppercase;">Acqua Totale</div>
                 <div style="font-size:22px;font-weight:bold;color:#15803d;" id="vol-acqua-tot">{{ stats.volumi.acqua_totale }} L</div>
@@ -453,7 +561,7 @@
                 <div style="font-size:11px;font-weight:bold;color:#1e40af;text-transform:uppercase;">Acqua Mash (Ammostamento)</div>
                 <div style="font-size:22px;font-weight:bold;color:#1d4ed8;" id="vol-acqua-mash">{{ stats.volumi.acqua_mash }} L</div>
                 <div style="font-size:11px;color:#4b5563;">
-                    Infuso a <strong id="vol-strike-temp" style="color:#b45309;">{{ stats.volumi.strike_water_temp_c if stats.volumi else '69.0' }}°C</strong> (per target 67°C)
+                    Infuso a <strong id="vol-strike-temp" style="color:#b45309;font-size:13px;">{{ stats.volumi.strike_water_temp_c if stats.volumi else '69.0' }}°C</strong> (Target <span id="lbl-target-mash-temp">{{ sac_temp_media or 67.0 }}</span>°C)
                 </div>
             </div>
             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;">
@@ -470,6 +578,46 @@
                 <div style="font-size:11px;font-weight:bold;color:#4b5563;text-transform:uppercase;">Assorbimento Grani</div>
                 <div style="font-size:22px;font-weight:bold;color:#374151;" id="vol-assorbimento">{{ stats.volumi.assorbimento_grani }} L</div>
                 <div style="font-size:11px;color:#4b5563;">Trattenuta trebbie (~{{ profilo_impianto_corrente.assorbimento_grani_l_kg if profilo_impianto_corrente else 0.96 }} L/kg)</div>
+            </div>
+        </div>
+
+        <!-- Pannello Interattivo Ricalcolo Istantaneo Strike & Mash -->
+        <div style="background:#faf6f0;border:1px solid #e2d9cf;border-radius:10px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <span style="font-size:13px;font-weight:800;color:#5a381e;">🎛️ Calcolatore Interattivo Mash &amp; Strike Water (Simulazione Live)</span>
+                <span style="font-size:11px;color:#78716c;">Formula Termodinamica Palmer: <code>T_strike = T_target + (0.41 / R) × (T_target - T_grani)</code></span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:14px;align-items:end;">
+                <div>
+                    <label style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#44403c;margin-bottom:4px;">
+                        <span>Rapporto Mash (L/kg):</span>
+                        <strong id="sim-ratio-lbl" style="color:#1d4ed8;">{{ profilo_impianto_corrente.rapporto_mash_l_kg if profilo_impianto_corrente else 3.0 }} L/kg</strong>
+                    </label>
+                    <input type="range" id="sim-mash-ratio" min="2.0" max="4.5" step="0.1" value="{{ profilo_impianto_corrente.rapporto_mash_l_kg if profilo_impianto_corrente else 3.0 }}" oninput="ricalcolaAcquaLive()" style="width:100%;accent-color:#2563eb;cursor:pointer;">
+                </div>
+                <div>
+                    <label style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#44403c;margin-bottom:4px;">
+                        <span>Temp Target Mash (°C):</span>
+                        <strong id="sim-target-lbl" style="color:#b45309;">{{ sac_temp_media or 67.0 }} °C</strong>
+                    </label>
+                    <input type="range" id="sim-mash-temp" min="62.0" max="72.0" step="0.5" value="{{ sac_temp_media or 67.0 }}" oninput="ricalcolaAcquaLive()" style="width:100%;accent-color:#d97706;cursor:pointer;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:700;color:#44403c;margin-bottom:4px;">Temp Grani Secco (°C):</label>
+                    <input type="number" id="sim-grain-temp" step="0.5" min="5" max="38" value="20.0" oninput="ricalcolaAcquaLive()" style="width:100%;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-weight:700;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:700;color:#44403c;margin-bottom:4px;">Boil-Off (L/ora):</label>
+                    <input type="number" id="sim-boil-off" step="0.1" min="0.5" max="15" value="{{ profilo_impianto_corrente.boil_off_litri_ora if profilo_impianto_corrente else 2.5 }}" oninput="ricalcolaAcquaLive()" style="width:100%;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-weight:700;box-sizing:border-box;">
+                </div>
+            </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #d6cbbd;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;font-size:12px;color:#44403c;">
+                <div>
+                    🌡️ <strong>Scalda l'acqua di Mash a <span id="sim-strike-out" style="color:#dc2626;font-size:14px;">{{ stats.volumi.strike_water_temp_c if stats.volumi else '72.5' }}°C</span></strong> prima del dough-in per stabilizzare il mosto a <strong id="sim-target-out">{{ sac_temp_media or 67.0 }}°C</strong>.
+                </div>
+                <div>
+                    🔥 Volume fine bollitura (100°C): <strong id="sim-postboil-hot">{{ (ricetta.volume_target_litri + (profilo_impianto_corrente.trub_loss_litri if profilo_impianto_corrente else 1.5))|round(1) }} L</strong> · ❄️ Nel fermentatore (20°C): <strong>{{ ricetta.volume_target_litri }} L</strong>
+                </div>
             </div>
         </div>
     </div>
@@ -565,11 +713,21 @@
             </div>
         </div>
 
-        <!-- BOX AGGIUNTA RAPIDA -->
+        <!-- ═══════════════════════════════════════════════════════════════════════════
+             PUNTO 2: FAST INGREDIENT ADDITION CON LIVE SEARCH / SPOTLIGHT
+             ═══════════════════════════════════════════════════════════════════════════ -->
         <div id="box-aggiungi-rapido" style="display:{% if not ingredienti %}block{% else %}none{% endif %};background:#faf6f0;border:2px dashed #d1c7bd;border-radius:10px;padding:18px;margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <span style="font-weight:bold;color:#5a381e;font-size:15px;">✨ Aggiunta rapida ingrediente</span>
+                <span style="font-weight:bold;color:#5a381e;font-size:15px;">✨ Aggiunta Rapida &amp; Spotlight Search <span style="font-size:11px;font-weight:normal;color:#78716c;">(Premi <code>/</code> o <code>Ctrl+K</code> per cercare al volo)</span></span>
                 <button type="button" onclick="toggleAddIngrediente()" style="background:transparent;border:none;color:#888;font-size:16px;cursor:pointer;">✕ Chiudi</button>
+            </div>
+
+            <!-- Barra Spotlight Live Search -->
+            <div style="position:relative;margin-bottom:14px;">
+                <input type="text" id="spotlight-search" placeholder="🔍 Digita per filtrare istantaneamente Malti, Luppoli, Lieviti da Catalogo o Magazzino (es. Pilsner, Citra, US-05)..."
+                       oninput="filtraSpotlight(this.value)" autocomplete="off"
+                       style="width:100%;padding:10px 14px;border:2px solid #c8873e;border-radius:8px;font-size:14px;background:#fff;box-sizing:border-box;box-shadow:0 2px 8px rgba(200,135,62,0.12);">
+                <div id="spotlight-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:1000;background:#fff;border:1px solid #d6cbbd;border-radius:8px;margin-top:4px;max-height:260px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.15);"></div>
             </div>
 
             <!-- Selezione Sorgente (Tabs) -->
@@ -670,15 +828,15 @@
                     </div>
                 </div>
 
-                <!-- Campi Comuni di Quantità, Unità, Minuti e Note -->
+                <!-- Campi Comuni di Quantità, Unità, Fase Luppolo, Minuti e Note -->
                 <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
                     <div style="flex:1;min-width:110px;">
                         <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Quantità *:</label>
-                        <input type="number" step="0.001" min="0.001" name="quantita" id="input-quantita" required placeholder="es. 4.5" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+                        <input type="number" step="0.001" min="0.001" name="quantita" id="input-quantita" required placeholder="es. 4.5" oninput="calcolaAnteprimaDoseRapida()" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
                     </div>
-                    <div style="flex:1;min-width:90px;">
+                    <div style="flex:1;min-width:85px;">
                         <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Unità:</label>
-                        <select name="unita" id="sel-unita" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;">
+                        <select name="unita" id="sel-unita" onchange="calcolaAnteprimaDoseRapida()" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;">
                             <option value="kg">kg</option>
                             <option value="g">g</option>
                             <option value="l">l</option>
@@ -688,9 +846,18 @@
                             <option value="lb">lb</option>
                         </select>
                     </div>
+                    <div style="flex:1;min-width:140px;display:none;" id="box-hop-use">
+                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Fase Luppolatura:</label>
+                        <select name="hop_use" id="sel-hop-use" onchange="onHopUseQuickChange(this.value)" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;">
+                            <option value="Boil">🔥 Bollitura (Boil)</option>
+                            <option value="Whirlpool">🌀 Whirlpool / Hop Stand</option>
+                            <option value="Dry Hop">🧊 Dry Hop (A freddo)</option>
+                            <option value="First Wort">🍯 First Wort Hop (FWH)</option>
+                        </select>
+                    </div>
                     <div style="flex:1;min-width:120px;" id="box-time-min">
-                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Minuti bollitura:</label>
-                        <input type="number" name="time_min" id="input-time-min" placeholder="es. 60" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+                        <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;" id="lbl-time-min">Minuti / Giorni:</label>
+                        <input type="number" name="time_min" id="input-time-min" placeholder="es. 60" oninput="calcolaAnteprimaDoseRapida()" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
                     </div>
                     <div style="flex:2;min-width:180px;">
                         <label style="display:block;font-size:12px;font-weight:bold;color:#555;margin-bottom:4px;">Note / Momento aggiunta:</label>
@@ -703,13 +870,28 @@
                     </div>
                 </div>
 
+                <!-- Chip rapidi minuti Luppolo + Live Preview % Grist / IBU -->
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;">
+                    <div id="hop-quick-chips" style="display:none;gap:5px;flex-wrap:wrap;align-items:center;">
+                        <span style="font-size:11px;color:#666;font-weight:bold;">Preset fasi:</span>
+                        <button type="button" onclick="impostaFaseLuppolo('Boil', 60, 'Amaro 60 min')" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🔥 60' Amaro</button>
+                        <button type="button" onclick="impostaFaseLuppolo('Boil', 30, 'Sapore 30 min')" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🔥 30' Sapore</button>
+                        <button type="button" onclick="impostaFaseLuppolo('Boil', 15, 'Aroma 15 min')" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🔥 15' Aroma</button>
+                        <button type="button" onclick="impostaFaseLuppolo('Boil', 5, 'Aroma 5 min')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🔥 5' Fine</button>
+                        <button type="button" onclick="impostaFaseLuppolo('Whirlpool', 20, 'Whirlpool 80°C 20 min')" style="background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🌀 20' Whirlpool 80°C</button>
+                        <button type="button" onclick="impostaFaseLuppolo('Dry Hop', 3, 'Dry Hop Giorno 3')" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🧊 DH Giorno 3</button>
+                        <button type="button" onclick="impostaFaseLuppolo('Dry Hop', 7, 'Dry Hop Giorno 7')" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🧊 DH Giorno 7</button>
+                    </div>
+                    <div id="live-add-calc" style="font-size:12px;font-weight:700;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;padding:4px 10px;border-radius:8px;display:none;"></div>
+                </div>
+
                 <!-- Parametri Tecnici Avanzati Opzionali -->
                 <details style="margin-top:12px;font-size:12px;color:#777;">
                     <summary style="cursor:pointer;font-weight:bold;color:#8b5a2b;">⚙️ Personalizza parametri tecnici avanzati (opzionale)</summary>
                     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;background:#fff;padding:10px;border-radius:6px;border:1px solid #eee;">
                         <div style="flex:1;min-width:100px;">
                             <label style="display:block;font-size:11px;color:#555;">Resa Estratto (%)</label>
-                            <input type="number" step="0.1" name="param_resa" id="p-resa" placeholder="es. 78" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
+                            <input type="number" step="0.1" name="param_resa" id="p-resa" oninput="calcolaAnteprimaDoseRapida()" placeholder="es. 78" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
                         </div>
                         <div style="flex:1;min-width:100px;">
                             <label style="display:block;font-size:11px;color:#555;">Colore SRM</label>
@@ -717,7 +899,7 @@
                         </div>
                         <div style="flex:1;min-width:100px;">
                             <label style="display:block;font-size:11px;color:#555;">Alpha Acid (%)</label>
-                            <input type="number" step="0.1" name="param_alpha" id="p-alpha" placeholder="es. 12" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
+                            <input type="number" step="0.1" name="param_alpha" id="p-alpha" oninput="calcolaAnteprimaDoseRapida()" placeholder="es. 12" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;">
                         </div>
                         <div style="flex:1;min-width:100px;">
                             <label style="display:block;font-size:11px;color:#555;">Attenuazione (%)</label>
@@ -783,93 +965,285 @@
         {% endif %}
 
         {% if ingredienti %}
-        <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Cat.</th>
-                    <th style="text-align:right;">%&nbsp;cat.</th>
-                    <th>Modifica rapida</th>
-                    <th>Dati</th>
-                    <th>Azioni</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for i in ingredienti %}
-                {% set p = percentuali.get(i.id, {}) %}
-                <tr>
-                    <td>
-                        {% if i.codice_ingrediente %}
-                        <span style="font-family:monospace;font-size:10px;background:#e8ded5;color:#5a381e;padding:1px 5px;border-radius:4px;font-weight:bold;margin-right:4px;">{{ i.codice_ingrediente }}</span>
-                        {% endif %}
-                        <strong>{{ i.nome }}</strong><br>
-                        <span class="small-note">ID {{ i.id }}</span>
-                    </td>
-                    <td>{{ i.categoria }}</td>
-                    <td style="text-align:right;white-space:nowrap;">
-                        {% if p %}
-                        <span style="font-weight:bold;color:
-                            {% if i.categoria=='grain' %}#c8873e
-                            {% elif i.categoria=='hop' %}#4a9a3f
-                            {% elif i.categoria=='yeast' %}#d47b2a
-                            {% else %}#7a6b9a{% endif %};">
-                            {{ p.perc }}%
-                        </span>
-                        <div style="width:60px;height:5px;background:#f0e8de;border-radius:3px;margin-top:3px;display:inline-block;vertical-align:middle;">
-                            <div style="width:{{ [p.perc,1]|max }}%;height:100%;border-radius:3px;background:
-                                {% if i.categoria=='grain' %}#c8873e
-                                {% elif i.categoria=='hop' %}#4a9a3f
-                                {% elif i.categoria=='yeast' %}#d47b2a
-                                {% else %}#7a6b9a{% endif %};"></div>
-                        </div>
-                        {% else %}—{% endif %}
-                    </td>
-                    <td>
-                        <input class="inline-input" type="number" step="0.001" id="qty-{{ i.id }}" value="{{ i.quantita }}">
-                        <select class="inline-select" id="unit-{{ i.id }}">
-                            <option value="kg" {% if i.unita == 'kg' %}selected{% endif %}>kg</option>
-                            <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
-                            <option value="l" {% if i.unita == 'l' %}selected{% endif %}>l</option>
-                            <option value="ml" {% if i.unita == 'ml' %}selected{% endif %}>ml</option>
-                            <option value="pz" {% if i.unita == 'pz' %}selected{% endif %}>pz</option>
-                            <option value="oz" {% if i.unita == 'oz' %}selected{% endif %}>oz</option>
-                            <option value="lb" {% if i.unita == 'lb' %}selected{% endif %}>lb</option>
-                        </select>
-                        {% if i.categoria == 'hop' or i.categoria == 'misc' %}
-                        <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min or '' }}" placeholder="Minuti">
-                        {% endif %}
+        <!-- ═══════════════════════════════════════════════════════════════════════════
+             PUNTO 4: FERMENTABILI & FASI DI LUPPOLATURA STRUTTURATE (BOIL / WP / DH)
+             ═══════════════════════════════════════════════════════════════════════════ -->
+        {% set grani_list = ingredienti | selectattr('categoria', 'equalto', 'grain') | list %}
+        {% set luppoli_list = ingredienti | selectattr('categoria', 'equalto', 'hop') | list %}
+        {% set lieviti_list = ingredienti | selectattr('categoria', 'equalto', 'yeast') | list %}
+        {% set misc_list = ingredienti | rejectattr('categoria', 'in', ['grain', 'hop', 'yeast']) | list %}
 
-                        <input class="inline-note" type="text" id="note-{{ i.id }}" value="{{ i.note or '' }}" placeholder="Note">
-                        <button type="button" onclick="salvaRapido({{ i.id }})">Salva rapido</button>
-                        <div class="small-note" id="save-status-{{ i.id }}"></div>
-                    </td>
-                    <td>
-                        {% if i.categoria == 'grain' %}
-                            tipo={{ i.fermentable_type or '-' }}, yield={{ i.yield_percent or '-' }}%, color={{ i.color_srm or '-' }} SRM
-                        {% elif i.categoria == 'hop' %}
-                            alpha={{ i.alpha_acid or '-' }}%, use={{ i.hop_use or '-' }}, time={{ i.time_min or '-' }} min, form={{ i.hop_form or '-' }}
-                        {% elif i.categoria == 'yeast' %}
-                            atten={{ i.attenuation or '-' }}%, type={{ i.yeast_type or '-' }}, form={{ i.yeast_form or '-' }}
-                        {% elif i.categoria == 'misc' %}
-                            type={{ i.misc_type or '-' }}, use={{ i.misc_use or '-' }}, time={{ i.time_min or '-' }} min
-                        {% else %}
-                            -
-                        {% endif %}
-                        {% if i.numero_lotto %}
-                        <br><span class="small-note">🏷️ Lotto {{ i.numero_lotto }}{% if i.fornitore_lotto %} · {{ i.fornitore_lotto }}{% endif %}{% if i.data_scadenza_lotto %} · scad. {{ i.data_scadenza_lotto }}{% endif %}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="/ingredienti/{{ i.id }}/modifica">Modifica completa</a>
-                        <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
-                            <button type="submit" onclick="return confirm('Eliminare ingrediente?')">Elimina</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <!-- 1. SEZIONE GRANI & FERMENTABILI -->
+        <div id="sec-grani" style="margin-bottom:22px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#fdf8f2;border:1px solid #eadbc8;padding:8px 14px;border-radius:8px 8px 0 0;">
+                <span style="font-weight:800;color:#78350f;font-size:14px;">🌾 Grani, Malti &amp; Fermentabili ({{ grani_list|length }})</span>
+                <span style="font-size:12px;font-weight:700;color:#92400e;">Totale Grist: {{ stats.volumi.peso_grani_kg if stats.volumi else 0 }} kg · EBC: {{ stats.ebc }}</span>
+            </div>
+            {% if grani_list %}
+            <div class="table-wrap" style="border:1px solid #eadbc8;border-top:none;border-radius:0 0 8px 8px;">
+                <table style="margin-top:0;">
+                    <thead>
+                        <tr>
+                            <th>Malto / Fermentabile</th>
+                            <th style="text-align:right;">% Grist</th>
+                            <th>Quantità &amp; Modifica Rapida</th>
+                            <th>Specifiche Tecniche</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in grani_list %}
+                        {% set p = percentuali.get(i.id, {}) %}
+                        <tr>
+                            <td>
+                                {% if i.codice_ingrediente %}
+                                <span style="font-family:monospace;font-size:10px;background:#e8ded5;color:#5a381e;padding:1px 5px;border-radius:4px;font-weight:bold;margin-right:4px;">{{ i.codice_ingrediente }}</span>
+                                {% endif %}
+                                <strong>{{ i.nome }}</strong>
+                                {% if i.numero_lotto %}<br><span class="small-note">🏷️ Lotto {{ i.numero_lotto }}</span>{% endif %}
+                            </td>
+                            <td style="text-align:right;white-space:nowrap;">
+                                {% if p %}
+                                <span style="font-weight:800;color:#b45309;font-size:13px;">{{ p.perc }}%</span>
+                                <div style="width:65px;height:6px;background:#f0e8de;border-radius:3px;margin-top:3px;display:inline-block;vertical-align:middle;">
+                                    <div style="width:{{ [p.perc,1]|max }}%;height:100%;border-radius:3px;background:#c8873e;"></div>
+                                </div>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                <input class="inline-input" type="number" step="0.001" id="qty-{{ i.id }}" value="{{ i.quantita }}">
+                                <select class="inline-select" id="unit-{{ i.id }}">
+                                    <option value="kg" {% if i.unita == 'kg' %}selected{% endif %}>kg</option>
+                                    <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
+                                    <option value="lb" {% if i.unita == 'lb' %}selected{% endif %}>lb</option>
+                                </select>
+                                <input class="inline-note" type="text" id="note-{{ i.id }}" value="{{ i.note or '' }}" placeholder="Note ammostamento">
+                                <button type="button" onclick="salvaRapido({{ i.id }})">Salva</button>
+                                <span class="small-note" id="save-status-{{ i.id }}"></span>
+                            </td>
+                            <td style="font-size:12px;">
+                                <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:600;">Resa {{ i.yield_percent or 75 }}%</span>
+                                <span style="background:#f3f4f6;color:#374151;padding:2px 6px;border-radius:4px;font-weight:600;margin-left:4px;">{{ i.color_srm or 3 }} SRM ({{ ((i.color_srm or 3) * 1.97)|round(1) }} EBC)</span>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <a href="/ingredienti/{{ i.id }}/modifica" style="font-size:12px;">Modifica</a> ·
+                                <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
+                                    <button type="submit" style="background:#dc2626;padding:4px 8px;font-size:11px;" onclick="return confirm('Eliminare ingrediente?')">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="padding:12px;border:1px solid #eadbc8;border-top:none;border-radius:0 0 8px 8px;font-size:13px;color:#888;">Nessun malto o fermentabile inserito.</div>
+            {% endif %}
+        </div>
+
+        <!-- 2. SEZIONE LUPPOLI & FASI DI LUPPOLATURA STRUTTURATE (BOIL / WHIRLPOOL / DRY HOP + DRAG & DROP) -->
+        <div id="sec-luppoli" style="margin-bottom:22px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#f0fdf4;border:1px solid #bbf7d0;padding:10px 14px;border-radius:8px 8px 0 0;">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-weight:800;color:#166534;font-size:14px;">🌿 Piano di Luppolatura per Fasi ({{ luppoli_list|length }} aggiunte)</span>
+                    {% if luppoli_list %}
+                    <button type="button" onclick="ordinaLuppoliPerFase()" style="background:#fff;color:#166534;border:1px solid #86efac;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;" title="Riordina cronologicamente: First Wort → Boil 60'→0' → Whirlpool → Dry Hop">
+                        ⇅ Riordina Fasi (60' → WP → DH)
+                    </button>
+                    {% endif %}
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;font-weight:700;">
+                    <span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:10px;">🔥 Boil: <strong id="hop-kpi-boil-ibu">{{ stats.ibu_boil if stats.ibu_boil is defined else stats.ibu }}</strong> IBU</span>
+                    <span style="background:#e0f2fe;color:#0369a1;padding:3px 8px;border-radius:10px;">🌀 Whirlpool: <strong id="hop-kpi-wp-ibu">{{ stats.ibu_whirlpool if stats.ibu_whirlpool is defined else 0 }}</strong> IBU</span>
+                    <span style="background:#f3e8ff;color:#6b21a8;padding:3px 8px;border-radius:10px;">🧊 Dry Hop: <strong id="hop-kpi-dh-gl">{{ stats.dry_hop_g_l if stats.dry_hop_g_l is defined else 0 }}</strong> g/L ({{ stats.dry_hop_g_tot if stats.dry_hop_g_tot is defined else 0 }} g)</span>
+                    <span style="background:#166534;color:#fff;padding:3px 8px;border-radius:10px;">🎯 Totale: <strong id="hop-kpi-tot-ibu">{{ stats.ibu }}</strong> IBU</span>
+                </div>
+            </div>
+
+            {% if luppoli_list %}
+            <div class="table-wrap" style="border:1px solid #bbf7d0;border-top:none;border-radius:0 0 8px 8px;">
+                <table style="margin-top:0;" id="tabella-luppoli">
+                    <thead>
+                        <tr>
+                            <th style="width:28px;text-align:center;" title="Trascina per riordinare">⠿</th>
+                            <th>Fase &amp; Timing</th>
+                            <th>Luppolo &amp; Alfa Acidi</th>
+                            <th>Contributo (IBU / g·L)</th>
+                            <th>Dosaggio, Fase &amp; Tempo (Live Edit)</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-luppoli">
+                        {% for i in luppoli_list %}
+                        {% set use_low = (i.hop_use or 'Boil')|lower %}
+                        {% set hb = stats.hop_breakdown.get(i.id, {}) if stats.hop_breakdown is defined else {} %}
+                        <tr class="hop-row-draggable" draggable="true" data-hop-id="{{ i.id }}" data-use="{{ i.hop_use or 'Boil' }}" data-time="{{ i.time_min or 0 }}" style="background:{% if 'dry' in use_low or 'freddo' in use_low %}#faf5ff{% elif 'whirl' in use_low or 'stand' in use_low %}#f0f9ff{% else %}#ffffff{% endif %};cursor:grab;">
+                            <td style="text-align:center;color:#9ca3af;font-size:16px;user-select:none;" title="Trascina riga per spostare">⠿</td>
+                            <td style="white-space:nowrap;">
+                                {% if 'dry' in use_low or 'freddo' in use_low %}
+                                    <span style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;">
+                                        🧊 DRY HOP · {{ i.time_min or 3 }} gg
+                                    </span>
+                                {% elif 'whirl' in use_low or 'stand' in use_low or 'fiamma' in use_low %}
+                                    <span style="background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;">
+                                        🌀 WHIRLPOOL · {{ i.time_min or 20 }}' (80°C)
+                                    </span>
+                                {% elif 'first' in use_low or 'fwh' in use_low %}
+                                    <span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;">
+                                        🍯 FIRST WORT · {{ i.time_min or 60 }}'
+                                    </span>
+                                {% else %}
+                                    {% set t_m = i.time_min or 0 %}
+                                    {% if t_m >= 45 %}
+                                    <span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;">
+                                        🔥 BOIL {{ t_m }}' (Amaro)
+                                    </span>
+                                    {% elif t_m >= 15 %}
+                                    <span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;">
+                                        🔥 BOIL {{ t_m }}' (Sapore)
+                                    </span>
+                                    {% else %}
+                                    <span style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;">
+                                        🔥 BOIL {{ t_m }}' (Aroma)
+                                    </span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ i.nome }}</strong>
+                                <span style="background:#dcfce7;color:#166534;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;margin-left:4px;">{{ i.alpha_acid or 5 }}% AA</span>
+                                <span style="font-size:11px;color:#666;">({{ i.hop_form or 'Pellet' }})</span>
+                                {% if i.numero_lotto %}<br><span class="small-note">🏷️ Lotto {{ i.numero_lotto }}</span>{% endif %}
+                            </td>
+                            <td style="white-space:nowrap;">
+                                {% if 'dry' in use_low or 'freddo' in use_low %}
+                                    <span style="font-weight:800;color:#6b21a8;font-size:13px;" id="hop-ibu-{{ i.id }}">0.0 IBU</span>
+                                    <span style="font-size:11px;color:#555;display:block;">Aroma: <strong id="hop-gl-{{ i.id }}">{{ hb.get('g_l', (i.quantita / (ricetta.volume_target_litri or 20))|round(2)) }}</strong> g/L</span>
+                                {% else %}
+                                    <span style="font-weight:800;color:#15803d;font-size:13px;" id="hop-ibu-{{ i.id }}">+{{ hb.get('ibu', '—') }} IBU</span>
+                                    <span style="font-size:11px;color:#555;display:block;">Dose: <strong id="hop-gl-{{ i.id }}">{{ hb.get('g_l', (i.quantita / (ricetta.volume_target_litri or 20))|round(2)) }}</strong> g/L</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <input class="inline-input" type="number" step="0.1" id="qty-{{ i.id }}" value="{{ i.quantita }}" style="width:72px;">
+                                <select class="inline-select" id="unit-{{ i.id }}">
+                                    <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
+                                    <option value="kg" {% if i.unita == 'kg' %}selected{% endif %}>kg</option>
+                                    <option value="oz" {% if i.unita == 'oz' %}selected{% endif %}>oz</option>
+                                </select>
+                                <select class="inline-select" id="use-{{ i.id }}" style="font-weight:600;color:#166534;">
+                                    <option value="Boil" {% if not i.hop_use or i.hop_use == 'Boil' %}selected{% endif %}>🔥 Boil</option>
+                                    <option value="Whirlpool" {% if i.hop_use == 'Whirlpool' %}selected{% endif %}>🌀 Whirlpool</option>
+                                    <option value="Dry Hop" {% if i.hop_use == 'Dry Hop' %}selected{% endif %}>🧊 Dry Hop</option>
+                                    <option value="First Wort" {% if i.hop_use == 'First Wort' %}selected{% endif %}>🍯 First Wort</option>
+                                </select>
+                                <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min if i.time_min is not none else 60 }}" placeholder="Min/gg" style="width:65px;" title="Minuti di bollitura/whirlpool o giorni di Dry Hop">
+                                <input class="inline-note" type="text" id="note-{{ i.id }}" value="{{ i.note or '' }}" placeholder="es. Giorno 3, 80°C..." style="width:115px;">
+                                <button type="button" onclick="salvaRapido({{ i.id }})">Salva</button>
+                                <span class="small-note" id="save-status-{{ i.id }}"></span>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <a href="/ingredienti/{{ i.id }}/modifica" style="font-size:12px;">Modifica</a> ·
+                                <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
+                                    <button type="submit" style="background:#dc2626;padding:4px 8px;font-size:11px;" onclick="return confirm('Eliminare luppolo?')">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="padding:12px;border:1px solid #bbf7d0;border-top:none;border-radius:0 0 8px 8px;font-size:13px;color:#888;">Nessun luppolo inserito. Usa i pulsanti rapidi 60' / Whirlpool / Dry Hop per strutturare la luppolatura.</div>
+            {% endif %}
+        </div>
+
+        <!-- 3. SEZIONE LIEVITI & ADDITIVI / MISC -->
+        <div id="sec-lieviti" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:16px;">
+            <!-- Lieviti -->
+            <div>
+                <div style="background:#fff7ed;border:1px solid #fed7aa;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;color:#9a3412;font-size:13px;">
+                    🧫 Lieviti &amp; Inoculo ({{ lieviti_list|length }})
+                </div>
+                <div class="table-wrap" style="border:1px solid #fed7aa;border-top:none;border-radius:0 0 8px 8px;">
+                    {% if lieviti_list %}
+                    <table style="margin-top:0;">
+                        <tbody>
+                            {% for i in lieviti_list %}
+                            <tr>
+                                <td>
+                                    <strong>{{ i.nome }}</strong>
+                                    <span style="display:block;font-size:11px;color:#9a3412;font-weight:700;">Atten: {{ i.attenuation or 75 }}% · {{ i.yeast_form or 'Secco' }}</span>
+                                </td>
+                                <td>
+                                    <input class="inline-input" type="number" step="0.1" id="qty-{{ i.id }}" value="{{ i.quantita }}" style="width:60px;">
+                                    <select class="inline-select" id="unit-{{ i.id }}">
+                                        <option value="pz" {% if i.unita == 'pz' %}selected{% endif %}>pz</option>
+                                        <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
+                                        <option value="ml" {% if i.unita == 'ml' %}selected{% endif %}>ml</option>
+                                    </select>
+                                    <input type="hidden" id="note-{{ i.id }}" value="{{ i.note or '' }}">
+                                    <button type="button" onclick="salvaRapido({{ i.id }})">Salva</button>
+                                    <span class="small-note" id="save-status-{{ i.id }}"></span>
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <a href="/ingredienti/{{ i.id }}/modifica" style="font-size:12px;">Mod</a> ·
+                                    <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
+                                        <button type="submit" style="background:#dc2626;padding:3px 7px;font-size:11px;" onclick="return confirm('Eliminare lievito?')">✕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div style="padding:10px;font-size:12px;color:#888;">Nessun lievito specificato (default attenuazione 75%).</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Misc & Spezie -->
+            <div>
+                <div style="background:#f5f3ff;border:1px solid #ddd6fe;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;color:#5b21b6;font-size:13px;">
+                    🧪 Additivi, Chiarificanti &amp; Spezie ({{ misc_list|length }})
+                </div>
+                <div class="table-wrap" style="border:1px solid #ddd6fe;border-top:none;border-radius:0 0 8px 8px;">
+                    {% if misc_list %}
+                    <table style="margin-top:0;">
+                        <tbody>
+                            {% for i in misc_list %}
+                            <tr>
+                                <td>
+                                    <strong>{{ i.nome }}</strong>
+                                    <span style="display:block;font-size:11px;color:#666;">{{ i.time_min or 15 }} min · {{ i.note or '-' }}</span>
+                                </td>
+                                <td>
+                                    <input class="inline-input" type="number" step="0.1" id="qty-{{ i.id }}" value="{{ i.quantita }}" style="width:60px;">
+                                    <select class="inline-select" id="unit-{{ i.id }}">
+                                        <option value="g" {% if i.unita == 'g' %}selected{% endif %}>g</option>
+                                        <option value="ml" {% if i.unita == 'ml' %}selected{% endif %}>ml</option>
+                                        <option value="pz" {% if i.unita == 'pz' %}selected{% endif %}>pz</option>
+                                    </select>
+                                    <input class="inline-input" type="number" id="time-{{ i.id }}" value="{{ i.time_min or '' }}" placeholder="Min" style="width:55px;">
+                                    <input type="hidden" id="note-{{ i.id }}" value="{{ i.note or '' }}">
+                                    <button type="button" onclick="salvaRapido({{ i.id }})">Salva</button>
+                                    <span class="small-note" id="save-status-{{ i.id }}"></span>
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <a href="/ingredienti/{{ i.id }}/modifica" style="font-size:12px;">Mod</a> ·
+                                    <form method="post" action="/ingredienti/{{ i.id }}/elimina" style="display:inline;">
+                                        <button type="submit" style="background:#dc2626;padding:3px 7px;font-size:11px;" onclick="return confirm('Eliminare additivo?')">✕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div style="padding:10px;font-size:12px;color:#888;">Nessun additivo (es. Irish Moss, nutrienti, spezie).</div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
         {% else %}
             <p>Nessun ingrediente presente.</p>
@@ -1687,10 +2061,38 @@
                 if (data.srm_hex) {
                     const swatch = document.getElementById("stat-color-swatch");
                     if (swatch) swatch.style.backgroundColor = data.srm_hex;
+                    const stickySwatch = document.getElementById("sticky-color-swatch");
+                    if (stickySwatch) stickySwatch.style.backgroundColor = data.srm_hex;
+                }
+
+                // Aggiorna Sticky Live Parameters Dashboard
+                setText("sticky-og-val", s.og);
+                setText("sticky-fg-val", s.fg);
+                setText("sticky-abv-val", s.abv + "%");
+                setText("sticky-ibu-val", s.ibu);
+                setText("sticky-ebc-val", s.ebc);
+
+                // Aggiorna KPI Fasi Luppolatura e righe singoli luppoli
+                if (s.ibu_boil !== undefined) setText("hop-kpi-boil-ibu", s.ibu_boil);
+                if (s.ibu_whirlpool !== undefined) setText("hop-kpi-wp-ibu", s.ibu_whirlpool);
+                if (s.dry_hop_g_l !== undefined) setText("hop-kpi-dh-gl", s.dry_hop_g_l);
+                setText("hop-kpi-tot-ibu", s.ibu);
+
+                if (s.hop_breakdown) {
+                    Object.keys(s.hop_breakdown).forEach(hid => {
+                        const hb = s.hop_breakdown[hid];
+                        const ibuEl = document.getElementById(`hop-ibu-${hid}`);
+                        const glEl = document.getElementById(`hop-gl-${hid}`);
+                        if (ibuEl) ibuEl.textContent = (hb.stage === 'dry_hop' ? '0.0 IBU' : `+${hb.ibu} IBU`);
+                        if (glEl) glEl.textContent = hb.g_l;
+                    });
                 }
 
                 if (s.volumi) {
                     const v = s.volumi;
+                    window._CURRENT_GRIST_KG = parseFloat(v.peso_grani_kg) || 0;
+                    window._CURRENT_TARGET_VOL = parseFloat(v.volume_target) || {{ ricetta.volume_target_litri or 20 }};
+                    window._CURRENT_OG = parseFloat(s.og) || 1.050;
                     setText("vol-peso-grani", v.peso_grani_kg + " kg");
                     setText("vol-acqua-tot", v.acqua_totale + " L");
                     setText("vol-acqua-mash", v.acqua_mash + " L");
@@ -1772,6 +2174,13 @@
                     setText("cmp-abv-range", `${c.abv.min} - ${c.abv.max}`);
                     setText("cmp-abv-state", c.abv.stato);
                     aggiornaClasseStato("cmp-abv-state", c.abv.stato);
+
+                    // Aggiorna progress bar e badge della Sticky Dashboard rispetto ai limiti BJCP
+                    aggiornaBarraSticky("og", c.og);
+                    aggiornaBarraSticky("fg", c.fg);
+                    aggiornaBarraSticky("abv", c.abv);
+                    aggiornaBarraSticky("ibu", c.ibu);
+                    aggiornaBarraSticky("ebc", c.ebc);
                 }
 
                 statusEl.textContent = "Statistiche aggiornate.";
@@ -1780,11 +2189,43 @@
             }
         }
 
+        function aggiornaBarraSticky(key, obj) {
+            if (!obj) return;
+            const bar = document.getElementById(`sticky-${key}-bar`);
+            const badge = document.getElementById(`sticky-${key}-badge`);
+            const val = parseFloat(obj.valore);
+            const min = parseFloat(obj.min);
+            const max = parseFloat(obj.max);
+            const stato = (obj.stato || "ok").toLowerCase();
+
+            if (badge) {
+                badge.textContent = stato.toUpperCase();
+                if (stato === "ok") {
+                    badge.style.background = "#dcfce7";
+                    badge.style.color = "#166534";
+                } else if (stato === "sotto") {
+                    badge.style.background = "#fef3c7";
+                    badge.style.color = "#92400e";
+                } else {
+                    badge.style.background = "#fee2e2";
+                    badge.style.color = "#991b1b";
+                }
+            }
+
+            if (bar && !isNaN(val) && !isNaN(min) && !isNaN(max) && max > min) {
+                let pct = ((val - min) / (max - min)) * 100;
+                pct = Math.max(8, Math.min(100, pct));
+                bar.style.width = pct.toFixed(0) + "%";
+                bar.style.background = (stato === "ok") ? "#16a34a" : (stato === "sotto" ? "#f59e0b" : "#dc2626");
+            }
+        }
+
         async function salvaRapido(ingredienteId) {
             const statusEl = document.getElementById(`save-status-${ingredienteId}`);
             const quantita = parseFloat(document.getElementById(`qty-${ingredienteId}`).value);
             const unita = document.getElementById(`unit-${ingredienteId}`).value;
-            const note = document.getElementById(`note-${ingredienteId}`).value;
+            const noteEl = document.getElementById(`note-${ingredienteId}`);
+            const note = noteEl ? noteEl.value : "";
 
             let timeMin = null;
             const timeEl = document.getElementById(`time-${ingredienteId}`);
@@ -1792,21 +2233,30 @@
                 timeMin = timeEl.value === "" ? null : parseInt(timeEl.value);
             }
 
+            let hopUse = null;
+            const useEl = document.getElementById(`use-${ingredienteId}`);
+            if (useEl) {
+                hopUse = useEl.value;
+            }
+
             statusEl.textContent = "Salvataggio...";
 
             try {
+                const payload = {
+                    quantita: quantita,
+                    unita: unita,
+                    time_min: timeMin,
+                    note: note
+                };
+                if (hopUse !== null) payload.hop_use = hopUse;
+
                 const res = await fetch(`/ingredienti/${ingredienteId}/quick-update`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "Accept": "application/json"
                     },
-                    body: JSON.stringify({
-                        quantita: quantita,
-                        unita: unita,
-                        time_min: timeMin,
-                        note: note
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (!res.ok) {
@@ -1814,7 +2264,7 @@
                     return;
                 }
 
-                statusEl.textContent = "Salvato.";
+                statusEl.textContent = "✓ Salvato";
                 await aggiornaStats(true);
             } catch (err) {
                 statusEl.textContent = "Errore di connessione.";
@@ -1825,6 +2275,9 @@
             aggiornaStats(true);
             if (typeof renderMashSteps === "function") {
                 renderMashSteps(INITIAL_MASH_STEPS);
+            }
+            if (typeof initHopDragAndDrop === "function") {
+                initHopDragAndDrop();
             }
         });
 
@@ -2235,11 +2688,19 @@
             }
         }
 
+        function toggleHopFieldsUI(isHop) {
+            const hopUseBox = document.getElementById("box-hop-use");
+            const hopChips = document.getElementById("hop-quick-chips");
+            if (hopUseBox) hopUseBox.style.display = isHop ? "block" : "none";
+            if (hopChips) hopChips.style.display = isHop ? "flex" : "none";
+        }
+
         function onCatalogoSelected(select) {
             if (!select) return;
             const opt = select.options[select.selectedIndex];
             if (!opt || !opt.value) return;
             const cat = opt.dataset.cat || "grain";
+            window._ACTIVE_ADD_CAT = cat;
             const unit = opt.dataset.unit || (cat === "grain" ? "kg" : (cat === "hop" ? "g" : "pz"));
             document.getElementById("sel-unita").value = unit;
 
@@ -2247,7 +2708,6 @@
             const timeInput = document.getElementById("input-time-min");
             const preview = document.getElementById("cat-preview");
 
-            // populate optional override fields
             if (opt.dataset.yield) document.getElementById("p-resa").value = opt.dataset.yield;
             if (opt.dataset.srm) document.getElementById("p-colore").value = opt.dataset.srm;
             if (opt.dataset.alpha) document.getElementById("p-alpha").value = opt.dataset.alpha;
@@ -2255,20 +2715,25 @@
 
             if (cat === "hop") {
                 if (timeBox) timeBox.style.display = "block";
+                toggleHopFieldsUI(true);
                 if (timeInput && !timeInput.value) timeInput.value = "60";
                 if (preview) preview.innerHTML = `🌿 <strong>Luppolo</strong>: ${opt.dataset.alpha || '?'}% Alpha Acid (${opt.dataset.form || 'Pellet'})`;
             } else if (cat === "grain") {
                 if (timeBox) timeBox.style.display = "none";
+                toggleHopFieldsUI(false);
                 if (timeInput) timeInput.value = "";
                 if (preview) preview.innerHTML = `🌾 <strong>Grano/Malto</strong>: Resa ${opt.dataset.yield || '?'}%, Colore ${opt.dataset.srm || '?'} SRM`;
             } else if (cat === "yeast") {
                 if (timeBox) timeBox.style.display = "none";
+                toggleHopFieldsUI(false);
                 if (timeInput) timeInput.value = "";
                 if (preview) preview.innerHTML = `🧫 <strong>Lievito</strong>: Attenuazione ${opt.dataset.atten || '?'}%`;
             } else {
                 if (timeBox) timeBox.style.display = "block";
+                toggleHopFieldsUI(false);
                 if (preview) preview.innerHTML = `🧪 <strong>Misc / Additivo</strong>`;
             }
+            calcolaAnteprimaDoseRapida();
         }
 
         function onInventarioSelected(select) {
@@ -2285,41 +2750,336 @@
                 preview.innerHTML = `📦 <strong>Disponibili:</strong> ${giacenza} ${unit}${lotto}${scad}`;
             }
 
-            // check if hop/grain
+            if (opt.dataset.resa) document.getElementById("p-resa").value = opt.dataset.resa;
+            if (opt.dataset.ebc) document.getElementById("p-colore").value = (parseFloat(opt.dataset.ebc) / 1.97).toFixed(1);
+            if (opt.dataset.alpha) document.getElementById("p-alpha").value = opt.dataset.alpha;
+            if (opt.dataset.atten) document.getElementById("p-atten").value = opt.dataset.atten;
+
             const tipo = (opt.dataset.tipo || "").toLowerCase();
             const text = (opt.text || "").toLowerCase();
             const timeBox = document.getElementById("box-time-min");
             const timeInput = document.getElementById("input-time-min");
 
             if (tipo.includes("hop") || text.includes("luppolo") || text.includes("hop") || text.includes("pellet")) {
+                window._ACTIVE_ADD_CAT = "hop";
                 if (timeBox) timeBox.style.display = "block";
+                toggleHopFieldsUI(true);
                 if (timeInput && !timeInput.value) timeInput.value = "60";
             } else {
+                window._ACTIVE_ADD_CAT = (tipo.includes("yeast") || text.includes("lievit")) ? "yeast" : "grain";
                 if (timeBox) timeBox.style.display = "none";
+                toggleHopFieldsUI(false);
                 if (timeInput) timeInput.value = "";
             }
+            calcolaAnteprimaDoseRapida();
         }
 
         function onCatManualeChanged(cat) {
+            window._ACTIVE_ADD_CAT = cat;
             const timeBox = document.getElementById("box-time-min");
             const timeInput = document.getElementById("input-time-min");
             const unitSel = document.getElementById("sel-unita");
             if (cat === "hop") {
                 if (timeBox) timeBox.style.display = "block";
+                toggleHopFieldsUI(true);
                 if (unitSel) unitSel.value = "g";
                 if (timeInput && !timeInput.value) timeInput.value = "60";
             } else if (cat === "grain") {
                 if (timeBox) timeBox.style.display = "none";
+                toggleHopFieldsUI(false);
                 if (timeInput) timeInput.value = "";
                 if (unitSel) unitSel.value = "kg";
             } else if (cat === "yeast") {
                 if (timeBox) timeBox.style.display = "none";
+                toggleHopFieldsUI(false);
                 if (timeInput) timeInput.value = "";
                 if (unitSel) unitSel.value = "pz";
             } else {
                 if (timeBox) timeBox.style.display = "block";
+                toggleHopFieldsUI(false);
                 if (unitSel) unitSel.value = "g";
             }
+            calcolaAnteprimaDoseRapida();
+        }
+
+        // ── PUNTO 2: SPOTLIGHT LIVE SEARCH & LIVE PREVIEW % GRIST / IBU ──────────
+        function apriSpotlightRapido() {
+            const box = document.getElementById("box-aggiungi-rapido");
+            if (box) {
+                box.style.display = "block";
+                box.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            const inp = document.getElementById("spotlight-search");
+            if (inp) setTimeout(() => inp.focus(), 120);
+        }
+
+        document.addEventListener("keydown", function(e) {
+            if ((e.ctrlKey && e.key.toLowerCase() === "k") || (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes((document.activeElement || {}).tagName))) {
+                e.preventDefault();
+                apriSpotlightRapido();
+            }
+        });
+
+        function filtraSpotlight(query) {
+            const resBox = document.getElementById("spotlight-results");
+            if (!resBox) return;
+            const q = (query || "").trim().toLowerCase();
+            if (q.length < 1) {
+                resBox.style.display = "none";
+                resBox.innerHTML = "";
+                return;
+            }
+
+            const matches = [];
+            const selCat = document.getElementById("sel-catalogo");
+            if (selCat) {
+                Array.from(selCat.options).forEach((opt, idx) => {
+                    if (!opt.value) return;
+                    if (opt.text.toLowerCase().includes(q)) {
+                        matches.push({
+                            source: "catalogo",
+                            idx: idx,
+                            val: opt.value,
+                            label: opt.text.trim(),
+                            cat: opt.dataset.cat || "grain"
+                        });
+                    }
+                });
+            }
+            const selInv = document.getElementById("sel-inventario");
+            if (selInv) {
+                Array.from(selInv.options).forEach((opt, idx) => {
+                    if (!opt.value) return;
+                    if (opt.text.toLowerCase().includes(q)) {
+                        matches.push({
+                            source: "inventario",
+                            idx: idx,
+                            val: opt.value,
+                            label: opt.text.trim(),
+                            cat: "inv"
+                        });
+                    }
+                });
+            }
+
+            if (matches.length === 0) {
+                resBox.style.display = "block";
+                resBox.innerHTML = `<div style="padding:10px 14px;font-size:12px;color:#78716c;">Nessuna corrispondenza in Catalogo/Magazzino. <a href="javascript:void(0)" onclick="usaManualeDaSpotlight('${q.replace(/'/g, "\\'")}')" style="color:#2563eb;font-weight:700;">Usa inserimento manuale per "${q}" →</a></div>`;
+                return;
+            }
+
+            let html = "";
+            matches.slice(0, 12).forEach(m => {
+                const badge = m.source === "inventario"
+                    ? `<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;">📦 MAGAZZINO</span>`
+                    : `<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;">📖 CATALOGO</span>`;
+                html += `
+                    <div onclick="selezionaSpotlight('${m.source}', ${m.idx})"
+                         style="padding:8px 14px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;"
+                         onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='#fff'">
+                        <span><strong>${m.label}</strong></span>
+                        ${badge}
+                    </div>
+                `;
+            });
+            resBox.innerHTML = html;
+            resBox.style.display = "block";
+        }
+
+        function selezionaSpotlight(source, optIdx) {
+            switchSorgente(source);
+            const sel = document.getElementById(source === "catalogo" ? "sel-catalogo" : "sel-inventario");
+            if (sel) {
+                sel.selectedIndex = optIdx;
+                if (source === "catalogo") onCatalogoSelected(sel);
+                else onInventarioSelected(sel);
+            }
+            const resBox = document.getElementById("spotlight-results");
+            if (resBox) resBox.style.display = "none";
+            const qInput = document.getElementById("input-quantita");
+            if (qInput) {
+                qInput.focus();
+                qInput.select();
+            }
+        }
+
+        function usaManualeDaSpotlight(nome) {
+            switchSorgente("manuale");
+            const nm = document.getElementById("input-nome-manuale");
+            if (nm) nm.value = nome;
+            const resBox = document.getElementById("spotlight-results");
+            if (resBox) resBox.style.display = "none";
+            const qInput = document.getElementById("input-quantita");
+            if (qInput) qInput.focus();
+        }
+
+        function onHopUseQuickChange(useVal) {
+            const lbl = document.getElementById("lbl-time-min");
+            const tInp = document.getElementById("input-time-min");
+            if (useVal === "Dry Hop") {
+                if (lbl) lbl.textContent = "Giorni Dry Hop:";
+                if (tInp) tInp.value = "3";
+            } else if (useVal === "Whirlpool") {
+                if (lbl) lbl.textContent = "Minuti Stand (80°C):";
+                if (tInp) tInp.value = "20";
+            } else {
+                if (lbl) lbl.textContent = "Minuti Bollitura:";
+                if (tInp && (!tInp.value || parseInt(tInp.value) < 5)) tInp.value = "60";
+            }
+            calcolaAnteprimaDoseRapida();
+        }
+
+        function impostaFaseLuppolo(useVal, timeVal, noteVal) {
+            const selUse = document.getElementById("sel-hop-use");
+            if (selUse) selUse.value = useVal;
+            onHopUseQuickChange(useVal);
+            const tInp = document.getElementById("input-time-min");
+            if (tInp) tInp.value = timeVal;
+            const nInp = document.getElementById("input-note");
+            if (nInp) nInp.value = noteVal;
+            calcolaAnteprimaDoseRapida();
+        }
+
+        function calcolaAnteprimaDoseRapida() {
+            const badge = document.getElementById("live-add-calc");
+            if (!badge) return;
+            const q = parseFloat((document.getElementById("input-quantita") || {}).value);
+            if (!q || q <= 0) {
+                badge.style.display = "none";
+                return;
+            }
+            const unit = (document.getElementById("sel-unita") || {}).value || "kg";
+            const cat = window._ACTIVE_ADD_CAT || "grain";
+            const vol = window._CURRENT_TARGET_VOL || {{ ricetta.volume_target_litri or 20 }};
+            const curGrist = window._CURRENT_GRIST_KG || {{ stats.volumi.peso_grani_kg if stats.volumi else 0 }};
+
+            if (cat === "grain") {
+                const qKg = unit === "g" ? q / 1000 : (unit === "lb" ? q * 0.453592 : q);
+                const newTot = curGrist + qKg;
+                const pct = newTot > 0 ? ((qKg / newTot) * 100).toFixed(1) : "100.0";
+                const resa = parseFloat((document.getElementById("p-resa") || {}).value) || 75;
+                const eff = {{ ricetta.efficienza or 72 }} / 100.0;
+                const pts = (qKg * (resa / 100.0) * eff * 383.9) / Math.max(1, vol);
+                badge.style.display = "inline-block";
+                badge.innerHTML = `⚖️ <strong>${pct}% del Grist totale</strong> (${newTot.toFixed(2)} kg) · Apporto: <strong>+${(pts / 1000).toFixed(3)} OG</strong> (+${pts.toFixed(1)} GU)`;
+            } else if (cat === "hop") {
+                const qG = unit === "kg" ? q * 1000 : (unit === "oz" ? q * 28.3495 : q);
+                const alpha = (parseFloat((document.getElementById("p-alpha") || {}).value) || 5.0) / 100.0;
+                const t = parseFloat((document.getElementById("input-time-min") || {}).value) || 0;
+                const use = ((document.getElementById("sel-hop-use") || {}).value || "Boil").toLowerCase();
+                const og = window._CURRENT_OG || {{ stats.og or 1.050 }};
+                const bigness = 1.65 * Math.pow(0.000125, Math.max(0, og - 1.0));
+                let u = 0;
+                if (use.includes("dry")) {
+                    u = 0;
+                } else if (use.includes("whirl")) {
+                    u = bigness * ((1 - Math.exp(-0.04 * (t || 20))) / 4.15) * 0.35 * 1.10;
+                } else if (use.includes("first")) {
+                    u = bigness * ((1 - Math.exp(-0.04 * 60)) / 4.15) * 1.10 * 1.10;
+                } else {
+                    u = bigness * ((1 - Math.exp(-0.04 * t)) / 4.15) * 1.10;
+                }
+                const ibu = (qG * alpha * 1000 * u) / Math.max(1, vol);
+                const gl = qG / Math.max(1, vol);
+                badge.style.display = "inline-block";
+                badge.innerHTML = `🌿 <strong>+${ibu.toFixed(1)} IBU Tinseth</strong> · Dosaggio: <strong>${gl.toFixed(2)} g/L</strong>`;
+            } else {
+                badge.style.display = "none";
+            }
+        }
+
+        // ── PUNTO 3: CALCOLATORE MASH & VOLUMI D'ACQUA ISTANTANEO ────────────────
+        function ricalcolaAcquaLive() {
+            const ratio = parseFloat((document.getElementById("sim-mash-ratio") || {}).value) || 3.0;
+            const targetTemp = parseFloat((document.getElementById("sim-mash-temp") || {}).value) || 67.0;
+            const grainTemp = parseFloat((document.getElementById("sim-grain-temp") || {}).value) || 20.0;
+            const boilOff = parseFloat((document.getElementById("sim-boil-off") || {}).value) || 2.5;
+
+            const gristKg = window._CURRENT_GRIST_KG !== undefined ? window._CURRENT_GRIST_KG : {{ stats.volumi.peso_grani_kg if stats.volumi else 0 }};
+            const volTarget = window._CURRENT_TARGET_VOL || {{ ricetta.volume_target_litri or 20 }};
+            const deadspace = {{ profilo_impianto_corrente.mash_tun_deadspace_litri if profilo_impianto_corrente and profilo_impianto_corrente.mash_tun_deadspace_litri is not none else 0.0 }};
+            const trubLoss = {{ profilo_impianto_corrente.trub_loss_litri if profilo_impianto_corrente and profilo_impianto_corrente.trub_loss_litri is not none else 1.5 }};
+            const absorpRate = {{ profilo_impianto_corrente.assorbimento_grani_l_kg if profilo_impianto_corrente and profilo_impianto_corrente.assorbimento_grani_l_kg is not none else 0.96 }};
+
+            const lblRatio = document.getElementById("sim-ratio-lbl");
+            if (lblRatio) lblRatio.textContent = ratio.toFixed(1) + " L/kg";
+            const lblTarget = document.getElementById("sim-target-lbl");
+            if (lblTarget) lblTarget.textContent = targetTemp.toFixed(1) + " °C";
+            const lblCardTarget = document.getElementById("lbl-target-mash-temp");
+            if (lblCardTarget) lblCardTarget.textContent = targetTemp.toFixed(1);
+
+            const preboilVol = volTarget + boilOff + trubLoss;
+            const assorb = gristKg * absorpRate;
+            const totWater = preboilVol + assorb + deadspace;
+            const mashWater = gristKg > 0 ? (gristKg * ratio) + deadspace : 0;
+            const spargeWater = Math.max(0, totWater - mashWater);
+
+            // Equazione Termodinamica Palmer per Strike Water Temp
+            const strikeTemp = mashWater > 0
+                ? targetTemp + (0.41 / ratio) * (targetTemp - grainTemp)
+                : targetTemp;
+
+            const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            setTxt("vol-acqua-tot", totWater.toFixed(1) + " L");
+            setTxt("vol-acqua-mash", mashWater.toFixed(1) + " L");
+            setTxt("vol-acqua-sparge", spargeWater.toFixed(1) + " L");
+            setTxt("vol-preboil", preboilVol.toFixed(1) + " L");
+            setTxt("vol-assorbimento", assorb.toFixed(1) + " L");
+            setTxt("vol-strike-temp", strikeTemp.toFixed(1) + "°C");
+            setTxt("sim-strike-out", strikeTemp.toFixed(1) + "°C");
+            setTxt("sim-target-out", targetTemp.toFixed(1) + "°C");
+            setTxt("sim-postboil-hot", ((volTarget + trubLoss) * 1.04).toFixed(1) + " L");
+        }
+
+        // ── PUNTO 4: DRAG & DROP E RIORDINAMENTO FASI DI LUPPOLATURA ─────────────
+        function ordinaLuppoliPerFase() {
+            const tbody = document.getElementById("tbody-luppoli");
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll("tr.hop-row-draggable"));
+            const rankUse = (u) => {
+                const low = (u || "boil").toLowerCase();
+                if (low.includes("first") || low.includes("fwh")) return 1;
+                if (low.includes("boil")) return 2;
+                if (low.includes("whirl") || low.includes("stand")) return 3;
+                if (low.includes("dry") || low.includes("freddo")) return 4;
+                return 2;
+            };
+            rows.sort((a, b) => {
+                const useA = (a.querySelector("select[id^='use-']") || {}).value || a.dataset.use || "Boil";
+                const useB = (b.querySelector("select[id^='use-']") || {}).value || b.dataset.use || "Boil";
+                const rA = rankUse(useA);
+                const rB = rankUse(useB);
+                if (rA !== rB) return rA - rB;
+                const tA = parseFloat((a.querySelector("input[id^='time-']") || {}).value || a.dataset.time || 0);
+                const tB = parseFloat((b.querySelector("input[id^='time-']") || {}).value || b.dataset.time || 0);
+                return tB - tA; // dal tempo maggiore (60') al minore (0')
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        function initHopDragAndDrop() {
+            const tbody = document.getElementById("tbody-luppoli");
+            if (!tbody) return;
+            let draggedRow = null;
+            tbody.addEventListener("dragstart", function(e) {
+                const tr = e.target.closest("tr.hop-row-draggable");
+                if (!tr) return;
+                draggedRow = tr;
+                tr.style.opacity = "0.5";
+            });
+            tbody.addEventListener("dragend", function(e) {
+                if (draggedRow) draggedRow.style.opacity = "1";
+                draggedRow = null;
+            });
+            tbody.addEventListener("dragover", function(e) {
+                e.preventDefault();
+                const afterEl = e.target.closest("tr.hop-row-draggable");
+                if (afterEl && draggedRow && afterEl !== draggedRow) {
+                    const rect = afterEl.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                    tbody.insertBefore(draggedRow, next ? afterEl.nextSibling : afterEl);
+                }
+            });
         }
 
         function apriModalScala() {

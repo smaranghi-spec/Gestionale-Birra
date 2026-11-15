@@ -28,6 +28,11 @@ class QuickUpdatePayload(BaseModel):
     unita: str
     time_min: Optional[int] = None
     note: Optional[str] = None
+    hop_use: Optional[str] = None
+    hop_form: Optional[str] = None
+    alpha_acid: Optional[float] = None
+    yield_percent: Optional[float] = None
+    color_srm: Optional[float] = None
 
 
 @router.get("/ingredienti/{ing_id}/modifica", response_class=HTMLResponse)
@@ -120,6 +125,16 @@ def quick_update(ing_id: int, payload: QuickUpdatePayload, db: Session = Depends
     ing.unita = payload.unita
     ing.time_min = payload.time_min
     ing.note = payload.note
+    if payload.hop_use is not None:
+        ing.hop_use = payload.hop_use
+    if payload.hop_form is not None:
+        ing.hop_form = payload.hop_form
+    if payload.alpha_acid is not None:
+        ing.alpha_acid = payload.alpha_acid
+    if payload.yield_percent is not None:
+        ing.yield_percent = payload.yield_percent
+    if payload.color_srm is not None:
+        ing.color_srm = payload.color_srm
     try:
         db.commit()
     except Exception:
