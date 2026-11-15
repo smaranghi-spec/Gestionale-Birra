@@ -343,125 +343,309 @@ async function inviaBomAlCarrello() {
   }
 }
 
-// ── 3D DIGITAL TWIN (THREE.JS) ──────────────────────────────
+// ── 3D DIGITAL TWIN FOTOREALISTICO INOX (PBR + DETTAGLI MECCANICI) ────────
 let scene, camera, renderer, controls;
-let kettleMesh, pumpMesh, chillerMesh, pipeMesh, upgradeMesh;
+let kettleGroup, pumpGroup, chillerGroup, pipeGroup, retrofitUpgradeGroup;
 
 function init3D() {
   const container = document.getElementById('three-canvas-container');
   if (!container || container.clientWidth === 0) return;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x070a0f);
+  scene.background = new THREE.Color(0x0a0e17);
 
-  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-  camera.position.set(0, 15, 30);
+  camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(0, 14, 28);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
   container.appendChild(renderer.domElement);
 
   if (typeof THREE.OrbitControls !== 'undefined') {
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.minDistance = 6;
+    controls.maxDistance = 60;
   }
 
-  // Griglia industriale di riferimento
-  const grid = new THREE.GridHelper(30, 30, 0x06b6d4, 0x162233);
-  grid.position.y = -5;
+  // Griglia tecnica di calibrazione a pavimento
+  const grid = new THREE.GridHelper(34, 34, 0x38bdf8, 0x1e293b);
+  grid.position.y = -6.5;
   scene.add(grid);
 
-  // Luci
-  const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-  scene.add(ambient);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  dirLight.position.set(10, 20, 10);
-  scene.add(dirLight);
+  // Setup Illuminazione Studio Industriale per far risaltare l'acciaio inox
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
+  scene.add(hemiLight);
 
-  // Costruisci componenti base (Wireframe Ciano/Smeraldo)
-  costruisciDigitalTwinBase();
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  keyLight.position.set(15, 25, 18);
+  keyLight.castShadow = true;
+  scene.add(keyLight);
+
+  const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.9);
+  rimLight.position.set(-18, 12, -15);
+  scene.add(rimLight);
+
+  const fillLight = new THREE.DirectionalLight(0xf59e0b, 0.6);
+  fillLight.position.set(0, -10, 15);
+  scene.add(fillLight);
+
+  // Costruzione componenti ad alta definizione meccanica
+  costruisciImpiantoRealistico();
 
   window.addEventListener('resize', onWindowResize);
   animate3D();
 }
 
-function costruisciDigitalTwinBase() {
-  // Materiale Wireframe Ciano Industriale
-  const matCyan = new THREE.MeshStandardMaterial({
-    color: 0x06b6d4,
-    wireframe: true,
+function getStainlessSteelMaterial(roughness = 0.22, metalness = 0.92, color = 0xd8e2dc) {
+  return new THREE.MeshStandardMaterial({
+    color: color,
+    metalness: metalness,
+    roughness: roughness,
+    envMapIntensity: 1.5,
+  });
+}
+
+function costruisciImpiantoRealistico() {
+  const matInox = getStainlessSteelMaterial(0.22, 0.94, 0xd0d8df);
+  const matInoxSpazzolato = getStainlessSteelMaterial(0.38, 0.88, 0xb8c2cc);
+  const matNeroGomma = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8, metalness: 0.1 });
+  const matValvolaBlu = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.35, metalness: 0.5 });
+  const matSiliconeTubo = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
     transparent: true,
-    opacity: 0.85
+    opacity: 0.55,
+    roughness: 0.1,
+    transmission: 0.7,
+    thickness: 0.8
   });
 
-  // Materiale Smeraldo (Tubazioni / Flussaggio)
-  const matEmerald = new THREE.MeshStandardMaterial({
-    color: 0x10b981,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.75
+  // ── 1. TINO INOX BIRRIFICIO (Kettle/Fermentatore con fondo bombato, gambe e maniglie) ──
+  kettleGroup = new THREE.Group();
+  kettleGroup.position.set(-7, 0, 0);
+
+  // Corpo cilindrico principale
+  const bodyGeo = new THREE.CylinderGeometry(4.2, 4.2, 9.5, 36);
+  const bodyMesh = new THREE.Mesh(bodyGeo, matInox);
+  kettleGroup.add(bodyMesh);
+
+  // Coperchio bombato superiore
+  const lidGeo = new THREE.SphereGeometry(4.25, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.22);
+  const lidMesh = new THREE.Mesh(lidGeo, matInoxSpazzolato);
+  lidMesh.position.y = 4.75;
+  kettleGroup.add(lidMesh);
+
+  // Maniglia coperchio
+  const lidHandleGeo = new THREE.TorusGeometry(0.7, 0.12, 12, 24, Math.PI);
+  const lidHandle = new THREE.Mesh(lidHandleGeo, matInox);
+  lidHandle.rotation.x = Math.PI;
+  lidHandle.position.y = 5.7;
+  kettleGroup.add(lidHandle);
+
+  // Fondo bombato inferiore
+  const bottomGeo = new THREE.SphereGeometry(4.22, 32, 16, 0, Math.PI * 2, Math.PI * 0.78, Math.PI * 0.22);
+  const bottomMesh = new THREE.Mesh(bottomGeo, matInox);
+  bottomMesh.position.y = -4.75;
+  kettleGroup.add(bottomMesh);
+
+  // Maniglie laterali sagomate inox
+  for (let s of [-1, 1]) {
+    const handleGeo = new THREE.TorusGeometry(1.0, 0.16, 12, 24, Math.PI);
+    const handle = new THREE.Mesh(handleGeo, matInox);
+    handle.rotation.z = s * Math.PI / 2;
+    handle.position.set(s * 4.3, 2.5, 0);
+    kettleGroup.add(handle);
+  }
+
+  // 3 Gambe tubolari di sostegno inox con piedini filettati
+  for (let i = 0; i < 3; i++) {
+    const angle = (i * 2 * Math.PI) / 3;
+    const legGeo = new THREE.CylinderGeometry(0.35, 0.35, 4.5, 16);
+    const leg = new THREE.Mesh(legGeo, matInoxSpazzolato);
+    const lx = Math.cos(angle) * 3.6;
+    const lz = Math.sin(angle) * 3.6;
+    leg.position.set(lx, -5.5, lz);
+    kettleGroup.add(leg);
+
+    // Piedino regolabile nero in gomma
+    const footGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 16);
+    const foot = new THREE.Mesh(footGeo, matNeroGomma);
+    foot.position.set(lx, -7.5, lz);
+    kettleGroup.add(foot);
+  }
+
+  // Tronchetto di scarico inferiore con flangia Tri-Clamp 1.5"
+  const drainGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.8, 16);
+  const drainPipe = new THREE.Mesh(drainGeo, matInox);
+  drainPipe.rotation.z = Math.PI / 2;
+  drainPipe.position.set(4.8, -4.0, 0);
+  kettleGroup.add(drainPipe);
+
+  // Valvola a farfalla Tri-Clamp reale con levetta blu
+  const valveBodyGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.9, 20);
+  const valveBody = new THREE.Mesh(valveBodyGeo, matInox);
+  valveBody.rotation.z = Math.PI / 2;
+  valveBody.position.set(5.9, -4.0, 0);
+  kettleGroup.add(valveBody);
+
+  const valveLeverGeo = new THREE.BoxGeometry(0.2, 1.8, 0.4);
+  const valveLever = new THREE.Mesh(valveLeverGeo, matValvolaBlu);
+  valveLever.position.set(5.9, -3.0, 0);
+  valveLever.rotation.z = -0.3;
+  kettleGroup.add(valveLever);
+
+  scene.add(kettleGroup);
+
+  // ── 2. POMPA MAGNETICA (tipo MP-15R con corpo motore e testa inox a 90°) ──
+  pumpGroup = new THREE.Group();
+  pumpGroup.position.set(3.5, -4.5, 0);
+
+  // Motore posteriore nero alettato
+  const motorGeo = new THREE.CylinderGeometry(1.6, 1.6, 3.8, 24);
+  const motorMesh = new THREE.Mesh(motorGeo, matNeroGomma);
+  motorMesh.rotation.z = Math.PI / 2;
+  motorMesh.position.set(-1.2, 0, 0);
+  pumpGroup.add(motorMesh);
+
+  // Basamento di fissaggio pompa
+  const baseGeo = new THREE.BoxGeometry(3.6, 0.4, 2.6);
+  const baseMesh = new THREE.Mesh(baseGeo, matInoxSpazzolato);
+  baseMesh.position.set(-1.2, -1.7, 0);
+  pumpGroup.add(baseMesh);
+
+  // Testa pompa magnetica in Inox lucidato a specchio
+  const pumpHeadGeo = new THREE.CylinderGeometry(1.85, 1.85, 1.5, 24);
+  const pumpHead = new THREE.Mesh(pumpHeadGeo, matInox);
+  pumpHead.rotation.z = Math.PI / 2;
+  pumpHead.position.set(1.4, 0, 0);
+  pumpGroup.add(pumpHead);
+
+  // Bocca di aspirazione frontale (Inlet 1/2" BSP)
+  const inletGeo = new THREE.CylinderGeometry(0.42, 0.42, 1.2, 16);
+  const inlet = new THREE.Mesh(inletGeo, matInox);
+  inlet.rotation.z = Math.PI / 2;
+  inlet.position.set(2.4, 0, 0);
+  pumpGroup.add(inlet);
+
+  // Bocca di mandata superiore (Outlet 1/2" BSP)
+  const outletGeo = new THREE.CylinderGeometry(0.42, 0.42, 1.2, 16);
+  const outlet = new THREE.Mesh(outletGeo, matInox);
+  outlet.position.set(1.4, 1.4, 0);
+  pumpGroup.add(outlet);
+
+  scene.add(pumpGroup);
+
+  // ── 3. SCAMBIATORE A PIASTRE INOX (Plate Chiller ad alta resa) ──
+  chillerGroup = new THREE.Group();
+  chillerGroup.position.set(11.5, -1.0, 0);
+
+  // Corpo pacco piastre rettangolare inox con tiranti angolari
+  const plateCoreGeo = new THREE.BoxGeometry(2.4, 6.8, 3.4);
+  const plateCore = new THREE.Mesh(plateCoreGeo, matInoxSpazzolato);
+  chillerGroup.add(plateCore);
+
+  // Tiranti frontali/posteriori
+  for (let tz of [-1.55, 1.55]) {
+    const plateCoverGeo = new THREE.BoxGeometry(2.5, 6.9, 0.25);
+    const plateCover = new THREE.Mesh(plateCoverGeo, matInox);
+    plateCover.position.z = tz;
+    chillerGroup.add(plateCover);
+  }
+
+  // 4 Bocchettoni filettati (Mosto caldo/freddo + Acqua rete/uscita)
+  const bocchetteCoord = [
+    [-0.6, 2.3, 1.9], [0.6, 2.3, 1.9],
+    [-0.6, -2.3, 1.9], [0.6, -2.3, 1.9]
+  ];
+  bocchetteCoord.forEach(([bx, by, bz]) => {
+    const portGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.9, 16);
+    const portMesh = new THREE.Mesh(portGeo, matInox);
+    portMesh.rotation.x = Math.PI / 2;
+    portMesh.position.set(bx, by, bz);
+    chillerGroup.add(portMesh);
   });
 
-  // Tino Principale (Cilindro conico)
-  const kettleGeo = new THREE.CylinderGeometry(4.5, 4.5, 10, 24);
-  kettleMesh = new THREE.Mesh(kettleGeo, matCyan);
-  kettleMesh.position.set(-6, 0, 0);
-  scene.add(kettleMesh);
+  scene.add(chillerGroup);
 
-  // Pompa Magnetica alla base
-  const pumpGeo = new THREE.BoxGeometry(3, 2.5, 3);
-  pumpMesh = new THREE.Mesh(pumpGeo, matEmerald);
-  pumpMesh.position.set(4, -3.5, 0);
-  scene.add(pumpMesh);
+  // ── 4. TUBAZIONI FLESSIBILI IN SILICONE ALIMENTARE PLATINUM CURED ──
+  pipeGroup = new THREE.Group();
 
-  // Tubo di raccordo tra Tino e Pompa
-  const pipeGeo = new THREE.CylinderGeometry(0.35, 0.35, 10, 16);
-  pipeMesh = new THREE.Mesh(pipeGeo, matEmerald);
-  pipeMesh.rotation.z = Math.PI / 2;
-  pipeMesh.position.set(-1, -4, 0);
-  scene.add(pipeMesh);
+  // Tubo flessibile di connessione dalla valvola del tino alla pompa
+  const curve1 = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.5, -4.0, 0),
+    new THREE.Vector3(1.5, -4.2, 0.3),
+    new THREE.Vector3(3.2, -4.5, 0)
+  ]);
+  const tube1Geo = new THREE.TubeGeometry(curve1, 24, 0.36, 12, false);
+  const tube1 = new THREE.Mesh(tube1Geo, matSiliconeTubo);
+  pipeGroup.add(tube1);
 
-  // Chiller / Scambiatore Ologramma Arancione (Pulsante)
-  const chillerGeo = new THREE.BoxGeometry(2, 6, 3);
-  const matPulse = new THREE.MeshStandardMaterial({
+  // Tubo flessibile dalla mandata pompa allo scambiatore a piastre
+  const curve2 = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(4.9, -3.1, 0),
+    new THREE.Vector3(6.5, -1.5, 0.8),
+    new THREE.Vector3(8.5, -0.5, 1.4),
+    new THREE.Vector3(10.9, 1.3, 1.9)
+  ]);
+  const tube2Geo = new THREE.TubeGeometry(curve2, 32, 0.36, 12, false);
+  const tube2 = new THREE.Mesh(tube2Geo, matSiliconeTubo);
+  pipeGroup.add(tube2);
+
+  scene.add(pipeGroup);
+
+  // ── 5. OLOGRAMMA PULSANTE RETROFIT (Evidenzia l'adattatore calcolato) ──
+  retrofitUpgradeGroup = new THREE.Group();
+  retrofitUpgradeGroup.position.set(6.4, -4.0, 0);
+
+  const matPulseOlogramma = new THREE.MeshBasicMaterial({
     color: 0xf59e0b,
     wireframe: true,
     transparent: true,
     opacity: 0.8
   });
-  chillerMesh = new THREE.Mesh(chillerGeo, matPulse);
-  chillerMesh.position.set(10, 0, 0);
-  scene.add(chillerMesh);
 
-  // Ologramma Raccordo Retrofit (sfera pulsante al centro connessione)
-  const fitGeo = new THREE.TorusGeometry(0.8, 0.2, 12, 24);
-  upgradeMesh = new THREE.Mesh(fitGeo, new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true }));
-  upgradeMesh.position.set(4, -1, 0);
-  scene.add(upgradeMesh);
+  // Clamp a farfalla olografico
+  const ringGeo = new THREE.TorusGeometry(1.05, 0.22, 12, 28);
+  const ringMesh = new THREE.Mesh(ringGeo, matPulseOlogramma);
+  ringMesh.rotation.y = Math.PI / 2;
+  retrofitUpgradeGroup.add(ringMesh);
+
+  // Vite alettata del morsetto
+  const boltGeo = new THREE.BoxGeometry(0.3, 1.4, 0.5);
+  const boltMesh = new THREE.Mesh(boltGeo, matPulseOlogramma);
+  boltMesh.position.set(0, 1.1, 0);
+  retrofitUpgradeGroup.add(boltMesh);
+
+  scene.add(retrofitUpgradeGroup);
 }
 
 function aggiornaDigitalTwin(cat, val) {
-  if (!kettleMesh) return;
+  if (!kettleGroup) return;
   if (cat === 'arch') {
-    if (val === 'allinone') kettleMesh.scale.set(1, 1, 1);
-    else if (val === '2tini') kettleMesh.scale.set(1.2, 1.1, 1.2);
-    else if (val === '3tini') kettleMesh.scale.set(1.4, 1.3, 1.4);
+    if (val === 'allinone') kettleGroup.scale.set(1, 1, 1);
+    else if (val === '2tini') kettleGroup.scale.set(1.22, 1.15, 1.22);
+    else if (val === '3tini') kettleGroup.scale.set(1.38, 1.3, 1.38);
   }
 }
 
 window.highlightRetrofitPart = function(nodoA, nodoB) {
-  if (upgradeMesh) {
-    upgradeMesh.scale.set(1.4, 1.4, 1.4);
-    setTimeout(() => { if (upgradeMesh) upgradeMesh.scale.set(1, 1, 1); }, 400);
+  if (retrofitUpgradeGroup) {
+    retrofitUpgradeGroup.scale.set(1.5, 1.5, 1.5);
+    setTimeout(() => { if (retrofitUpgradeGroup) retrofitUpgradeGroup.scale.set(1, 1, 1); }, 400);
   }
 };
 
 function resetVisuale3D() {
   if (camera && controls) {
-    camera.position.set(0, 15, 30);
-    controls.target.set(0, 0, 0);
+    camera.position.set(0, 14, 28);
+    controls.target.set(2, -1, 0);
     controls.update();
   }
 }
@@ -477,15 +661,14 @@ function onWindowResize() {
 function animate3D() {
   requestAnimationFrame(animate3D);
 
-  // Animazione pulsazione ologramma arancione
-  const t = Date.now() * 0.0035;
-  const pulseAlpha = 0.4 + 0.5 * Math.sin(t);
-  if (chillerMesh && chillerMesh.material) {
-    chillerMesh.material.opacity = pulseAlpha;
-  }
-  if (upgradeMesh) {
-    upgradeMesh.rotation.x += 0.015;
-    upgradeMesh.rotation.y += 0.02;
+  // Animazione pulsazione sinusoidale dell'ologramma adattatore arancione
+  const t = Date.now() * 0.004;
+  const pulseAlpha = 0.35 + 0.55 * Math.sin(t);
+  if (retrofitUpgradeGroup) {
+    retrofitUpgradeGroup.children.forEach(c => {
+      if (c.material) c.material.opacity = pulseAlpha;
+    });
+    retrofitUpgradeGroup.rotation.x = Math.sin(t * 0.5) * 0.15;
   }
 
   if (controls) controls.update();
