@@ -190,6 +190,7 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     attenuation = None
     stats_target = {}
     tot_grani_kg = 0.0
+    punti_potenziali_tot = 0.0
     litri_mash = 0.0
     litri_sparge = 0.0
     litri_pre_boil = 0.0
@@ -204,13 +205,16 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             if cat in ("grain", "fermentabile", "malto"):
                 q = ing.quantita or 0.0
                 u = (ing.unita or "kg").lower()
-                tot_grani_kg += (q * 0.001) if u in ("g", "gr") else q
+                q_kg = (q * 0.001) if u in ("g", "gr") else q
+                tot_grani_kg += q_kg
+                resa = (ing.yield_percent or 78.0) / 100.0
+                punti_potenziali_tot += q_kg * 384.0 * resa
         try:
             from ..stats import calcola_stats
             stats_target = calcola_stats(cotta.ricetta, cotta.ricetta.ingredienti)
-            litri_mash = stats_target.get("acqua_mash_l") or round(tot_grani_kg * 3.0, 1)
-            litri_sparge = stats_target.get("acqua_sparge_l") or round(max(0.0, vol_target * 1.25 - (litri_mash - tot_grani_kg * 0.96)), 1)
-            litri_pre_boil = stats_target.get("volume_pre_boil_l") or round(vol_target + 3.5, 1)
+            litri_mash = stats_target.get("acqua_mash_l") or stats_target.get("acqua_mash") or round(tot_grani_kg * 3.0, 1)
+            litri_sparge = stats_target.get("acqua_sparge_l") or stats_target.get("acqua_sparge") or round(max(0.0, vol_target * 1.25 - (litri_mash - tot_grani_kg * 0.96)), 1)
+            litri_pre_boil = stats_target.get("volume_pre_boil_l") or stats_target.get("preboil_volume") or round(vol_target + 3.5, 1)
         except Exception:
             litri_mash = round(tot_grani_kg * 3.0, 1)
             litri_pre_boil = round(vol_target * 1.2, 1)
@@ -239,16 +243,16 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
     grammi_lievito_secco = round(cellule_miliardi / 10.0, 1)
 
     # Dati grafico — misurazioni SG e temperatura in ordine cronologico
-    misure_sg = [
+    misure_sg = sorted([
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
         if (e.unita == "SG" or e.tipo in ("densita", "misura")) and e.valore is not None and e.unita != "°C"
-    ]
-    misure_temp = [
+    ], key=lambda x: x["t"] or "")
+    misure_temp = sorted([
         {"t": e.timestamp, "v": e.valore}
         for e in cotta.log
         if (e.unita == "°C" or e.tipo in ("temperatura", "temp")) and e.valore is not None and e.unita != "SG"
-    ]
+    ], key=lambda x: x["t"] or "")
 
     if cotta.og_reale and cotta.data_inoculo:
         og_entry = {"t": cotta.data_inoculo + " 00:00", "v": cotta.og_reale}
@@ -289,6 +293,7 @@ def dettaglio_cotta(cotta_id: int, request: Request, db: Session = Depends(get_d
             "abv_calcolato": abv_calcolato,
             "stats_target": stats_target,
             "tot_grani_kg": round(tot_grani_kg, 2),
+            "punti_potenziali_tot": round(punti_potenziali_tot, 1),
             "litri_mash": litri_mash,
             "litri_sparge": litri_sparge,
             "litri_pre_boil": litri_pre_boil,
@@ -530,30 +535,45 @@ def aggiungi_log(
     cotta_id: int,
     tipo: str = Form("nota"),
     descrizione: str = Form(...),
-    valore: Optional[float] = Form(None),
+    valore: Optional[str] = Form(None),
     unita: Optional[str] = Form(None),
     fase: Optional[str] = Form(None),
     note: Optional[str] = Form(None),
+    data_lettura: Optional[str] = Form(None),
+    tab_attiva: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     cotta = db.query(Cotta).filter(Cotta.id == cotta_id).first()
     if not cotta:
         return RedirectResponse("/cotte", status_code=303)
 
+    val_num = _parse_float(valore)
+
+    # Gestione data_lettura personalizzata (se fornita dall'utente nella tab Fermentazione o Diario)
+    ts = _now_str()
+    if data_lettura and data_lettura.strip():
+        dl = data_lettura.strip().replace("T", " ")
+        if len(dl) == 10:  # Solo YYYY-MM-DD -> aggiungi ora corrente HH:MM
+            ora_corrente = datetime.now().strftime("%H:%M")
+            ts = f"{dl} {ora_corrente}"
+        else:
+            ts = dl[:16]
+
     db.add(
         LogCotta(
             cotta_id=cotta_id,
-            timestamp=_now_str(),
+            timestamp=ts,
             fase=fase or cotta.stato,
             tipo=tipo,
             descrizione=descrizione,
-            valore=valore,
+            valore=val_num,
             unita=unita or None,
             note=note or None,
         )
     )
     db.commit()
-    return RedirectResponse(f"/cotte/{cotta_id}", status_code=303)
+    suffix = f"?tab={tab_attiva}" if tab_attiva else ""
+    return RedirectResponse(f"/cotte/{cotta_id}{suffix}", status_code=303)
 
 
 @router.post("/cotte/{cotta_id}/log/{log_id}/elimina")
@@ -988,7 +1008,14 @@ def brew_day_view(cotta_id: int, request: Request, db: Session = Depends(get_db)
     if ricetta:
         ingredienti = db.query(IngredienteRicetta).filter(IngredienteRicetta.ricetta_id == ricetta.id).all()
 
-    grani = [i for i in ingredienti if i.categoria == "grain"]
+    grani = [i for i in ingredienti if (i.categoria or "").lower() in ("grain", "fermentabile", "malto")]
+    punti_potenziali_tot = 0.0
+    for g_ing in grani:
+        q = g_ing.quantita or 0.0
+        u = (g_ing.unita or "kg").lower()
+        q_kg = (q * 0.001) if u in ("g", "gr") else q
+        resa = (g_ing.yield_percent or 78.0) / 100.0
+        punti_potenziali_tot += q_kg * 384.0 * resa
     luppoli_orm = sorted([i for i in ingredienti if i.categoria == "hop"], key=lambda x: (x.time_min or 0), reverse=True)
     luppoli = [
         {
@@ -1042,6 +1069,7 @@ def brew_day_view(cotta_id: int, request: Request, db: Session = Depends(get_db)
             "lieviti": lieviti,
             "altri": altri,
             "stats": stats,
+            "punti_potenziali_tot": round(punti_potenziali_tot, 1),
             "mash_steps": mash_steps,
             "session": request.session,
         }

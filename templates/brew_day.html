@@ -267,15 +267,15 @@
     <div class="step-card">
         <div class="step-header">
             <div class="step-title">🍺 5. Misure Finali nel Fermentatore & Chiusura Cotta</div>
-            <span class="badge badge-green">Target: {{ ricetta.volume_target_litri }} L @ {{ stats.og }} SG</span>
+            <span class="badge badge-green">Target: {{ ricetta.volume_target_litri if ricetta else 20 }} L @ {{ stats.og }} SG</span>
         </div>
 
         <form method="post" action="/cotte/{{ cotta.id }}/aggiorna">
             <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:14px;">
                 <div>
                     <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">Volume Finale in Fermentatore (L)</label>
-                    <input type="number" step="0.1" name="volume_post_bollitura" id="in-final-vol"
-                           value="{{ cotta.volume_post_bollitura or ricetta.volume_target_litri }}"
+                    <input type="number" step="0.01" name="volume_post_bollitura" id="in-final-vol"
+                           value="{{ cotta.volume_post_bollitura or (ricetta.volume_target_litri if ricetta else 20) }}"
                            style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;" oninput="calcolaEfficienzaLive()">
                 </div>
                 <div>
@@ -287,8 +287,8 @@
                 <div>
                     <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">Efficienza Impianto Reale (%)</label>
                     <input type="number" step="0.1" name="efficienza_reale" id="in-real-eff"
-                           value="{{ cotta.efficienza_reale or ricetta.efficienza or 75 }}"
-                           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;color:#10b981;font-weight:bold;" readonly>
+                           value="{{ cotta.efficienza_reale or (ricetta.efficienza if ricetta else 75) }}"
+                           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:16px;color:#10b981;font-weight:bold;">
                 </div>
                 <div>
                     <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">pH Mash Misurato</label>
@@ -484,32 +484,47 @@ function resetBoilTimer() {
 updateBoilDisplay();
 
 // --- LIVE EFFICIENCY CALCULATION ---
+const POTENTIAL_PTS_TOT = {{ punti_potenziali_tot or 0 }};
 const TARGET_PREBOIL_PTS = {{ ((stats.volumi.preboil_og or 1.050) - 1.0) * 1000 * (stats.volumi.preboil_volume or 25) }};
-const TARGET_EFF = {{ ricetta.efficienza or 75 }};
+const TARGET_EFF = {{ (ricetta.efficienza if ricetta and ricetta.efficienza else 75) }};
 
 function calcolaEfficienzaLive() {
     const pVol = parseFloat(document.getElementById("in-preboil-vol")?.value) || 0;
     const pSG = parseFloat(document.getElementById("in-preboil-sg")?.value) || 1.0;
     document.getElementById("hidden-preboil-vol").value = pVol;
 
-    if (pVol > 0 && pSG > 1.0 && TARGET_PREBOIL_PTS > 0) {
+    if (pVol > 0 && pSG > 1.0) {
         const actualPts = (pSG - 1.0) * 1000.0 * pVol;
-        const mashEff = Math.round((actualPts / TARGET_PREBOIL_PTS) * TARGET_EFF * 10) / 10;
-        document.getElementById("calc-mash-eff").textContent = mashEff + "%";
-        const diff = Math.round((mashEff - TARGET_EFF) * 10) / 10;
-        document.getElementById("calc-mash-diff").textContent = diff >= 0 ? `+${diff}% rispetto al target (${TARGET_EFF}%)` : `${diff}% rispetto al target (${TARGET_EFF}%)`;
+        let mashEff = 0;
+        if (POTENTIAL_PTS_TOT > 0) {
+            mashEff = Math.round((actualPts / POTENTIAL_PTS_TOT) * 100.0 * 10) / 10;
+        } else if (TARGET_PREBOIL_PTS > 0) {
+            mashEff = Math.round((actualPts / TARGET_PREBOIL_PTS) * TARGET_EFF * 10) / 10;
+        }
+        if (mashEff > 0) {
+            document.getElementById("calc-mash-eff").textContent = mashEff + "%";
+            const diff = Math.round((mashEff - TARGET_EFF) * 10) / 10;
+            document.getElementById("calc-mash-diff").textContent = diff >= 0 ? `+${diff}% rispetto al target (${TARGET_EFF}%)` : `${diff}% rispetto al target (${TARGET_EFF}%)`;
+        }
     }
 
     const fVol = parseFloat(document.getElementById("in-final-vol")?.value) || 0;
     const fSG = parseFloat(document.getElementById("in-final-og")?.value) || 1.0;
     const targetOG = {{ stats.og or 1.050 }};
-    const targetVol = {{ ricetta.volume_target_litri or 20.0 }};
+    const targetVol = {{ (ricetta.volume_target_litri if ricetta and ricetta.volume_target_litri else 20.0) }};
 
-    if (fVol > 0 && fSG > 1.0 && targetOG > 1.0 && targetVol > 0) {
+    if (fVol > 0 && fSG > 1.0) {
         const actualPointsTotal = (fSG - 1.0) * 1000.0 * fVol;
-        const targetPointsTotal = (targetOG - 1.0) * 1000.0 * targetVol;
-        const realEff = Math.round((actualPointsTotal / targetPointsTotal) * TARGET_EFF * 10) / 10;
-        document.getElementById("in-real-eff").value = realEff;
+        let realEff = 0;
+        if (POTENTIAL_PTS_TOT > 0) {
+            realEff = Math.round((actualPointsTotal / POTENTIAL_PTS_TOT) * 100.0 * 10) / 10;
+        } else if (targetOG > 1.0 && targetVol > 0) {
+            const targetPointsTotal = (targetOG - 1.0) * 1000.0 * targetVol;
+            realEff = Math.round((actualPointsTotal / targetPointsTotal) * TARGET_EFF * 10) / 10;
+        }
+        if (realEff > 0) {
+            document.getElementById("in-real-eff").value = realEff;
+        }
     }
 }
 calcolaEfficienzaLive();

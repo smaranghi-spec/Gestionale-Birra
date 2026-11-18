@@ -2,12 +2,30 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from typing import Optional
 from datetime import date
 from ..db import SessionLocal
 from ..models import Vendita, Ricetta, ProdottoFinito
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+
+def _safe_float(val: Optional[str]) -> Optional[float]:
+    if val is None:
+        return None
+    s = str(val).strip().replace(",", ".")
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _safe_int(val: Optional[str]) -> Optional[int]:
+    f = _safe_float(val)
+    return int(round(f)) if f is not None else None
 
 
 def get_db():
@@ -51,7 +69,7 @@ def lista_vendite(request: Request, stato: str = None, db: Session = Depends(get
         "ricette": ricette,
         "lotti_finiti": lotti_finiti,
         "fatturato": round(fatturato, 2),
-        "litri": round(litri, 1),
+        "litri": round(litri, 2),
         "n_clienti": n_clienti,
         "trend": trend,
         "oggi": date.today().isoformat(),
@@ -68,13 +86,17 @@ def crea_vendita(
     prodotto: str = Form(...),
     ricetta_id: int = Form(0),
     prodotto_finito_id: int = Form(0),
-    quantita_litri: float = Form(None),
-    n_bottiglie: int = Form(None),
-    prezzo_euro: float = Form(None),
+    quantita_litri: Optional[str] = Form(None),
+    n_bottiglie: Optional[str] = Form(None),
+    prezzo_euro: Optional[str] = Form(None),
     note: str = Form(""),
     stato: str = Form("confermata"),
     db: Session = Depends(get_db),
 ):
+    litri_val = _safe_float(quantita_litri)
+    bottiglie_val = _safe_int(n_bottiglie)
+    prezzo_val = _safe_float(prezzo_euro)
+
     pf = db.query(ProdottoFinito).filter(ProdottoFinito.id == prodotto_finito_id).first() if prodotto_finito_id else None
     stato_eff = stato if stato in ("bozza", "confermata") else "confermata"
     note_eff = note.strip()
@@ -82,11 +104,11 @@ def crea_vendita(
     if pf:
         if not ricetta_id and pf.cotta and pf.cotta.ricetta_id:
             ricetta_id = pf.cotta.ricetta_id
-        pezzi = n_bottiglie or 1
-        if not quantita_litri and pf.formato_ml:
-            quantita_litri = round((pezzi * pf.formato_ml) / 1000.0, 2)
-        if prezzo_euro is None and pf.prezzo_vendita:
-            prezzo_euro = round(pezzi * pf.prezzo_vendita, 2)
+        pezzi = bottiglie_val or 1
+        if not litri_val and pf.formato_ml:
+            litri_val = round((pezzi * pf.formato_ml) / 1000.0, 2)
+        if prezzo_val is None and pf.prezzo_vendita:
+            prezzo_val = round(pezzi * pf.prezzo_vendita, 2)
         lotto_tag = f"[Lotto {pf.codice_lotto or pf.codice}]"
         if lotto_tag not in note_eff:
             note_eff = f"{lotto_tag} {note_eff}".strip()
@@ -100,9 +122,9 @@ def crea_vendita(
         cliente=cliente.strip() or None,
         prodotto=prodotto.strip(),
         ricetta_id=ricetta_id if ricetta_id else None,
-        quantita_litri=quantita_litri,
-        n_bottiglie=n_bottiglie,
-        prezzo_euro=prezzo_euro,
+        quantita_litri=litri_val,
+        n_bottiglie=bottiglie_val,
+        prezzo_euro=prezzo_val,
         note=note_eff or None,
         stato=stato_eff,
     ))

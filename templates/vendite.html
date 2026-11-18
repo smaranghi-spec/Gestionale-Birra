@@ -115,8 +115,8 @@
       </div>
       <div class="form-row"><label>Cliente</label><input type="text" name="cliente" placeholder="Nome cliente"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="form-row"><label>Litri</label><input type="number" name="quantita_litri" id="v-litri" step="0.1" placeholder="0.0"></div>
-        <div class="form-row"><label>N° bottiglie/fusti</label><input type="number" name="n_bottiglie" id="v-pezzi" placeholder="0" oninput="ricalcolaDaLotto()"></div>
+        <div class="form-row"><label>Litri</label><input type="number" name="quantita_litri" id="v-litri" step="0.01" min="0" placeholder="es. 1.65"></div>
+        <div class="form-row"><label>N° bottiglie/fusti</label><input type="number" name="n_bottiglie" id="v-pezzi" step="1" min="0" placeholder="0" oninput="ricalcolaDaLotto()"></div>
       </div>
       <div class="form-row"><label>Prezzo Totale (€)</label><input type="number" name="prezzo_euro" id="v-prezzo" step="0.01" placeholder="0.00"></div>
       <div class="form-row"><label>Note</label><textarea name="note" rows="2" placeholder="Note aggiuntive…"></textarea></div>
