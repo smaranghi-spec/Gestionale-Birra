@@ -1,7 +1,25 @@
-{% extends "layout.html" %}
+{% extends "base.html" %}
+{% block title %}Studio Impianto 3D Flessibile & Smart Connector{% endblock %}
 
 {% block content %}
 <style>
+  :root {
+    --card-bg: var(--card, #1c2333);
+    --border-color: var(--border, #30363d);
+    --text-color: var(--text, #e6edf3);
+    --muted-color: var(--muted, #8b949e);
+    --bg-color: var(--bg, #0d1117);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    color: #fff;
+    border: none;
+  }
+  .btn-secondary {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
   .cad-workspace {
     display: grid;
     grid-template-columns: 470px 1fr;
